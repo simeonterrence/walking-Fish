@@ -28,7 +28,7 @@
 <div class="auth-card">
   <p class="label" style="color:var(--accent);">Walking-Fish Group</p>
   <h1>Admin Login</h1>
-  <p>Sign in to manage vendor applications.</p>
+  <p>Sign in to manage vendor applications and site photos.</p>
   <form id="admin-login-form">
     <div class="form-group" style="text-align:left;">
       <label for="email">Email</label>
@@ -38,6 +38,11 @@
       <label for="password">Password</label>
       <input type="password" id="password" placeholder="Enter password" required autocomplete="current-password">
     </div>
+    <details style="margin-bottom:20px;font-size:13px;color:var(--muted);text-align:left;">
+      <summary style="cursor:pointer;">Photo management key (optional)</summary>
+      <p style="margin-top:8px;font-size:13px;">Paste your Supabase service role key to manage site photos. Find it in Project Settings → API.</p>
+      <input type="password" id="service-key" placeholder="eyJhbGciOiJIUzI1NiIs..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:13px;margin-top:6px;">
+    </details>
     <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Sign In</button>
     <p class="error" id="login-error">Invalid email or password. Try again.</p>
   </form>
@@ -55,6 +60,8 @@ document.getElementById('admin-login-form').addEventListener('submit', function(
   var errorEl = document.getElementById('login-error');
   if (user) {
     setSession('admin', { email: email });
+    var sk = document.getElementById('service-key').value.trim();
+    if (sk) sessionStorage.setItem('wf_service_key', sk);
     window.location.href = 'admin.html';
   } else {
     errorEl.style.display = 'block';

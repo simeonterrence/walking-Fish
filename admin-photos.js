@@ -1,10 +1,14 @@
 // Admin photo management — loaded on admin.html only
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuaWdjcWRxdWFraW5senZ5YXVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODkzODc3OCwiZXhwIjoyMDk0NTE0Nzc4fQ.4vupHISw1aFLTinWlbrcCsw-7xUPBRN_K51qtASRT_o';
+// Service key is set via login form (sessionStorage) or falls back to a
+// prompt. NEVER hardcode service_role keys in source files.
+function getServiceKey() {
+  return sessionStorage.getItem('wf_service_key') || prompt('Enter Supabase service role key (from Project Settings → API):');
+}
 const STORAGE_BUCKET = 'site-photos';
 
 async function api(path, options) {
   var res = await fetch(SUPABASE_URL + path, {
-    headers: { Authorization: 'Bearer ' + SUPABASE_SERVICE_KEY, ...(options.headers || {}) },
+    headers: { Authorization: 'Bearer ' + getServiceKey(), ...(options.headers || {}) },
     ...options
   });
   if (!res.ok) { var txt = await res.text(); throw new Error(txt); }
@@ -33,6 +37,9 @@ async function loadPhotos() {
 async function uploadPhoto() {
   var file = document.getElementById('photo-file').files[0];
   if (!file) return alert('Select a photo first.');
+  if (file.size > 10 * 1024 * 1024) return alert('File too large. Max size is 10MB.');
+  var ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!ALLOWED.includes(file.type)) return alert('File type not allowed. Use JPEG, PNG, or WebP.');
   var section = document.getElementById('photo-section').value;
   var position = parseInt(document.getElementById('photo-position').value) || 0;
   var alt = document.getElementById('photo-alt').value || file.name;
@@ -46,7 +53,7 @@ async function uploadPhoto() {
     // Upload to Storage
     var uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fileName, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + SUPABASE_SERVICE_KEY },
+      headers: { Authorization: 'Bearer ' + getServiceKey() },
       body: file
     });
     if (!uploadRes.ok) throw new Error('Upload failed: ' + (await uploadRes.text()));
@@ -75,7 +82,7 @@ async function deletePhoto(id) {
       // Delete from storage
       await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fp, {
         method: 'DELETE',
-        headers: { Authorization: 'Bearer ' + SUPABASE_SERVICE_KEY }
+        headers: { Authorization: 'Bearer ' + getServiceKey() }
       });
     }
     // Delete DB record

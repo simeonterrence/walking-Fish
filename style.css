@@ -107,11 +107,14 @@ nav .logo {
 nav .logo em { font-style: normal; color: var(--accent); }
 nav .nav-links {
   display: none;
-  position: absolute; top: 100%; left: 0; right: 0;
-  flex-direction: column; gap: 0;
+  position: absolute; top: 100%; right: 0;
+  min-width: 200px;
+  flex-direction: column; gap: 2px;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 6px;
+  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.1);
 }
 nav .nav-links.nav-open { display: flex; }
 nav .nav-links a {
