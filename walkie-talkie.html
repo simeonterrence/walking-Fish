@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Walkie-Talkie Experiences is the live events arm of Walking-Fish Group. Festivals, karaoke, picnics, and community experiences that bring people together.">
 <meta property="og:title" content="Walkie-Talkie Experiences | Walking-Fish Group">
@@ -19,6 +19,8 @@
 <title>Walkie-Talkie Experiences | Walking-Fish Group</title>
 <link rel="stylesheet" href="style.css">
 <script defer src="nav.js"></script>
+<script defer src="supabase-config.js"></script>
+<script defer src="photos.js"></script>
 <style>
 .wt-items { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; list-style: none; margin-top: 24px; }
 .wt-items li {

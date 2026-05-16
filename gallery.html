@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Browse the Walking-Fish Group gallery: moments from festivals, events, and productions. A visual archive of our best experiences and cultural moments.">
 <meta property="og:title" content="Walking-Fish Gallery | Festival & Event Photos">
@@ -19,6 +19,8 @@
 <title>Walking-Fish Gallery | Festival &amp; Event Photos</title>
 <link rel="stylesheet" href="style.css">
 <script defer src="nav.js"></script>
+<script defer src="supabase-config.js"></script>
+<script defer src="photos.js"></script>
 <style>
 .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .gallery-item {
@@ -69,7 +71,7 @@
 
 <section>
 <div class="w">
-  <div class="gallery-grid">
+  <div class="gallery-grid" data-photos="gallery">
     <div class="gallery-item wide">Aerial: Venue Overview</div>
     <div class="gallery-item tall">Festival Crowd</div>
     <div class="gallery-item">Stage Setup</div>
