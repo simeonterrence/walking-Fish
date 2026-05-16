@@ -59,10 +59,36 @@
 .photo-grid-item:hover .del { opacity:1; }
 .photo-grid-item .pos { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.6); color:#fff; font-size:11px; padding:2px 8px; }
 </style>
+<script defer src="nav.js"></script>
 </head>
 <body>
 
-<main style="padding:0;">
+<header><nav>
+<div class="w">
+  <a href="/" class="logo">Walking-<em>Fish</em></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="walkie-talkie.html">Experiences</a>
+    <a href="piroake.html">Piroake</a>
+    <a href="muster-point.html">Media</a>
+    <a href="vendors.html">Vendors</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="about.html">About</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="blog.html">Blog</a>
+        <a href="partners.html">Partners</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </details>
+    <a href="vendor-login.html" class="nav-cta">Sign In</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
+</div>
+</nav></header>
+
+<main>
 <div class="w" style="padding-block: 32px;">
   <div class="admin-header">
     <div>
@@ -102,6 +128,30 @@
       </table>
     </div>
   </div>
+
+  <!-- Account Settings -->
+  <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
+    <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Account Settings</summary>
+    <div style="margin-top:16px;max-width:400px;">
+      <form id="pw-change-form">
+        <div class="form-group">
+          <label for="pw-current">Current Password</label>
+          <input type="password" id="pw-current" placeholder="Enter current password" autocomplete="current-password" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+        </div>
+        <div class="form-group">
+          <label for="pw-new">New Password</label>
+          <input type="password" id="pw-new" placeholder="Enter new password" autocomplete="new-password" minlength="8" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+        </div>
+        <div class="form-group">
+          <label for="pw-confirm">Confirm New Password</label>
+          <input type="password" id="pw-confirm" placeholder="Confirm new password" autocomplete="new-password" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+        </div>
+        <p id="pw-error" style="color:#DC2626;font-size:13px;display:none;"></p>
+        <p id="pw-success" style="color:#065F46;font-size:13px;display:none;"></p>
+        <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:13px;justify-content:center;" id="pw-change-btn">Change Password</button>
+      </form>
+    </div>
+  </details>
 </div>
   <!-- Photo Management -->
   <div class="w" style="padding-block:32px;border-top:1px solid var(--border);margin-top:32px;">
@@ -148,62 +198,59 @@
 })();
 
 function renderDashboard() {
-  var apps = getApplications();
-  var stats = getApplicationStats();
+  getApplications().then(function(apps) {
+    var stats = {
+      total: apps.length,
+      pending: apps.filter(function(a) { return a.status === 'pending'; }).length,
+      approved: apps.filter(function(a) { return a.status === 'approved'; }).length,
+      rejected: apps.filter(function(a) { return a.status === 'rejected'; }).length
+    };
 
-  document.getElementById('stat-total').textContent = stats.total;
-  document.getElementById('stat-pending').textContent = stats.pending;
-  document.getElementById('stat-approved').textContent = stats.approved;
-  document.getElementById('stat-rejected').textContent = stats.rejected;
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-pending').textContent = stats.pending;
+    document.getElementById('stat-approved').textContent = stats.approved;
+    document.getElementById('stat-rejected').textContent = stats.rejected;
 
-  var tbody = document.getElementById('apps-tbody');
-  var emptyState = document.getElementById('empty-state');
-  var tableWrapper = document.getElementById('table-wrapper');
+    var tbody = document.getElementById('apps-tbody');
+    var emptyState = document.getElementById('empty-state');
+    var tableWrapper = document.getElementById('table-wrapper');
 
-  tbody.innerHTML = '';
+    tbody.innerHTML = '';
 
-  if (apps.length === 0) {
-    emptyState.style.display = 'block';
-    tableWrapper.style.display = 'none';
-    return;
-  }
-
-  emptyState.style.display = 'none';
-  tableWrapper.style.display = 'block';
-
-  apps.slice().reverse().forEach(function(app) {
-    var tr = document.createElement('tr');
-    var statusClass = 'status-' + app.status;
-    var actionsHtml = '';
-
-    if (app.status === 'pending') {
-      actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '">Approve</button>' +
-                    '<button class="action-btn action-reject" data-app="' + app.id + '">Reject</button>';
-    } else if (app.status === 'approved') {
-      var tokens = getInviteTokens();
-      var existingToken = null;
-      for (var i = 0; i < tokens.length; i++) {
-        if (tokens[i].applicationId === app.id && !tokens[i].used) {
-          existingToken = tokens[i];
-          break;
-        }
-      }
-      if (existingToken) {
-        actionsHtml = '<span class="invite-link" onclick="copyInvite(\'' + existingToken.id + '\')" title="Click to copy">Link: ...' + existingToken.id.slice(-6) + '</span>';
-      } else {
-        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '" data-regenerate="1">Generate Invite</button>';
-      }
-    } else if (app.status === 'rejected') {
-      actionsHtml = '<span style="font-size:13px;color:var(--muted);">Rejected</span>';
+    if (apps.length === 0) {
+      emptyState.style.display = 'block';
+      tableWrapper.style.display = 'none';
+      return;
     }
 
-    tr.innerHTML = '<td><strong>' + escapeHtml(app.business) + '</strong></td>' +
-                   '<td>' + escapeHtml(app.contactName) + '</td>' +
-                   '<td><span style="font-size:13px;">' + escapeHtml(app.email) + '</span></td>' +
-                   '<td><span style="font-size:13px;color:var(--muted);">' + escapeHtml(app.category) + '</span></td>' +
-                   '<td><span class="status-badge ' + statusClass + '">' + app.status + '</span></td>' +
-                   '<td>' + actionsHtml + '</td>';
-    tbody.appendChild(tr);
+    emptyState.style.display = 'none';
+    tableWrapper.style.display = 'block';
+
+    apps.forEach(function(app) {
+      var tr = document.createElement('tr');
+      var statusClass = 'status-' + app.status;
+      var actionsHtml = '';
+
+      if (app.status === 'pending') {
+        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '">Approve</button>' +
+                      '<button class="action-btn action-reject" data-app="' + app.id + '">Reject</button>';
+      } else if (app.status === 'approved') {
+        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '" data-regenerate="1">Generate Invite</button>';
+      } else if (app.status === 'rejected') {
+        actionsHtml = '<span style="font-size:13px;color:var(--muted);">Rejected</span>';
+      }
+
+      // Use supabase_select SVG for check icon
+      tr.innerHTML = '<td><strong>' + escapeHtml(app.business_name) + '</strong></td>' +
+                     '<td>' + escapeHtml(app.contact_name) + '</td>' +
+                     '<td><span style="font-size:13px;">' + escapeHtml(app.email) + '</span></td>' +
+                     '<td><span style="font-size:13px;color:var(--muted);">' + escapeHtml(app.category) + '</span></td>' +
+                     '<td><span class="status-badge ' + statusClass + '">' + app.status + '</span></td>' +
+                     '<td>' + actionsHtml + '</td>';
+      tbody.appendChild(tr);
+    });
+  }).catch(function() {
+    document.getElementById('stats-grid').innerHTML = '<p style="color:#DC2626;">Failed to load applications. Make sure you are signed in as admin.</p>';
   });
 }
 
@@ -221,21 +268,59 @@ document.addEventListener('DOMContentLoaded', function() {
     var appId = target.getAttribute('data-app');
     if (!appId) return;
 
+    target.disabled = true;
+    var origText = target.textContent;
+
     if (target.classList.contains('action-approve')) {
-      updateApplicationStatus(appId, 'approved');
-      var apps = getApplications();
-      var app = null;
-      for (var i = 0; i < apps.length; i++) {
-        if (apps[i].id === appId) { app = apps[i]; break; }
+      target.textContent = 'Processing...';
+      var isRegenerate = target.hasAttribute('data-regenerate');
+
+      var svcKey = sessionStorage.getItem('wf_service_key');
+
+      function doGenerateInvite(app) {
+        var tempPw = generateTempPassword();
+
+        // Pre-create Auth user if service key is available
+        var userPromise = svcKey ? preCreateVendorUser(svcKey, app.email, tempPw) : Promise.resolve(null);
+
+        return userPromise.then(function () {
+          return generateInviteToken(app.id, app.email, app.business_name, app.contact_name, app.category, tempPw);
+        }).then(function (tokenStr) {
+          if (tokenStr) showInviteModal(tokenStr);
+        });
       }
-      if (app) {
-        var token = generateInviteToken(appId, app.email);
-        showInviteModal(token.id);
+
+      if (isRegenerate) {
+        getApplications().then(function (apps) {
+          for (var i = 0; i < apps.length; i++) {
+            if (apps[i].id === appId) return doGenerateInvite(apps[i]);
+          }
+        }).catch(function () {
+          alert('Failed to generate invite.');
+        }).then(function () {
+          target.disabled = false;
+          target.textContent = origText;
+        });
+      } else {
+        updateApplicationStatus(appId, 'approved').then(function () {
+          return getApplications();
+        }).then(function (apps) {
+          for (var i = 0; i < apps.length; i++) {
+            if (apps[i].id === appId) return doGenerateInvite(apps[i]);
+          }
+        }).catch(function () {
+          alert('Failed to approve application.');
+          renderDashboard();
+        });
       }
-      renderDashboard();
     } else if (target.classList.contains('action-reject')) {
-      updateApplicationStatus(appId, 'rejected');
-      renderDashboard();
+      target.textContent = 'Processing...';
+      updateApplicationStatus(appId, 'rejected').then(function() {
+        renderDashboard();
+      }).catch(function() {
+        alert('Failed to reject application.');
+        renderDashboard();
+      });
     }
   });
 
@@ -249,6 +334,47 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('invite-close-btn').addEventListener('click', function() {
     document.getElementById('invite-modal').classList.remove('open');
   });
+
+  // Password change
+  document.getElementById('pw-change-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var current = document.getElementById('pw-current').value;
+    var newPw = document.getElementById('pw-new').value;
+    var confirm = document.getElementById('pw-confirm').value;
+    var errorEl = document.getElementById('pw-error');
+    var successEl = document.getElementById('pw-success');
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!current || !newPw) { errorEl.textContent = 'Fill in all fields.'; errorEl.style.display = 'block'; return; }
+    if (newPw.length < 8) { errorEl.textContent = 'New password must be at least 8 characters.'; errorEl.style.display = 'block'; return; }
+    if (newPw !== confirm) { errorEl.textContent = 'Passwords do not match.'; errorEl.style.display = 'block'; return; }
+
+    var btn = document.getElementById('pw-change-btn');
+    btn.disabled = true;
+    btn.textContent = 'Changing...';
+
+    // Verify current password by attempting login
+    var session = getStoredSession();
+    var email = session.user && session.user.email;
+    if (!email) { errorEl.textContent = 'Session expired. Sign in again.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Change Password'; return; }
+
+    authLogin(email, current).then(function() {
+      return changeVendorPassword(newPw);
+    }).then(function() {
+      successEl.textContent = 'Password changed successfully.';
+      successEl.style.display = 'block';
+      document.getElementById('pw-current').value = '';
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+    }).catch(function(err) {
+      errorEl.textContent = 'Current password is incorrect.';
+      errorEl.style.display = 'block';
+    }).then(function() {
+      btn.disabled = false;
+      btn.textContent = 'Change Password';
+    });
+  });
 });
 
 // Photo management
@@ -260,14 +386,14 @@ function switchPhotoTab(name) {
 }
 var adminUpload = uploadPhoto;
 
-function showInviteModal(tokenId) {
-  var url = window.location.origin + '/vendor-setup.html?token=' + tokenId;
+function showInviteModal(tokenStr) {
+  var url = window.location.origin + '/vendor-setup.html?token=' + encodeURIComponent(tokenStr);
   document.getElementById('invite-url').textContent = url;
   document.getElementById('invite-modal').classList.add('open');
 }
 
-window.copyInvite = function(tokenId) {
-  var url = window.location.origin + '/vendor-setup.html?token=' + tokenId;
+window.copyInvite = function(tokenStr) {
+  var url = window.location.origin + '/vendor-setup.html?token=' + encodeURIComponent(tokenStr);
   navigator.clipboard.writeText(url).then(function() {
     alert('Invite link copied!');
   }, function() {
@@ -282,5 +408,32 @@ window.copyInvite = function(tokenId) {
   document.getElementById('invite-modal').classList.remove('open');
 };
 </script>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="piroake.html">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="vendors.html">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="contact.html">
+    <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+    Contact
+  </a>
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.split('/').pop()||'/';document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h===p||(p==='/'&&h==='/')||(p==='index.html'&&h==='/')||(h.replace(/\.html$/,'')===p.replace(/\.html$/,'')&&h!=='/'))a.classList.add('active');});})();</script>
+
 </body>
 </html>

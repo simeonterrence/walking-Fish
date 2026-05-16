@@ -49,16 +49,21 @@
   <a href="/" class="logo">Walking-<em>Fish</em></a>
   <div class="nav-links">
     <a href="/">Home</a>
-    <a href="about.html">About</a>
     <a href="walkie-talkie.html">Experiences</a>
     <a href="piroake.html">Piroake</a>
     <a href="muster-point.html">Media</a>
-    <a href="gallery.html">Gallery</a>
-    <a href="blog.html">Blog</a>
     <a href="vendors.html">Vendors</a>
-    <a href="partners.html">Partners</a>
-    <a href="contact.html">Contact</a>
-    <a href="vendor-login.html" class="nav-cta">Vendor Login</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="about.html">About</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="blog.html">Blog</a>
+        <a href="partners.html">Partners</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </details>
+    <a href="vendor-login.html" class="nav-cta">Sign In</a>
   </div>
   <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
 </div>
@@ -173,6 +178,7 @@
 </div>
 </footer>
 
+
 <nav class="bottom-tabs" aria-label="Main navigation">
 <div class="tab-row">
   <a href="/">
@@ -191,12 +197,13 @@
     <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
     Contact
   </a>
-  <a href="about.html">
-    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><circle cx="12" cy="8" r="0.5"/></svg></span>
-    About
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
   </a>
 </div>
 </nav>
-<script>(function(){var p=window.location.pathname.split('/').pop().replace(/\.html$/,'')||'/';document.querySelectorAll('.bottom-tabs a').forEach(function(a){if(a.getAttribute('href')===p)a.classList.add('active');});})();</script>
+<script>(function(){var p=window.location.pathname.split('/').pop()||'/';document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h===p||(p==='/'&&h==='/')||(p==='index.html'&&h==='/')||(h.replace(/\.html$/,'')===p.replace(/\.html$/,'')&&h!=='/'))a.classList.add('active');});})();</script>
+
 </body>
 </html>
