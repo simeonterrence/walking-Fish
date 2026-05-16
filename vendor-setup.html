@@ -27,8 +27,34 @@
 .password-reqs li { padding: 2px 0; }
 .password-reqs .met { color: #065F46; }
 </style>
+<script defer src="nav.js"></script>
 </head>
 <body>
+
+<header><nav>
+<div class="w">
+  <a href="/" class="logo">Walking-<em>Fish</em></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="walkie-talkie.html">Experiences</a>
+    <a href="piroake.html">Piroake</a>
+    <a href="muster-point.html">Media</a>
+    <a href="vendors.html">Vendors</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="about.html">About</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="blog.html">Blog</a>
+        <a href="partners.html">Partners</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </details>
+    <a href="vendor-login.html" class="nav-cta">Sign In</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
+</div>
+</nav></header>
 
 <main style="padding-top:0;display:flex;align-items:center;min-height:100vh;">
 <div class="auth-card" id="setup-card">
@@ -84,74 +110,85 @@
 <script>
 (function() {
   var params = new URLSearchParams(window.location.search);
-  var tokenId = params.get('token');
+  var tokenStr = params.get('token');
 
-  if (!tokenId) {
+  if (!tokenStr) {
     document.getElementById('setup-form').style.display = 'none';
     document.getElementById('token-error').style.display = 'block';
     document.getElementById('setup-biz').textContent = 'No invite token found.';
     return;
   }
 
-  var token = validateInviteToken(tokenId);
+  validateInviteToken(tokenStr).then(function(token) {
+    if (!token) {
+      document.getElementById('setup-form').style.display = 'none';
+      document.getElementById('token-error').style.display = 'block';
+      document.getElementById('setup-biz').textContent = 'This invite link has expired or already been used.';
+      return;
+    }
 
-  if (!token) {
+    if (token.business_name) {
+      document.getElementById('setup-biz').innerHTML = 'Welcome, <strong>' + escapeHtml(token.business_name) + '</strong>.<br>Create a password to activate your vendor account.';
+    }
+
+    /* Password validation */
+    var passwordInput = document.getElementById('password');
+    var confirmInput = document.getElementById('password-confirm');
+    var reqLength = document.getElementById('req-length');
+    var reqMatch = document.getElementById('req-match');
+    var reqNumber = document.getElementById('req-number');
+
+    function validatePasswords() {
+      var pwd = passwordInput.value;
+      var confirm = confirmInput.value;
+      reqLength.className = pwd.length >= 8 ? 'met' : '';
+      reqMatch.className = (pwd.length > 0 && pwd === confirm) ? 'met' : '';
+      reqNumber.className = /\d/.test(pwd) ? 'met' : '';
+    }
+
+    passwordInput.addEventListener('input', validatePasswords);
+    confirmInput.addEventListener('input', validatePasswords);
+
+    /* Form submit */
+    document.getElementById('setup-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var pwd = passwordInput.value;
+      var confirm = confirmInput.value;
+
+      if (pwd.length < 8) { document.getElementById('setup-error').textContent = 'Password must be at least 8 characters.'; document.getElementById('setup-error').style.display = 'block'; return; }
+      if (pwd !== confirm) { document.getElementById('setup-error').textContent = 'Passwords do not match.'; document.getElementById('setup-error').style.display = 'block'; return; }
+      if (!/\d/.test(pwd)) { document.getElementById('setup-error').textContent = 'Password must contain a number.'; document.getElementById('setup-error').style.display = 'block'; return; }
+
+      document.getElementById('submit-btn').disabled = true;
+      document.getElementById('submit-btn').textContent = 'Creating account...';
+
+      registerVendor(
+        token.application_id,
+        {
+          business_name: token.business_name || '',
+          contact_name: token.contact_name || '',
+          category: token.category || ''
+        },
+        token.email,
+        token.temp_password || ''
+      ).then(function() {
+        return markTokenUsed(token.id);
+      }).then(function() {
+        return changeVendorPassword(pwd);
+      }).then(function() {
+        document.getElementById('setup-card').style.display = 'none';
+        document.getElementById('success-card').style.display = 'block';
+      }).catch(function(err) {
+        document.getElementById('setup-error').textContent = err.message || 'Could not create account. Please contact support.';
+        document.getElementById('setup-error').style.display = 'block';
+        document.getElementById('submit-btn').disabled = false;
+        document.getElementById('submit-btn').textContent = 'Activate Account';
+      });
+    });
+  }).catch(function() {
     document.getElementById('setup-form').style.display = 'none';
     document.getElementById('token-error').style.display = 'block';
-    document.getElementById('setup-biz').textContent = 'This invite link has expired or already been used.';
-    return;
-  }
-
-  var apps = getApplications();
-  var app = null;
-  for (var i = 0; i < apps.length; i++) {
-    if (apps[i].id === token.applicationId) {
-      app = apps[i];
-      break;
-    }
-  }
-
-  if (app) {
-    document.getElementById('setup-biz').innerHTML = 'Welcome, <strong>' + escapeHtml(app.business) + '</strong>.<br>Create a password to activate your vendor account.';
-  }
-
-  /* Password validation */
-  var passwordInput = document.getElementById('password');
-  var confirmInput = document.getElementById('password-confirm');
-  var reqLength = document.getElementById('req-length');
-  var reqMatch = document.getElementById('req-match');
-  var reqNumber = document.getElementById('req-number');
-
-  function validatePasswords() {
-    var pwd = passwordInput.value;
-    var confirm = confirmInput.value;
-    reqLength.className = pwd.length >= 8 ? 'met' : '';
-    reqMatch.className = (pwd.length > 0 && pwd === confirm) ? 'met' : '';
-    reqNumber.className = /\d/.test(pwd) ? 'met' : '';
-  }
-
-  passwordInput.addEventListener('input', validatePasswords);
-  confirmInput.addEventListener('input', validatePasswords);
-
-  /* Form submit */
-  document.getElementById('setup-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var pwd = passwordInput.value;
-    var confirm = confirmInput.value;
-
-    if (pwd.length < 8) { document.getElementById('setup-error').textContent = 'Password must be at least 8 characters.'; document.getElementById('setup-error').style.display = 'block'; return; }
-    if (pwd !== confirm) { document.getElementById('setup-error').textContent = 'Passwords do not match.'; document.getElementById('setup-error').style.display = 'block'; return; }
-    if (!/\d/.test(pwd)) { document.getElementById('setup-error').textContent = 'Password must contain a number.'; document.getElementById('setup-error').style.display = 'block'; return; }
-
-    var vendor = registerVendor(token.applicationId, token.email, pwd);
-    if (vendor) {
-      markTokenUsed(tokenId);
-      document.getElementById('setup-card').style.display = 'none';
-      document.getElementById('success-card').style.display = 'block';
-    } else {
-      document.getElementById('setup-error').textContent = 'Could not create account. Please contact support.';
-      document.getElementById('setup-error').style.display = 'block';
-    }
+    document.getElementById('setup-biz').textContent = 'Could not validate invite link.';
   });
 })();
 
@@ -161,5 +198,32 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 </script>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="piroake.html">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="vendors.html">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="contact.html">
+    <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+    Contact
+  </a>
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.split('/').pop()||'/';document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h===p||(p==='/'&&h==='/')||(p==='index.html'&&h==='/')||(h.replace(/\.html$/,'')===p.replace(/\.html$/,'')&&h!=='/'))a.classList.add('active');});})();</script>
+
 </body>
 </html>
