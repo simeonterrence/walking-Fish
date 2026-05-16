@@ -569,7 +569,7 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
 }
 @media (max-width: 768px) {
   .section-reveal {
-    opacity: 0; transform: translateY(24px);
+    opacity: 1; transform: none;
     transition: opacity .5s ease, transform .5s ease;
   }
   .section-reveal.revealed { opacity: 1; transform: translateY(0); }
