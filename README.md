@@ -1,177 +1,97 @@
-# Supabase CLI
+# Walking-Fish Group
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+A static brochure website for Walking-Fish Group, a Gambian creative entertainment and experiences company with two subsidiaries: **Walkie-Talkie Experiences** (live events) and **Muster Point Pictures** (media production). Its flagship event is **Piroake Fest 2026**.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Quick Start
 
-This repository contains all the functionality for Supabase CLI.
-
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
-
-## Getting started
-
-### Install the CLI
-
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
-
-```bash
-npm i supabase --save-dev
-```
-
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
-
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
-```bash
-supabase bootstrap
-```
-
-Or using npx:
-
-```bash
-npx supabase bootstrap
-```
-
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
-
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
+1. Clone the repo
+2. Copy environment config: `cp .env.example .env`
+3. Fill in your Supabase project credentials in `.env`
+4. Open any `.html` file directly in a browser, or run a local server:
 
 ```sh
-# Go >= 1.22
-go run . help
+python3 -m http.server 8080
 ```
+
+For clean URLs (no `.html` extension), use the local server approach — Vercel's rewrites handle this in production.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Plain HTML, CSS (OKLCH custom properties), Vanilla JS |
+| **Backend** | Supabase (PostgreSQL, Storage, Auth, REST API) |
+| **Hosting** | Vercel (static deployment, clean-URL rewrites) |
+| **Analytics** | PostHog |
+| **Auth** | Supabase Auth (JWT-based, email/password) |
+
+## Architecture
+
+**Static site, no build step.** All pages are plain `.html` files deployed on Vercel via `vercel.json` (clean-URL rewrites + `404.html` catch-all). No framework, bundler, or `package.json`.
+
+### Page Structure
+
+Every page loads scripts in this order (deferred where applicable):
+1. `gift.js` — animated overlay modals (form success states, confetti)
+2. `nav.js` — hamburger toggle, `aria-current` detection
+3. `supabase-config.js` — defines `SUPABASE_URL` and `SUPABASE_ANON_KEY` globals
+4. `photos.js` (public pages) — renders images from Supabase storage into `[data-photos]` containers
+5. `admin-photos.js` (`admin.html` only) — CRUD for site photos
+6. `vendor-auth.js` (admin/vendor auth pages) — Supabase Auth login, vendor application CRUD, invite token workflow
+
+### Supabase Integration
+
+- **`site_images` table** — photo records (`section`, `position`, `file_path`, `alt_text`)
+- **`site-photos` bucket** — stores uploaded images in `section/` subdirectories
+- **`vendor_applications`** — vendor submissions from the public form
+- **`vendor_profiles`** — registered vendor accounts linked to `auth.users`
+- **`invite_tokens`** — time-limited invite links for vendor registration
+
+Public pages use the anon key (RLS-protected, read-only). The admin panel uses a service role key entered via the admin login form and stored in `sessionStorage` — never hardcoded.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `python3 -m http.server 8080` | Start local dev server |
+| `npx vercel --prod` | Deploy to production |
+| `supabase start` | Start local Supabase stack |
+| `supabase migration up` | Apply pending migrations |
+
+## Project Structure
+
+```
+├── *.html                 # Brochure pages (one per route)
+├── style.css              # Global CSS (OKLCH design system)
+├── nav.js                 # Navigation component
+├── photos.js              # Public photo gallery renderer
+├── admin-photos.js        # Admin photo CRUD
+├── vendor-auth.js         # Vendor/admin auth and management
+├── supabase-config.js     # Supabase client configuration
+├── vercel.json            # Vercel deployment config
+├── supabase/
+│   ├── config.toml        # Supabase local config
+│   └── migrations/        # Database migration files
+└── docs/
+    └── spec-supabase-auth-migration.md
+```
+
+## Adding a Page
+
+1. Create `.html` file
+2. Add rewrite entry in `vercel.json`
+3. Add `<nav>` link + `<footer>` link
+4. Add `[data-page="name"]` rule in `style.css` for bottom-tab active state
+5. Update `sitemap.xml`
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your Supabase project credentials:
+
+- `SUPABASE_URL` — Project API URL
+- `SUPABASE_ANON_KEY` — Public anon key (safe for client-side use)
+- `SUPABASE_SERVICE_KEY` — Admin service role key (never commit, use via admin login form)
+- `SUPABASE_DB_PASSWORD` — Database password
+- `SUPABASE_ACCESS_TOKEN` — Supabase CLI access token
+
+Never commit `.env`. Real secrets stay local.
