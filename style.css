@@ -96,6 +96,7 @@ nav {
 nav .w {
   display: flex; align-items: center; justify-content: space-between;
   height: 100%;
+  position: relative;
 }
 nav .logo {
   font-family: var(--font-display);
