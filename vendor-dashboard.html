@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Vendor dashboard for Walking-Fish Group events and festivals.">
+<meta property="og:title" content="Vendor Dashboard | Walking-Fish Group">
+<link rel="canonical" href="https://walkingfish.gm/vendor-dashboard">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<title>Vendor Dashboard | Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.dash-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 40px;
+}
+.dash-header h1 { font-size: 22px; }
+.welcome-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 24px;
+}
+.welcome-card .avatar {
+  width: 56px; height: 56px; border-radius: 28px;
+  background: var(--accent-dim); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 24px; font-weight: 600;
+  flex-shrink: 0;
+}
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.info-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px;
+}
+.info-card .info-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.info-card .info-value { font-size: 18px; font-weight: 500; }
+.info-card.full { grid-column: 1 / -1; }
+.events-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; margin-top: 24px;
+}
+.events-card h3 { margin-bottom: 8px; }
+.events-card p { font-size: 15px; color: var(--muted); }
+.empty-dash {
+  text-align: center; padding: 60px 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px;
+}
+@media (max-width: 768px) {
+  .welcome-card { flex-direction: column; text-align: center; }
+  .info-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<main style="padding:0;">
+<div class="w" style="padding-block: 32px;">
+  <div class="dash-header">
+    <div>
+      <p class="label" style="color:var(--accent);">Vendor Portal</p>
+      <h1 id="dash-title">Your Dashboard</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a href="index.html" style="font-size:14px;color:var(--muted);">Back to site</a>
+      <button id="logout-btn" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">Sign Out</button>
+    </div>
+  </div>
+
+  <div id="dash-content">
+    <div class="welcome-card">
+      <div class="avatar" id="dash-avatar">V</div>
+      <div>
+        <p class="label" style="color:var(--accent);">Welcome back</p>
+        <h2 id="dash-business" style="margin:0;">Your Business</h2>
+        <p style="font-size:15px;color:var(--muted);margin-top:4px;" id="dash-email">vendor@example.com</p>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-label">Account Status</div>
+        <div class="info-value" id="dash-status" style="color:#065F46;">Active</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Category</div>
+        <div class="info-value" id="dash-category">—</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Account Created</div>
+        <div class="info-value" id="dash-created">—</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Vendor ID</div>
+        <div class="info-value" id="dash-id" style="font-family:var(--font-mono);font-size:14px;">—</div>
+      </div>
+    </div>
+
+    <div class="events-card">
+      <h3>Upcoming Events</h3>
+      <p>Your event participation details will appear here once they are assigned. Stay tuned for updates on Piroake Fest 2026 and other Walking-Fish Group events.</p>
+    </div>
+  </div>
+
+  <div class="empty-dash" id="dash-empty" style="display:none;">
+    <p style="font-size:16px;">Please <a href="vendor-login.html" style="color:var(--accent);font-weight:500;">sign in</a> to access your vendor dashboard.</p>
+  </div>
+</div>
+</main>
+
+<script src="vendor-auth.js"></script>
+<script>
+(function() {
+  var session = getSession();
+
+  if (session.type !== 'vendor' || !session.data) {
+    document.getElementById('dash-content').style.display = 'none';
+    document.getElementById('dash-empty').style.display = 'block';
+    return;
+  }
+
+  var vendorId = session.data.id;
+  var vendors = getVendorUsers();
+  var vendor = null;
+  for (var i = 0; i < vendors.length; i++) {
+    if (vendors[i].id === vendorId) {
+      vendor = vendors[i];
+      break;
+    }
+  }
+
+  if (!vendor) {
+    document.getElementById('dash-content').style.display = 'none';
+    document.getElementById('dash-empty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('dash-business').textContent = vendor.business;
+  document.getElementById('dash-email').textContent = vendor.email;
+  document.getElementById('dash-category').textContent = vendor.category || '—';
+  document.getElementById('dash-id').textContent = vendor.id;
+  document.getElementById('dash-avatar').textContent = vendor.business.charAt(0).toUpperCase();
+
+  var createdDate = vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+  document.getElementById('dash-created').textContent = createdDate;
+})();
+
+document.getElementById('logout-btn').addEventListener('click', function() {
+  clearSession();
+  window.location.href = 'vendor-login.html';
+});
+</script>
+</body>
+</html>

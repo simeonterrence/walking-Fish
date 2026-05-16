@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Vendor login for Walking-Fish Group events and festivals.">
+<meta property="og:title" content="Vendor Login | Walking-Fish Group">
+<link rel="canonical" href="https://walkingfish.gm/vendor-login">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<title>Vendor Login | Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.auth-card {
+  max-width: 420px; margin: 80px auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px 32px;
+  text-align: center;
+}
+.auth-card h1 { font-size: 24px; margin-bottom: 8px; }
+.auth-card .error { color: #DC2626; font-size: 14px; margin-top: 12px; display: none; }
+</style>
+</head>
+<body>
+
+<main style="padding-top:0;display:flex;align-items:center;min-height:100vh;">
+<div class="auth-card">
+  <p class="label" style="color:var(--accent);">Walking-Fish Group</p>
+  <h1>Vendor Login</h1>
+  <p>Sign in to access your vendor dashboard.</p>
+  <form id="vendor-login-form">
+    <div class="form-group" style="text-align:left;">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Sign In</button>
+    <p class="error" id="login-error">Invalid email or password. Try again.</p>
+  </form>
+  <p style="margin-top:20px;font-size:13px;color:var(--muted);">Don't have an account? <a href="vendors.html" style="color:var(--accent);font-weight:500;">Apply as Vendor</a></p>
+  <p style="margin-top:8px;font-size:13px;"><a href="index.html" style="color:var(--muted);">&larr; Back to site</a></p>
+</div>
+</main>
+
+<script src="vendor-auth.js"></script>
+<script>
+document.getElementById('vendor-login-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var email = document.getElementById('email').value.trim();
+  var password = document.getElementById('password').value;
+  var user = authenticateVendor(email, password);
+  var errorEl = document.getElementById('login-error');
+  if (user) {
+    setSession('vendor', { id: user.id, email: user.email, business: user.business });
+    window.location.href = 'vendor-dashboard.html';
+  } else {
+    errorEl.style.display = 'block';
+    document.getElementById('password').value = '';
+    document.getElementById('password').focus();
+  }
+});
+</script>
+</body>
+</html>

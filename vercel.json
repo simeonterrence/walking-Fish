@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)\\.(gif|mp4|svg|css|js)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/walkie-talkie", "destination": "/walkie-talkie.html" },
+    { "source": "/piroake", "destination": "/piroake.html" },
+    { "source": "/muster-point", "destination": "/muster-point.html" },
+    { "source": "/gallery", "destination": "/gallery.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/vendors", "destination": "/vendors.html" },
+    { "source": "/partners", "destination": "/partners.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/admin-login", "destination": "/admin-login.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/vendor-setup", "destination": "/vendor-setup.html" },
+    { "source": "/vendor-login", "destination": "/vendor-login.html" },
+    { "source": "/vendor-dashboard", "destination": "/vendor-dashboard.html" },
+    { "source": "/(.*)", "destination": "/404.html" }
+  ]
+}

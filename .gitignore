@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project
+.claude/
+.agents/
+*.log
+
+# Assets - source files not served
+*.pptx
+*.py

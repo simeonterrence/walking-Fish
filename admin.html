@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Admin dashboard for managing Walking-Fish Group vendor applications.">
+<meta property="og:title" content="Admin Dashboard | Walking-Fish Group">
+<link rel="canonical" href="https://walkingfish.gm/admin">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<title>Admin Dashboard | Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.admin-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0;
+}
+.admin-header h1 { font-size: 20px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; text-align: center;
+}
+.stat-card .num { font-family: var(--font-display); font-size: 32px; font-weight: 600; }
+.stat-card .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.app-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.app-table th { text-align: left; padding: 12px 8px; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.app-table td { padding: 12px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.status-badge { display: inline-block; padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; text-transform: capitalize; }
+.status-pending { background: #FEF3C7; color: #92400E; }
+.status-approved { background: #D1FAE5; color: #065F46; }
+.status-rejected { background: #FEE2E2; color: #991B1B; }
+.action-btn { padding: 6px 16px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font-body); font-weight: 500; }
+.action-approve { background: #065F46; color: white; }
+.action-reject { background: #DC2626; color: white; margin-left: 6px; }
+.invite-link { font-family: var(--font-mono); font-size: 13px; color: var(--accent); word-break: break-all; cursor: pointer; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+.admin-nav { display: flex; align-items: center; gap: 16px; }
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .app-table { font-size: 13px; }
+  .app-table th:nth-child(3), .app-table td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<main style="padding:0;">
+<div class="w" style="padding-block: 32px;">
+  <div class="admin-header">
+    <div>
+      <p class="label" style="color:var(--accent);">Admin Panel</p>
+      <h1>Vendor Applications</h1>
+    </div>
+    <div class="admin-nav">
+      <a href="index.html" style="font-size:14px;color:var(--muted);">Back to site</a>
+      <button id="logout-btn" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="num" id="stat-total">0</div><div class="lbl">Total</div></div>
+    <div class="stat-card"><div class="num" id="stat-pending">0</div><div class="lbl">Pending</div></div>
+    <div class="stat-card"><div class="num" id="stat-approved">0</div><div class="lbl">Approved</div></div>
+    <div class="stat-card"><div class="num" id="stat-rejected">0</div><div class="lbl">Rejected</div></div>
+  </div>
+
+  <div id="applications-container">
+    <div class="empty-state" id="empty-state">
+      <p>No applications yet. Applications submitted through the Vendors page will appear here.</p>
+    </div>
+    <div id="table-wrapper" style="display:none;overflow-x:auto;">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th>Business</th>
+            <th>Contact</th>
+            <th>Email</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="apps-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- Invite link modal -->
+<div class="gift-overlay" id="invite-modal">
+  <div class="gift-box" style="text-align:left;">
+    <div class="gift-badge">Invite Link Generated</div>
+    <h2>Send this link to the vendor.</h2>
+    <p style="margin-bottom:16px;">They'll use this link to set up their account password and access their vendor dashboard.</p>
+    <div style="background:var(--accent-dim);border-radius:8px;padding:14px 16px;font-family:var(--font-mono);font-size:14px;word-break:break-all;color:var(--accent);margin-bottom:8px;" id="invite-url"></div>
+    <p style="font-size:13px;color:var(--muted);">This link can only be used once. Click the link above to copy.</p>
+    <button class="gift-close" id="invite-close-btn">Done</button>
+  </div>
+</div>
+
+<script src="vendor-auth.js"></script>
+<script>
+(function() {
+  var session = getSession();
+  if (session.type !== 'admin') {
+    window.location.href = 'admin-login.html';
+  }
+})();
+
+function renderDashboard() {
+  var apps = getApplications();
+  var stats = getApplicationStats();
+
+  document.getElementById('stat-total').textContent = stats.total;
+  document.getElementById('stat-pending').textContent = stats.pending;
+  document.getElementById('stat-approved').textContent = stats.approved;
+  document.getElementById('stat-rejected').textContent = stats.rejected;
+
+  var tbody = document.getElementById('apps-tbody');
+  var emptyState = document.getElementById('empty-state');
+  var tableWrapper = document.getElementById('table-wrapper');
+
+  tbody.innerHTML = '';
+
+  if (apps.length === 0) {
+    emptyState.style.display = 'block';
+    tableWrapper.style.display = 'none';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  tableWrapper.style.display = 'block';
+
+  apps.slice().reverse().forEach(function(app) {
+    var tr = document.createElement('tr');
+    var statusClass = 'status-' + app.status;
+    var actionsHtml = '';
+
+    if (app.status === 'pending') {
+      actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '">Approve</button>' +
+                    '<button class="action-btn action-reject" data-app="' + app.id + '">Reject</button>';
+    } else if (app.status === 'approved') {
+      var tokens = getInviteTokens();
+      var existingToken = null;
+      for (var i = 0; i < tokens.length; i++) {
+        if (tokens[i].applicationId === app.id && !tokens[i].used) {
+          existingToken = tokens[i];
+          break;
+        }
+      }
+      if (existingToken) {
+        actionsHtml = '<span class="invite-link" onclick="copyInvite(\'' + existingToken.id + '\')" title="Click to copy">Link: ...' + existingToken.id.slice(-6) + '</span>';
+      } else {
+        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '" data-regenerate="1">Generate Invite</button>';
+      }
+    } else if (app.status === 'rejected') {
+      actionsHtml = '<span style="font-size:13px;color:var(--muted);">Rejected</span>';
+    }
+
+    tr.innerHTML = '<td><strong>' + escapeHtml(app.business) + '</strong></td>' +
+                   '<td>' + escapeHtml(app.contactName) + '</td>' +
+                   '<td><span style="font-size:13px;">' + escapeHtml(app.email) + '</span></td>' +
+                   '<td><span style="font-size:13px;color:var(--muted);">' + escapeHtml(app.category) + '</span></td>' +
+                   '<td><span class="status-badge ' + statusClass + '">' + app.status + '</span></td>' +
+                   '<td>' + actionsHtml + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  renderDashboard();
+
+  document.getElementById('apps-tbody').addEventListener('click', function(e) {
+    var target = e.target;
+    var appId = target.getAttribute('data-app');
+    if (!appId) return;
+
+    if (target.classList.contains('action-approve')) {
+      updateApplicationStatus(appId, 'approved');
+      var apps = getApplications();
+      var app = null;
+      for (var i = 0; i < apps.length; i++) {
+        if (apps[i].id === appId) { app = apps[i]; break; }
+      }
+      if (app) {
+        var token = generateInviteToken(appId, app.email);
+        showInviteModal(token.id);
+      }
+      renderDashboard();
+    } else if (target.classList.contains('action-reject')) {
+      updateApplicationStatus(appId, 'rejected');
+      renderDashboard();
+    }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', function() {
+    clearSession();
+    window.location.href = 'admin-login.html';
+  });
+
+  document.getElementById('invite-close-btn').addEventListener('click', function() {
+    document.getElementById('invite-modal').classList.remove('open');
+  });
+});
+
+function showInviteModal(tokenId) {
+  var url = window.location.origin + '/vendor-setup.html?token=' + tokenId;
+  document.getElementById('invite-url').textContent = url;
+  document.getElementById('invite-modal').classList.add('open');
+}
+
+window.copyInvite = function(tokenId) {
+  var url = window.location.origin + '/vendor-setup.html?token=' + tokenId;
+  navigator.clipboard.writeText(url).then(function() {
+    alert('Invite link copied!');
+  }, function() {
+    var el = document.getElementById('invite-url');
+    el.textContent = url;
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+  document.getElementById('invite-modal').classList.remove('open');
+};
+</script>
+</body>
+</html>

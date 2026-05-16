@@ -1,0 +1,14 @@
+{
+  "name": "walking-fish-ceremony-icons",
+  "preset": "clean",
+  "grid": 24,
+  "strokeWidth": 1.5,
+  "strokeLinecap": "round",
+  "strokeLinejoin": "round",
+  "cornerRadius": 2,
+  "padding": 2,
+  "opticalBalance": true,
+  "iconCount": 4,
+  "icons": ["ticket", "sparkle", "paper-plane", "package"],
+  "generated": "2026-05-15"
+}

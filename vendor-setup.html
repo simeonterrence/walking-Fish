@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Set up your vendor account password for Walking-Fish Group events.">
+<meta property="og:title" content="Vendor Setup | Walking-Fish Group">
+<link rel="canonical" href="https://walkingfish.gm/vendor-setup">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<title>Set Up Your Account | Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.auth-card {
+  max-width: 440px; margin: 80px auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px 32px;
+  text-align: center;
+}
+.auth-card h1 { font-size: 24px; margin-bottom: 8px; }
+.auth-card .error { color: #DC2626; font-size: 14px; margin-top: 12px; display: none; }
+.steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 32px; }
+.step { width: 32px; height: 4px; border-radius: 2px; background: var(--border); }
+.step.active { background: var(--accent); }
+.step.done { background: var(--accent); opacity: 0.4; }
+.password-reqs { text-align: left; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.password-reqs li { padding: 2px 0; }
+.password-reqs .met { color: #065F46; }
+</style>
+</head>
+<body>
+
+<main style="padding-top:0;display:flex;align-items:center;min-height:100vh;">
+<div class="auth-card" id="setup-card">
+  <div class="steps">
+    <div class="step done"></div>
+    <div class="step active"></div>
+    <div class="step"></div>
+  </div>
+  <p class="label" style="color:var(--accent);">Walking-Fish Group</p>
+  <h1>Set Your Password</h1>
+  <p id="setup-biz" style="margin-bottom:24px;">Create a password to activate your vendor account.</p>
+
+  <div id="token-error" style="display:none;">
+    <p style="color:#DC2626;font-size:16px;">This invite link is invalid or has already been used.</p>
+    <p style="font-size:14px;color:var(--muted);margin-top:8px;">Contact the Walking-Fish Group team for a new invitation.</p>
+    <a href="vendors.html" class="btn btn-primary" style="display:inline-flex;margin-top:20px;">Apply as Vendor</a>
+  </div>
+
+  <form id="setup-form">
+    <div class="form-group" style="text-align:left;">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Create a strong password" required minlength="8" autocomplete="new-password">
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <label for="password-confirm">Confirm Password</label>
+      <input type="password" id="password-confirm" placeholder="Re-enter your password" required autocomplete="new-password">
+    </div>
+    <ul class="password-reqs" id="password-reqs">
+      <li id="req-length">At least 8 characters</li>
+      <li id="req-match">Passwords match</li>
+      <li id="req-number">Contains a number</li>
+    </ul>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px;" id="submit-btn">Activate Account</button>
+    <p class="error" id="setup-error">Something went wrong. Please try again.</p>
+  </form>
+</div>
+
+<!-- Success state -->
+<div class="auth-card" id="success-card" style="display:none;">
+  <div class="steps">
+    <div class="step done"></div>
+    <div class="step done"></div>
+    <div class="step active"></div>
+  </div>
+  <p class="label" style="color:var(--accent);">Account Active</p>
+  <h1>You're all set.</h1>
+  <p style="margin-bottom:24px;">Your vendor account is now active. Sign in to access your dashboard.</p>
+  <a href="vendor-login.html" class="btn btn-primary" style="display:inline-flex;">Sign In to Dashboard &rarr;</a>
+</div>
+</main>
+
+<script src="vendor-auth.js"></script>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var tokenId = params.get('token');
+
+  if (!tokenId) {
+    document.getElementById('setup-form').style.display = 'none';
+    document.getElementById('token-error').style.display = 'block';
+    document.getElementById('setup-biz').textContent = 'No invite token found.';
+    return;
+  }
+
+  var token = validateInviteToken(tokenId);
+
+  if (!token) {
+    document.getElementById('setup-form').style.display = 'none';
+    document.getElementById('token-error').style.display = 'block';
+    document.getElementById('setup-biz').textContent = 'This invite link has expired or already been used.';
+    return;
+  }
+
+  var apps = getApplications();
+  var app = null;
+  for (var i = 0; i < apps.length; i++) {
+    if (apps[i].id === token.applicationId) {
+      app = apps[i];
+      break;
+    }
+  }
+
+  if (app) {
+    document.getElementById('setup-biz').innerHTML = 'Welcome, <strong>' + escapeHtml(app.business) + '</strong>.<br>Create a password to activate your vendor account.';
+  }
+
+  /* Password validation */
+  var passwordInput = document.getElementById('password');
+  var confirmInput = document.getElementById('password-confirm');
+  var reqLength = document.getElementById('req-length');
+  var reqMatch = document.getElementById('req-match');
+  var reqNumber = document.getElementById('req-number');
+
+  function validatePasswords() {
+    var pwd = passwordInput.value;
+    var confirm = confirmInput.value;
+    reqLength.className = pwd.length >= 8 ? 'met' : '';
+    reqMatch.className = (pwd.length > 0 && pwd === confirm) ? 'met' : '';
+    reqNumber.className = /\d/.test(pwd) ? 'met' : '';
+  }
+
+  passwordInput.addEventListener('input', validatePasswords);
+  confirmInput.addEventListener('input', validatePasswords);
+
+  /* Form submit */
+  document.getElementById('setup-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var pwd = passwordInput.value;
+    var confirm = confirmInput.value;
+
+    if (pwd.length < 8) { document.getElementById('setup-error').textContent = 'Password must be at least 8 characters.'; document.getElementById('setup-error').style.display = 'block'; return; }
+    if (pwd !== confirm) { document.getElementById('setup-error').textContent = 'Passwords do not match.'; document.getElementById('setup-error').style.display = 'block'; return; }
+    if (!/\d/.test(pwd)) { document.getElementById('setup-error').textContent = 'Password must contain a number.'; document.getElementById('setup-error').style.display = 'block'; return; }
+
+    var vendor = registerVendor(token.applicationId, token.email, pwd);
+    if (vendor) {
+      markTokenUsed(tokenId);
+      document.getElementById('setup-card').style.display = 'none';
+      document.getElementById('success-card').style.display = 'block';
+    } else {
+      document.getElementById('setup-error').textContent = 'Could not create account. Please contact support.';
+      document.getElementById('setup-error').style.display = 'block';
+    }
+  });
+})();
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

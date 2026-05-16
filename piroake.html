@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Piroake Fest 2026: Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival featuring live music, games, VIP lounges, and moments.">
+<meta property="og:title" content="Piroake Fest | Walking-Fish Group">
+<meta property="og:description" content="Piroake Fest 2026: Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival featuring live music, games, VIP lounges, and moments.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://walkingfish.gm/piroake">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
+<meta name="twitter:title" content="Piroake Fest | Walking-Fish Group">
+<meta name="twitter:description" content="Piroake Fest 2026: Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival.">
+<link rel="canonical" href="https://walkingfish.gm/piroake">
+<meta property="og:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Event",
+  "name": "Piroake Fest 2026",
+  "description": "Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival.",
+  "startDate": "2026-06-20",
+  "eventStatus": "https://schema.org/EventScheduled",
+  "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+  "location": {
+    "@type": "Place",
+    "name": "To be announced",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "The Gambia",
+      "addressCountry": "GM"
+    }
+  },
+  "organizer": {"@type": "Organization", "name": "Walking-Fish Group"}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "When is Piroake Fest 2026?",
+      "acceptedAnswer": {"@type": "Answer", "text": "June 2026. Exact date and venue to be announced. Subscribe to the newsletter for first access."}
+    },
+    {
+      "@type": "Question",
+      "name": "How do I get tickets?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Tickets will be available online. Enter your email for early-bird pricing, presale access, and lineup announcements."}
+    },
+    {
+      "@type": "Question",
+      "name": "How do I become a vendor or sponsor?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Visit the Vendors page for application details, pricing tiers, and guidelines."}
+    }
+  ]
+}
+</script>
+<title>Piroake Fest | Walking-Fish Group</title>
+<link rel="preload" href="piroake-hero.mp4" as="video" type="video/mp4" fetchpriority="high">
+<link rel="stylesheet" href="style.css">
+<script defer src="gift.js"></script>
+<script defer src="nav.js"></script>
+<style>
+:root {
+  --d-text: oklch(70% 0.005 250);
+  --d-muted: oklch(60% 0.005 250);
+  --d-surface: oklch(22% 0.02 240);
+  --d-border:  oklch(28% 0.02 240);
+}
+.piroake-hero {
+  background: none;
+  color: var(--fg);
+  text-align: center;
+  padding-block: 120px 80px;
+  position: relative;
+  overflow: hidden;
+}
+.piroake-hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.piroake-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(250,250,250,0.65);
+  z-index: 1;
+  pointer-events: none;
+}
+.piroake-hero .w { position: relative; z-index: 2; }
+.piroake-hero h1 { color: var(--fg); }
+.piroake-hero .label { color: var(--accent); }
+.piroake-hero .date { font-size: 14px; color: var(--muted); margin-top: 16px; letter-spacing: 0.04em; }
+
+.countdown { display: flex; gap: 32px; justify-content: center; margin-block: 40px; }
+.countdown-item { text-align: center; }
+.countdown-item .num {
+  font-family: var(--font-display); font-size: clamp(48px, 6vw, 72px);
+  font-weight: 600; letter-spacing: -0.03em; line-height: 1; color: var(--fg);
+}
+.countdown-item .lbl { font-size: 12px; color: var(--d-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
+
+.dark-section { background: var(--fg); color: var(--surface); }
+.dark-section h2 { color: var(--surface); }
+.dark-section .label { color: color-mix(in oklch, var(--accent) 80%, white); }
+.dark-section p { color: var(--d-text); }
+.dark-card {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+}
+.dark-card h3 { color: var(--surface); font-size: 18px; margin-bottom: 8px; }
+.dark-card p { font-size: 14px; }
+
+.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.gallery-grid .gallery-item { aspect-ratio: 4/3; background: var(--d-surface); border: 1px solid var(--d-border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--d-muted); }
+.gallery-grid .gallery-item.wide { grid-column: span 2; }
+
+@media (max-width: 768px) {
+  .countdown { gap: 16px; }
+  .countdown-item .num { font-size: 32px; }
+}
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "Piroake Fest 2026: Experience Preview",
+  "description": "Coral-toned motion background for Piroake Fest 2026: Picnic. Karaoke. Rave Experience.",
+  "thumbnailUrl": "https://walkingfish.gm/bg-abstract-coral.gif",
+  "uploadDate": "2026-05-01T00:00:00Z",
+  "duration": "PT10S"
+}
+</script>
+</head>
+<body data-page="piroake">
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+<header><nav>
+<div class="w">
+  <a href="/" class="logo">Walking-<em>Fish</em></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="about.html">About</a>
+    <a href="walkie-talkie.html">Experiences</a>
+    <a href="piroake.html">Piroake</a>
+    <a href="muster-point.html">Media</a>
+    <a href="gallery.html">Gallery</a>
+    <a href="blog.html">Blog</a>
+    <a href="vendors.html">Vendors</a>
+    <a href="partners.html">Partners</a>
+    <a href="contact.html">Contact</a>
+    <a href="vendor-login.html" class="nav-cta">Vendor Login</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
+</div>
+</nav></header>
+
+<main id="main-content">
+
+<section class="piroake-hero">
+<video class="piroake-hero-video" autoplay muted loop playsinline poster="bg-abstract-coral.gif">
+  <source src="piroake-hero.mp4" type="video/mp4">
+</video>
+<div class="w">
+  <p class="label">Flagship Event</p>
+  <h1>The Festival You&rsquo;ll Talk About All Year.</h1>
+  <p style="margin: 12px auto 0; font-size: 20px; color: var(--muted);">Piroake Fest 2026: Picnic. Karaoke. Rave Experience.</p>
+  <div class="countdown" id="countdown-container">
+    <div class="countdown-item"><div class="num" id="cd-days">—</div><div class="lbl">Days</div></div>
+    <div class="countdown-item"><div class="num" id="cd-hours">—</div><div class="lbl">Hours</div></div>
+    <div class="countdown-item"><div class="num" id="cd-minutes">—</div><div class="lbl">Minutes</div></div>
+    <div class="countdown-item"><div class="num" id="cd-seconds">—</div><div class="lbl">Seconds</div></div>
+  </div>
+  <p class="date">Coming June 2026 &middot; <span style="color:var(--accent);">Limited tickets available</span></p>
+  <div class="btn-group" style="justify-content:center; margin-top:32px;">
+    <a href="#piroake-signup" class="btn btn-primary">Get Early Access &rarr;</a>
+  </div>
+</div>
+</section>
+
+<section id="piroake-signup" class="dark-section" style="padding-block: 40px;">
+<div class="w" style="max-width: 480px; margin-inline: auto; text-align: center;">
+  <p style="font-size: 15px; color: var(--d-muted);">Get early-bird pricing, presale access, and lineup announcements first.</p>
+  <form id="piroake-early" style="display: flex; gap: 12px; margin-top: 16px;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
+    <input type="email" aria-label="Email for Piroake updates" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
+    <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Get Early Access</button>
+  </form>
+</div>
+</section>
+
+<section>
+<div class="w">
+  <p class="label">About the Festival</p>
+  <h2 style="max-width: 16ch;">A one-of-a-kind experience.</h2>
+  <p style="margin-top:20px; font-size:18px; max-width:56ch;">Piroake Fest is our flagship festival; a celebration of music, community, and culture featuring live performances, interactive experiences, and unforgettable moments.</p>
+  <div class="grid-3" style="margin-top:40px;">
+    <div class="card"><h3>Karaoke Arena</h3><p>Sing your heart out in our state-of-the-art karaoke zone, complete with professional sound and lighting.</p></div>
+    <div class="card"><h3>Games Arena</h3><p>Interactive games, competitions, and activities for everyone, from casual players to serious competitors.</p></div>
+    <div class="card"><h3>Live Bands</h3><p>Curated live performances across multiple genres, showcasing the best local and regional talent.</p></div>
+    <div class="card"><h3>VIP Lounges</h3><p>Exclusive access, premium seating, dedicated bars, and a curated experience for VIP ticket holders.</p></div>
+    <div class="card"><h3>Picnic Zones</h3><p>Relax and refuel in themed picnic areas with food vendors, pop-up bars, and shaded lounges.</p></div>
+    <div class="card"><h3>Vendors &amp; Sponsors</h3><p>Food, merchandise, and brand activations from our curated roster of vendors and partners.</p></div>
+  </div>
+</div>
+</section>
+
+<section class="dark-section">
+<div class="w">
+  <p class="label">Pricing</p>
+  <h2 style="margin-bottom: 40px;">Ticket tiers.</h2>
+  <div class="grid-3">
+    <div class="dark-card">
+      <p class="label" style="color: var(--accent);">General</p>
+      <h3 style="font-size: 36px; letter-spacing: -0.02em;">TBD</h3>
+      <p style="margin-top:8px;">Standard entry to all festival areas, live performances, and community zones.</p>
+    </div>
+    <div class="dark-card">
+      <p class="label" style="color: var(--accent);">VIP</p>
+      <h3 style="font-size: 36px; letter-spacing: -0.02em;">TBD</h3>
+      <p style="margin-top:8px;">Exclusive lounge access, premium views, dedicated bars, and curated experiences.</p>
+    </div>
+    <div class="dark-card">
+      <p class="label" style="color: var(--accent);">VVIP</p>
+      <h3 style="font-size: 36px; letter-spacing: -0.02em;">TBD</h3>
+      <p style="margin-top:8px;">All-access pass, private seating, host service, and premium hospitality.</p>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:24px; font-size:14px;">Pricing to be announced. Register your interest and we&rsquo;ll notify you first.</p>
+  <div style="text-align:center; margin-top:20px;">
+    <button type="button" class="btn btn-primary" id="register-interest-btn">Register Interest &rarr;</button>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="w">
+  <p class="label">Gallery</p>
+  <h2 style="margin-bottom: 32px;">Moments from Piroake.</h2>
+  <div class="gallery-grid">
+    <div class="gallery-item wide">Aerial: Festival Grounds</div>
+    <div class="gallery-item">Crowd Shot</div>
+    <div class="gallery-item">Stage Performance</div>
+    <div class="gallery-item">Karaoke Arena</div>
+    <div class="gallery-item">VIP Lounge</div>
+    <div class="gallery-item wide">Night: Lights &amp; Atmosphere</div>
+    <div class="gallery-item">Food Vendors</div>
+    <div class="gallery-item">Games Zone</div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="w">
+  <p class="label">FAQ</p>
+  <h2 style="margin-bottom: 32px;">Common questions.</h2>
+  <div style="display: grid; gap: 16px;">
+    <div style="padding: 20px; border: 1px solid var(--border); border-radius: var(--radius);">
+      <h3 style="margin-bottom: 6px;">When is Piroake Fest 2026?</h3>
+      <p style="font-size: 15px;">June 2026. Exact date and venue to be announced; subscribe to the newsletter for first access.</p>
+    </div>
+    <div style="padding: 20px; border: 1px solid var(--border); border-radius: var(--radius);">
+      <h3 style="margin-bottom: 6px;">How do I get tickets?</h3>
+      <p style="font-size: 15px;">Tickets will be available online. Enter your email above for early-bird pricing, presale access, and lineup announcements.</p>
+    </div>
+    <div style="padding: 20px; border: 1px solid var(--border); border-radius: var(--radius);">
+      <h3 style="margin-bottom: 6px;">How do I become a vendor or sponsor?</h3>
+      <p style="font-size: 15px;">Visit our <a href="vendors.html" style="color: var(--accent);">Vendors page</a> for application details, pricing tiers, and guidelines.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+  <div class="grid-4">
+    <div>
+      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
+      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
+      <a href="walkie-talkie.html">Experiences</a>
+      <a href="piroake.html">Piroake Fest</a>
+      <a href="muster-point.html">Media</a>
+      <a href="gallery.html">Gallery</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
+      <a href="about.html">About Us</a>
+      <a href="partners.html">Partners</a>
+      <a href="vendors.html">Vendors</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
+      <a href="blog.html">Blog</a>
+      <a href="#">Media Kit</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="vendor-login.html">Vendor Login</a>
+      <a href="admin-login.html" style="font-size:12px;opacity:0.5;">Admin</a>
+    </div>
+  </div>
+  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
+</div>
+</footer>
+
+<script>
+(function(){
+  const target = new Date('2026-06-20T00:00:00');
+  function tick(){
+    const now = new Date();
+    const diff = target - now;
+    if(diff <= 0){
+      document.getElementById('cd-days').textContent = 'LIVE';
+      document.getElementById('cd-hours').textContent = '';
+      document.getElementById('cd-minutes').textContent = '';
+      document.getElementById('cd-seconds').textContent = '';
+      return;
+    }
+    const days = Math.floor(diff / (1000*60*60*24));
+    const hours = Math.floor((diff / (1000*60*60)) % 24);
+    const minutes = Math.floor((diff / (1000*60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    document.getElementById('cd-days').textContent = days;
+    document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+    document.getElementById('cd-minutes').textContent = String(minutes).padStart(2,'0');
+    document.getElementById('cd-seconds').textContent = String(seconds).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+document.addEventListener('DOMContentLoaded', function() {
+  var regBtn = document.getElementById('register-interest-btn');
+  if (regBtn) regBtn.addEventListener('click', giftPiroakeInterest);
+});
+</script>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="piroake.html">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="vendors.html">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="contact.html">
+    <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+    Contact
+  </a>
+  <a href="about.html">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><circle cx="12" cy="8" r="0.5"/></svg></span>
+    About
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.split('/').pop().replace(/\.html$/,'')||'/';document.querySelectorAll('.bottom-tabs a').forEach(function(a){if(a.getAttribute('href')===p)a.classList.add('active');});})();</script>
+</body>
+</html>
