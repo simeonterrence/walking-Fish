@@ -13,6 +13,11 @@ Thumbs.db
 .agents/
 *.log
 
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+
 # Assets - source files not served
 *.pptx
 *.py
