@@ -31,13 +31,15 @@ Linked to project `anigcqdquakinlzvyaur` (ID: `anigcqdquakinlzvyaur`). The Supab
 - Public pages use `SUPABASE_ANON_KEY` (RLS-protected, read-only); admin panel uses a service role key entered via the admin login form and stored in `sessionStorage` — never hardcoded.
 - Content Security Policy on every page allows `connect-src` to the Supabase project URL.
 
-### Active Migration: localStorage → Supabase Auth
+### Authentication
 
-The vendor/admin auth system is **mid-migration** from localStorage to Supabase Auth. Currently:
+Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT `app_metadata.role` determines the redirect: `admin_role` → `admin.html`, `vendor_role` → `vendor-dashboard.html`. The old `admin-login.html` and `vendor-login.html` redirect to `login.html` for backward compatibility.
+
 - **Supabase Auth** handles authentication (JWT-based, email/password), stored in `sessionStorage` as `wf_session` with access/refresh tokens.
+- Vendors can self-delete their account from the vendor dashboard (removes `vendor_profiles` record via RLS).
+- Admins can delete vendor accounts from the admin "Manage Vendors" section (deletes Auth user via admin API with service key, CASCADE removes profile).
 - The migration spec is at `docs/spec-supabase-auth-migration.md`.
-- The migration SQL is at `supabase/migrations/20260516000001_create_vendor_tables.sql`.
-- Supabase Edge Functions directory (`supabase/functions/`) exists but has no deployed functions yet.
+- The migration SQL is at `supabase/migrations/20260516000001_create_vendor_tables.sql` and `supabase/migrations/20260516000002_add_delete_rls_policies.sql`.
 
 ## Data Model
 

@@ -75,7 +75,7 @@
         <a href="contact.html">Contact</a>
       </div>
     </details>
-    <a href="vendor-login.html" class="nav-cta">Sign In</a>
+    <a href="login.html" class="nav-cta">Sign In</a>
   </div>
   <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
 </div>
@@ -127,10 +127,16 @@
       <h3>Upcoming Events</h3>
       <p>Your event participation details will appear here once they are assigned. Stay tuned for updates on Piroake Fest 2026 and other Walking-Fish Group events.</p>
     </div>
+
+    <div style="margin-top:40px;padding-top:32px;border-top:1px solid var(--border);">
+      <h3 style="font-size:14px;color:#DC2626;margin-bottom:8px;">Danger Zone</h3>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Permanently delete your account and all associated data. This cannot be undone.</p>
+      <button id="delete-account-btn" class="btn btn-secondary" style="color:#DC2626;border-color:#DC2626;padding:8px 20px;font-size:13px;">Delete Account</button>
+    </div>
   </div>
 
   <div class="empty-dash" id="dash-empty" style="display:none;">
-    <p style="font-size:16px;">Please <a href="vendor-login.html" style="color:var(--accent);font-weight:500;">sign in</a> to access your vendor dashboard.</p>
+    <p style="font-size:16px;">Please <a href="login.html" style="color:var(--accent);font-weight:500;">sign in</a> to access your vendor dashboard.</p>
   </div>
 </div>
 </main>
@@ -160,7 +166,22 @@
 
 document.getElementById('logout-btn').addEventListener('click', function() {
   clearSession();
-  window.location.href = 'vendor-login.html';
+  window.location.href = 'login.html';
+});
+
+document.getElementById('delete-account-btn').addEventListener('click', function() {
+  if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+  if (!confirm('Your vendor profile and access will be permanently removed. Continue?')) return;
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Deleting...';
+  deleteVendorAccount(vendor.id).then(function() {
+    window.location.href = 'index.html';
+  }).catch(function(err) {
+    alert(err.message || 'Could not delete account.');
+    btn.disabled = false;
+    btn.textContent = 'Delete Account';
+  });
 });
 </script>
 

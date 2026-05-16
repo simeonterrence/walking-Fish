@@ -301,3 +301,30 @@ function getApplicationStats() {
     };
   });
 }
+
+// ---------- Account deletion ----------
+function deleteVendorAccount(profileId) {
+  return fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?id=eq.' + encodeURIComponent(profileId), {
+    method: 'DELETE',
+    headers: authHeaders()
+  }).then(function (r) {
+    if (!r.ok) return Promise.reject(new Error('Failed to delete account.'));
+    clearSession();
+    return true;
+  });
+}
+
+function adminDeleteVendor(authUserId) {
+  var svcKey = sessionStorage.getItem('wf_service_key');
+  if (!svcKey) return Promise.reject(new Error('Service key required. Enter it on the login page.'));
+  return fetch(SUPABASE_URL + '/auth/v1/admin/users/' + encodeURIComponent(authUserId), {
+    method: 'DELETE',
+    headers: {
+      'apikey': svcKey,
+      'Authorization': 'Bearer ' + svcKey
+    }
+  }).then(function (r) {
+    if (!r.ok) return Promise.reject(new Error('Failed to delete vendor user.'));
+    return true;
+  });
+}

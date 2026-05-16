@@ -31,6 +31,7 @@
     { "source": "/vendors", "destination": "/vendors.html" },
     { "source": "/partners", "destination": "/partners.html" },
     { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/login", "destination": "/login.html" },
     { "source": "/admin-login", "destination": "/admin-login.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/vendor-setup", "destination": "/vendor-setup.html" },

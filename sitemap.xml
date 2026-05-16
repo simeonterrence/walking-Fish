@@ -10,5 +10,6 @@
   <url><loc>https://walkingfish.gm/vendors</loc><priority>0.8</priority></url>
   <url><loc>https://walkingfish.gm/partners</loc><priority>0.7</priority></url>
   <url><loc>https://walkingfish.gm/contact</loc><priority>0.6</priority></url>
+  <url><loc>https://walkingfish.gm/login</loc><priority>0.3</priority></url>
   <url><loc>https://walkingfish.gm/privacy</loc><priority>0.3</priority></url>
 </urlset>

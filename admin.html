@@ -82,7 +82,7 @@
         <a href="contact.html">Contact</a>
       </div>
     </details>
-    <a href="vendor-login.html" class="nav-cta">Sign In</a>
+    <a href="login.html" class="nav-cta">Sign In</a>
   </div>
   <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
 </div>
@@ -152,6 +152,17 @@
       </form>
     </div>
   </details>
+
+  <!-- Manage Vendors -->
+  <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
+    <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Manage Vendors</summary>
+    <div style="margin-top:16px;">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">View and manage registered vendor accounts.</p>
+      <div id="vendors-container" style="overflow-x:auto;">
+        <p style="color:var(--muted);font-size:14px;">Loading vendors...</p>
+      </div>
+    </div>
+  </details>
 </div>
   <!-- Photo Management -->
   <div class="w" style="padding-block:32px;border-top:1px solid var(--border);margin-top:32px;">
@@ -193,7 +204,7 @@
 (function() {
   var session = getSession();
   if (session.type !== 'admin') {
-    window.location.href = 'admin-login.html';
+    window.location.href = 'login.html';
   }
 })();
 
@@ -325,10 +336,11 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   loadPhotos();
+  loadVendors();
 
   document.getElementById('logout-btn').addEventListener('click', function() {
     clearSession();
-    window.location.href = 'admin-login.html';
+    window.location.href = 'login.html';
   });
 
   document.getElementById('invite-close-btn').addEventListener('click', function() {
@@ -407,6 +419,53 @@ window.copyInvite = function(tokenStr) {
   });
   document.getElementById('invite-modal').classList.remove('open');
 };
+
+// ---------- Vendor management ----------
+function loadVendors() {
+  fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?order=created_at.desc', {
+    headers: authHeaders()
+  }).then(function(r) {
+    if (!r.ok) throw new Error('Failed to load vendors.');
+    return r.json();
+  }).then(function(vendors) {
+    var container = document.getElementById('vendors-container');
+    if (!vendors || vendors.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px;">No vendors registered yet.</p>';
+      return;
+    }
+    var html = '<table class="app-table"><thead><tr><th>Business</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    vendors.forEach(function(v) {
+      var statusClass = v.status === 'active' ? 'status-approved' : 'status-pending';
+      html += '<tr><td><strong>' + escapeHtml(v.business_name) + '</strong></td>' +
+        '<td>' + escapeHtml(v.contact_name) + '</td>' +
+        '<td><span style="font-size:13px;">' + escapeHtml(v.email) + '</span></td>' +
+        '<td><span class="status-badge ' + statusClass + '">' + v.status + '</span></td>' +
+        '<td><button class="action-btn action-reject admin-delete-vendor" data-auth-user="' + v.auth_user_id + '" data-profile-id="' + v.id + '" data-business="' + escapeHtml(v.business_name) + '">Delete</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function(err) {
+    document.getElementById('vendors-container').innerHTML = '<p style="color:#DC2626;font-size:14px;">' + escapeHtml(err.message) + '</p>';
+  });
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('admin-delete-vendor')) {
+    var business = e.target.getAttribute('data-business');
+    if (!confirm('Delete vendor "' + business + '"? This will permanently remove their account and all associated data.')) return;
+    if (!confirm('Are you sure? This cannot be undone.')) return;
+    var authUserId = e.target.getAttribute('data-auth-user');
+    e.target.disabled = true;
+    e.target.textContent = 'Deleting...';
+    adminDeleteVendor(authUserId).then(function() {
+      loadVendors();
+    }).catch(function(err) {
+      alert(err.message || 'Failed to delete vendor.');
+      loadVendors();
+    });
+  }
+});
+
 </script>
 
 <nav class="bottom-tabs" aria-label="Main navigation">
