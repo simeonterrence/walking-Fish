@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Admin dashboard for managing Walking-Fish Group vendor applications.">
 <meta property="og:title" content="Admin Dashboard | Walking-Fish Group">
@@ -41,6 +41,23 @@
   .app-table { font-size: 13px; }
   .app-table th:nth-child(3), .app-table td:nth-child(3) { display: none; }
 }
+/* Photo management */
+.photo-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border); }
+.photo-tab { padding:10px 20px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; background:none; border-top:none; border-left:none; border-right:none; font-family:var(--font-body); min-width:auto; min-height:auto; }
+.photo-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.photo-tab:hover { color:var(--fg); }
+.photo-panel { display:none; }
+.photo-panel.active { display:block; }
+.photo-upload-form { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:24px; }
+.photo-upload-form .full { grid-column:1/-1; }
+.photo-upload-form label { font-size:13px; font-weight:500; display:block; margin-bottom:4px; }
+.photo-upload-form input, .photo-upload-form select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-body); font-size:14px; }
+.photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+.photo-grid-item { position:relative; border:1px solid var(--border); border-radius:8px; overflow:hidden; aspect-ratio:1; background:var(--surface); }
+.photo-grid-item img { width:100%; height:100%; object-fit:cover; display:block; }
+.photo-grid-item .del { position:absolute; top:4px; right:4px; background:#DC2626; color:#fff; border:none; border-radius:4px; width:24px; height:24px; font-size:16px; line-height:24px; text-align:center; cursor:pointer; opacity:0; transition:opacity .15s; min-width:auto; min-height:auto; padding:0; }
+.photo-grid-item:hover .del { opacity:1; }
+.photo-grid-item .pos { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.6); color:#fff; font-size:11px; padding:2px 8px; }
 </style>
 </head>
 <body>
@@ -86,6 +103,25 @@
     </div>
   </div>
 </div>
+  <!-- Photo Management -->
+  <div class="w" style="padding-block:32px;border-top:1px solid var(--border);margin-top:32px;">
+    <h2 style="font-size:20px;margin-bottom:4px;">Site Photos</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px;">Upload and manage photos for the public site.</p>
+    <div class="photo-tabs">
+      <button class="photo-tab active" onclick="switchPhotoTab('upload')">Upload</button>
+      <button class="photo-tab" onclick="switchPhotoTab('manage')">Manage Photos</button>
+    </div>
+    <div id="photo-panel-upload" class="photo-panel active">
+      <div class="photo-upload-form">
+        <div><label for="photo-file">Photo</label><input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp"></div>
+        <div><label for="photo-section">Section</label><select id="photo-section"><option value="gallery">Gallery</option><option value="partners">Partners</option><option value="hero">Hero</option><option value="events">Events</option><option value="media">Media</option><option value="about">About</option></select></div>
+        <div><label for="photo-position">Position</label><input type="number" id="photo-position" value="0" min="0"></div>
+        <div><label for="photo-alt">Alt text</label><input type="text" id="photo-alt" placeholder="Describe the photo"></div>
+        <div class="full" style="text-align:right;"><button id="upload-btn" class="btn btn-primary" onclick="adminUpload()">Upload</button></div>
+      </div>
+    </div>
+    <div id="photo-panel-manage" class="photo-panel"><div id="photo-list"><p style="color:var(--muted);">Loading photos...</p></div></div>
+  </div>
 </main>
 
 <!-- Invite link modal -->
@@ -101,6 +137,8 @@
 </div>
 
 <script src="vendor-auth.js"></script>
+<script src="supabase-config.js"></script>
+<script src="admin-photos.js"></script>
 <script>
 (function() {
   var session = getSession();
@@ -201,6 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  loadPhotos();
+
   document.getElementById('logout-btn').addEventListener('click', function() {
     clearSession();
     window.location.href = 'admin-login.html';
@@ -210,6 +250,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('invite-modal').classList.remove('open');
   });
 });
+
+// Photo management
+function switchPhotoTab(name) {
+  document.querySelectorAll('.photo-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.photo-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelector('.photo-tab[onclick*="' + name + '"]').classList.add('active');
+  document.getElementById('photo-panel-' + name).classList.add('active');
+}
+var adminUpload = uploadPhoto;
 
 function showInviteModal(tokenId) {
   var url = window.location.origin + '/vendor-setup.html?token=' + tokenId;

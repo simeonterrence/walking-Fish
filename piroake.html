@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Piroake Fest 2026: Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival featuring live music, games, VIP lounges, and moments.">
 <meta property="og:title" content="Piroake Fest | Walking-Fish Group">
@@ -65,6 +65,8 @@
 <link rel="stylesheet" href="style.css">
 <script defer src="gift.js"></script>
 <script defer src="nav.js"></script>
+<script defer src="supabase-config.js"></script>
+<script defer src="photos.js"></script>
 <style>
 :root {
   --d-text: oklch(70% 0.005 250);
@@ -248,8 +250,15 @@
 <div class="w">
   <p class="label">Gallery</p>
   <h2 style="margin-bottom: 32px;">Moments from Piroake.</h2>
-  <div class="gallery-grid">
+  <div class="gallery-grid" data-photos="gallery">
     <div class="gallery-item wide">Aerial: Festival Grounds</div>
+    <div class="gallery-item">Crowd Shot</div>
+    <div class="gallery-item">Stage Performance</div>
+    <div class="gallery-item">Karaoke Arena</div>
+    <div class="gallery-item">VIP Lounge</div>
+    <div class="gallery-item wide">Night: Lights &amp; Atmosphere</div>
+    <div class="gallery-item">Food Vendors</div>
+    <div class="gallery-item">Games Zone</div></div>
     <div class="gallery-item">Crowd Shot</div>
     <div class="gallery-item">Stage Performance</div>
     <div class="gallery-item">Karaoke Arena</div>
