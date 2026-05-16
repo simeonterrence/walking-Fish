@@ -53,6 +53,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Reveal sections with entrance animation
+  document.querySelectorAll('.section-reveal').forEach(function(el) {
+    el.classList.add('revealed');
+  });
+
   // Active state for top nav
   var path = window.location.pathname.split('/').pop() || 'index.html';
   if (path === '/') path = 'index.html';
