@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://walkingfish.gm/sitemap.xml
+Sitemap: https://www.walkingfish.gm/sitemap.xml
