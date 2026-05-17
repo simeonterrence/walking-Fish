@@ -38,6 +38,7 @@
     { "source": "/vendor-setup", "destination": "/vendor-setup.html" },
     { "source": "/vendor-login", "destination": "/vendor-login.html" },
     { "source": "/vendor-dashboard", "destination": "/vendor-dashboard.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/(.*)", "destination": "/404.html" }
   ]
 }
