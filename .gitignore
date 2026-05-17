@@ -25,8 +25,16 @@ Thumbs.db
 IMG-*.jpg
 WalkingFish_Website_*
 *.xml
+!sitemap.xml
 *.sh
 *-report.html
 local_audit_report.md
 www.walkingfish.gm.html
 scratch/
+
+# Temp debug artifacts
+__pycache__/
+*.pyc
+binarized_text.txt
+image_analysis.txt
+login-screenshot.png

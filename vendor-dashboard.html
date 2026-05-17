@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="Vendor dashboard for Walking-Fish Group events and festivals.">
 <meta property="og:title" content="Vendor Dashboard | Walking-Fish Group">
-<link rel="canonical" href="https://walkingfish.gm/vendor-dashboard">
+<link rel="canonical" href="https://www.walkingfish.gm/vendor-dashboard">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
 <title>Vendor Dashboard | Walking-Fish Group</title>
 <link rel="stylesheet" href="style.css?v=2">
@@ -168,7 +168,7 @@
 
 document.getElementById('logout-btn').addEventListener('click', function() {
   clearSession();
-  window.location.href = 'login.html';
+  window.location.href = '/login';
 });
 
 document.getElementById('delete-account-btn').addEventListener('click', function() {
@@ -178,7 +178,7 @@ document.getElementById('delete-account-btn').addEventListener('click', function
   btn.disabled = true;
   btn.textContent = 'Deleting...';
   deleteVendorAccount(vendor.id).then(function() {
-    window.location.href = 'index.html';
+    window.location.href = '/';
   }).catch(function(err) {
     alert(err.message || 'Could not delete account.');
     btn.disabled = false;
