@@ -1,15 +1,44 @@
 // Admin photo management: loaded on admin.html only
 // Service key is set via login form (sessionStorage) or falls back to a
 // prompt. NEVER hardcode service_role keys in source files.
-function getServiceKey() {
-  return sessionStorage.getItem('wf_service_key') || prompt('Enter Supabase service role key (from Project Settings → API):');
+function getServiceKey(forcePrompt) {
+  var key = sessionStorage.getItem('wf_service_key');
+  if (!key && forcePrompt) {
+    key = prompt('Enter Supabase service role key (from Project Settings → API):');
+    if (key) {
+      sessionStorage.setItem('wf_service_key', key);
+    }
+  }
+  return key;
 }
 const STORAGE_BUCKET = 'site-photos';
 
 async function api(path, options) {
+  var method = (options && options.method) || 'GET';
+  var isWrite = method === 'POST' || method === 'DELETE' || method === 'PATCH' || method === 'PUT';
+  
+  // Only prompt for service key on write operations if not already stored
+  var svcKey = getServiceKey(isWrite);
+  
+  var headers = { apikey: SUPABASE_ANON_KEY, ...((options && options.headers) || {}) };
+  
+  if (svcKey) {
+    headers['Authorization'] = 'Bearer ' + svcKey;
+  } else {
+    // Fall back to the logged-in admin's standard session JWT for GET operations
+    var session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('wf_session'));
+    } catch (e) {}
+    
+    if (session && session.access_token) {
+      headers['Authorization'] = 'Bearer ' + session.access_token;
+    }
+  }
+
   var res = await fetch(SUPABASE_URL + path, {
     ...options,
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + getServiceKey(), ...(options ? options.headers : {}) }
+    headers: headers
   });
   if (!res.ok) { var txt = await res.text(); throw new Error(txt); }
   try { return await res.json(); } catch (e) { return; }
@@ -50,10 +79,13 @@ async function uploadPhoto() {
   btn.disabled = true; btn.textContent = 'Uploading...';
 
   try {
+    var svcKey = getServiceKey(true);
+    if (!svcKey) throw new Error('Supabase service role key is required to upload photos.');
+
     // Upload to Storage
     var uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fileName, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + getServiceKey() },
+      headers: { Authorization: 'Bearer ' + svcKey },
       body: file
     });
     if (!uploadRes.ok) throw new Error('Upload failed: ' + (await uploadRes.text()));
@@ -77,6 +109,9 @@ async function uploadPhoto() {
 async function deletePhoto(id) {
   if (!confirm('Delete this photo?')) return;
   try {
+    var svcKey = getServiceKey(true);
+    if (!svcKey) throw new Error('Supabase service role key is required to delete photos.');
+
     // Get file_path before deleting
     var photos = await api('/rest/v1/site_images?id=eq.' + id + '&select=file_path');
     if (photos.length) {
@@ -84,7 +119,7 @@ async function deletePhoto(id) {
       // Delete from storage
       await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fp, {
         method: 'DELETE',
-        headers: { Authorization: 'Bearer ' + getServiceKey() }
+        headers: { Authorization: 'Bearer ' + svcKey }
       });
     }
     // Delete DB record
