@@ -260,7 +260,16 @@ function registerVendor(e, t, n, r) {
       password: r
     })
   }).then(function (e) {
-    return e.ok ? e.json() : Promise.reject(new Error("Setup link expired. Contact the admin."));
+    if (e.ok) return e.json();
+    return e.text().then(function (txt) {
+      var msg = "Setup link expired. Contact the admin.";
+      try {
+        var err = JSON.parse(txt);
+        if (err && err.error_description) msg += " (" + err.error_description + ")";
+        else if (err && err.message) msg += " (" + err.message + ")";
+      } catch (ex) {}
+      return Promise.reject(new Error(msg));
+    });
   }).then(function (r) {
     var o = decodeJWT(r.access_token);
     return setStoredSession({
@@ -285,7 +294,15 @@ function registerVendor(e, t, n, r) {
         application_id: e
       })
     }).then(function (e) {
-      return e.ok ? e.json() : Promise.reject(new Error("Failed to create vendor profile."));
+      if (e.ok) return e.json();
+      return e.text().then(function (txt) {
+        var msg = "Failed to create vendor profile.";
+        try {
+          var err = JSON.parse(txt);
+          if (err && err.message) msg += " (" + err.message + ")";
+        } catch (ex) {}
+        return Promise.reject(new Error(msg));
+      });
     }).then(function () {
       return r;
     });
@@ -305,7 +322,15 @@ function changeVendorPassword(e) {
       password: e
     })
   }).then(function (e) {
-    return e.ok ? e.json() : Promise.reject(new Error("Failed to set password."));
+    if (e.ok) return e.json();
+    return e.text().then(function (txt) {
+      var msg = "Failed to set password.";
+      try {
+        var err = JSON.parse(txt);
+        if (err && err.message) msg += " (" + err.message + ")";
+      } catch (ex) {}
+      return Promise.reject(new Error(msg));
+    });
   });
 }
 
