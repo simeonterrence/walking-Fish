@@ -71,11 +71,10 @@ Deno.serve(async (req) => {
     }
 
     // Token is valid. Proceed to insert into Supabase
-    // Using service role key to bypass RLS, or anon key.
-    // If the tables have RLS policies allowing inserts, we can use anon key.
-    // However, it's safer to let the Edge Function insert directly.
+    // Token is valid. Proceed to insert into Supabase using Service Role Key
+    // to bypass RLS policies so public inserts can be locked down securely.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: insertedData, error } = await supabase

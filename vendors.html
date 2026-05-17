@@ -234,9 +234,33 @@ document.addEventListener('DOMContentLoaded', function() {
     var category = document.getElementById('category').value;
     var message = document.getElementById('message').value.trim();
     if (!business || !contactName || !email || !category || !message) return;
-    submitApplication({ business: business, contactName: contactName, email: email, category: category, message: message }).then(function() {
+
+    // Retrieve Turnstile token
+    var turnstileToken = '';
+    try {
+      turnstileToken = turnstile.getResponse();
+    } catch (err) {
+      var turnstileInput = document.querySelector('[name="cf-turnstile-response"]');
+      if (turnstileInput) turnstileToken = turnstileInput.value;
+    }
+
+    if (!turnstileToken) {
+      alert("Please complete the CAPTCHA check.");
+      return;
+    }
+
+    submitApplication({
+      business: business,
+      contactName: contactName,
+      email: email,
+      category: category,
+      message: message,
+      token: turnstileToken
+    }).then(function() {
       giftVendorKit(form, { id: 'submitted' });
-    }).catch(function() {
+    }).catch(function(err) {
+      console.error(err);
+      alert("Application submission failed: " + (err.message || "Please verify your CAPTCHA and try again."));
       giftVendorKit(form, { id: null });
     });
   });
