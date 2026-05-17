@@ -208,15 +208,55 @@ function preCreateVendorUser(e, t, n) {
         role: "vendor_role"
       }
     })
-  }).then(function (e) {
-    if (e.status === 422 || e.status === 400) {
-      return null; // Gracefully proceed if user already exists
+  }).then(function (r) {
+    if (r.status === 422 || r.status === 400) {
+      // User already exists! Let's fetch the user list to find this user's ID, and then update their password to the new tempPassword!
+      return fetch(SUPABASE_URL + "/auth/v1/admin/users", {
+        headers: {
+          apikey: e,
+          Authorization: "Bearer " + e
+        }
+      }).then(function (res) {
+        if (!res.ok) throw new Error("Failed to list users for update.");
+        return res.json();
+      }).then(function (data) {
+        var users = data.users || [];
+        var targetUser = null;
+        for (var i = 0; i < users.length; i++) {
+          if (users[i].email === t) {
+            targetUser = users[i];
+            break;
+          }
+        }
+        if (!targetUser) {
+          throw new Error("User exists but could not be located in Auth.");
+        }
+        // Update user's password using the admin API
+        return fetch(SUPABASE_URL + "/auth/v1/admin/users/" + encodeURIComponent(targetUser.id), {
+          method: "PUT",
+          headers: {
+            apikey: e,
+            Authorization: "Bearer " + e,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            password: n,
+            email_confirm: !0,
+            app_metadata: {
+              role: "vendor_role"
+            }
+          })
+        }).then(function (r2) {
+          if (!r2.ok) throw new Error("Failed to update pre-existing user's password.");
+          return r2.json();
+        });
+      });
     }
-    if (e.ok) {
-      if (e.status === 204) return null;
-      return e.text().then(function (t) { return t ? JSON.parse(t) : null; }).catch(function () { return null; });
+    if (r.ok) {
+      if (r.status === 204) return null;
+      return r.text().then(function (t) { return t ? JSON.parse(t) : null; }).catch(function () { return null; });
     }
-    return e.text().then(function (txt) {
+    return r.text().then(function (txt) {
       var msg = "Failed to pre-create user.";
       try {
         var err = JSON.parse(txt);
