@@ -131,7 +131,15 @@ function updateApplicationStatus(e, t) {
       status: t
     })
   }).then(function (e) {
-    return e.ok ? e.json() : Promise.reject(new Error("Failed to update application."));
+    if (e.ok) return e.json();
+    return e.text().then(function (txt) {
+      var msg = "Failed to update application.";
+      try {
+        var err = JSON.parse(txt);
+        if (err && err.message) msg += " (" + err.message + ")";
+      } catch (ex) {}
+      return Promise.reject(new Error(msg));
+    });
   });
 }
 
@@ -155,7 +163,16 @@ function generateInviteToken(e, t, n, r, o, a) {
       expires_at: u
     })
   }).then(function (e) {
-    return e.ok ? e.json() : Promise.reject(new Error("Failed to generate invite."));
+    if (e.ok) return e.json();
+    return e.text().then(function (txt) {
+      var msg = "Failed to generate invite.";
+      try {
+        var err = JSON.parse(txt);
+        if (err && err.message) msg += " (" + err.message + ")";
+        else if (err && err.error_description) msg += " (" + err.error_description + ")";
+      } catch (ex) {}
+      return Promise.reject(new Error(msg));
+    });
   }).then(function () {
     return c;
   });
@@ -186,8 +203,19 @@ function preCreateVendorUser(e, t, n) {
       }
     })
   }).then(function (e) {
-    return e.ok ? e.json() : e.json().then(function (e) {
-      throw new Error(e.msg || "Failed to create user.");
+    if (e.status === 422 || e.status === 400) {
+      return null; // Gracefully proceed if user already exists
+    }
+    if (e.ok) return e.json();
+    return e.text().then(function (txt) {
+      var msg = "Failed to pre-create user.";
+      try {
+        var err = JSON.parse(txt);
+        if (err && err.message) msg += " (" + err.message + ")";
+        else if (err && err.msg) msg += " (" + err.msg + ")";
+        else if (err && err.error_description) msg += " (" + err.error_description + ")";
+      } catch (ex) {}
+      return Promise.reject(new Error(msg));
     });
   });
 }
@@ -317,7 +345,7 @@ function deleteVendorAccount(e) {
 }
 
 function adminDeleteVendor(e) {
-  var t = sessionStorage.getItem("wf_service_key");
+  var t = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
   return t ? fetch(SUPABASE_URL + "/auth/v1/admin/users/" + encodeURIComponent(e), {
     method: "DELETE",
     headers: {

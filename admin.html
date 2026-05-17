@@ -214,7 +214,7 @@
   </div>
 </div>
 <script src="supabase-config.min.js?v=2"></script>
-<script src="vendor-auth.min.js?v=2"></script>
+<script src="vendor-auth.min.js?v=3"></script>
 <script src="admin-photos.min.js?v=12"></script>
 <script>
 (function() {
@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
       target.textContent = 'Processing...';
       var isRegenerate = target.hasAttribute('data-regenerate');
 
-      var svcKey = sessionStorage.getItem('wf_service_key');
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
 
       function doGenerateInvite(app) {
         var tempPw = generateTempPassword();
@@ -322,8 +322,8 @@ document.addEventListener('DOMContentLoaded', function() {
           for (var i = 0; i < apps.length; i++) {
             if (apps[i].id === appId) return doGenerateInvite(apps[i]);
           }
-        }).catch(function () {
-          alert('Failed to generate invite.');
+        }).catch(function (err) {
+          alert(err.message || 'Failed to generate invite.');
         }).then(function () {
           target.disabled = false;
           target.textContent = origText;
@@ -335,8 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
           for (var i = 0; i < apps.length; i++) {
             if (apps[i].id === appId) return doGenerateInvite(apps[i]);
           }
-        }).catch(function () {
-          alert('Failed to approve application.');
+        }).catch(function (err) {
+          alert(err.message || 'Failed to approve application.');
           renderDashboard();
         });
       }

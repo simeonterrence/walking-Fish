@@ -100,7 +100,7 @@
 
 </main>
 
-<script src="vendor-auth.min.js?v=2"></script>
+<script src="vendor-auth.min.js?v=3"></script>
 <script>
 document.getElementById('admin-login-form').addEventListener('submit', function(e) {
   e.preventDefault();
@@ -117,7 +117,7 @@ document.getElementById('admin-login-form').addEventListener('submit', function(
       return;
     }
     var sk = document.getElementById('service-key').value.trim();
-    if (sk) sessionStorage.setItem('wf_service_key', sk);
+    if (sk) localStorage.setItem('wf_service_key', sk);
     window.location.href = '/admin';
   }).catch(function(err) {
     errorEl.textContent = err.message || 'Invalid email or password.';
@@ -126,6 +126,28 @@ document.getElementById('admin-login-form').addEventListener('submit', function(
     document.getElementById('password').focus();
   });
 });
+
+// Auto-load/pre-fill Supabase service key
+(function() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    fetch('/.env')
+      .then(function(r) { return r.text(); })
+      .then(function(text) {
+        var match = text.match(/SUPABASE_SERVICE_KEY\s*=\s*(.+)/);
+        if (match && match[1]) {
+          var val = match[1].trim();
+          localStorage.setItem('wf_service_key', val);
+          var el = document.getElementById('service-key');
+          if (el) el.value = val;
+        }
+      })
+      .catch(function() {});
+  } else {
+    var stored = localStorage.getItem('wf_service_key');
+    var el = document.getElementById('service-key');
+    if (stored && el) el.value = stored;
+  }
+})();
 </script>
 
 <nav class="bottom-tabs" aria-label="Main navigation">
