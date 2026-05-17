@@ -21,3 +21,12 @@ Thumbs.db
 # Assets - source files not served
 *.pptx
 *.py
+*.docx
+IMG-*.jpg
+WalkingFish_Website_*
+*.xml
+*.sh
+*-report.html
+local_audit_report.md
+www.walkingfish.gm.html
+scratch/

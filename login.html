@@ -4,17 +4,20 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
-<meta property="og:title" content="Sign In | Walking-Fish Group">
-<meta property="og:description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Sign in to your Walking-Fish Group account. Access the admin dashboard or vendor portal to manage events, track approvals, and view upcoming festival details.">
+<meta property="og:title" content="Sign In to Dashboard | Walking-Fish Group">
+<meta property="og:description" content="Sign in to your Walking-Fish Group account. Access the admin dashboard or vendor portal to manage events, track approvals, and view upcoming festival details.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://walkingfish.gm/login">
 <meta property="og:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Sign In | Walking-Fish Group">
-<meta name="twitter:description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sign In to Dashboard | Walking-Fish Group">
+<meta name="twitter:description" content="Sign in to your Walking-Fish Group account to manage events and access the vendor portal.">
 <meta name="twitter:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
 <link rel="canonical" href="https://walkingfish.gm/login">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
-<title>Sign In | Walking-Fish Group</title>
+<title>Sign In to Dashboard | Walking-Fish Group</title>
 <link rel="stylesheet" href="style.css?v=2">
 <style>
 .auth-card {
@@ -27,7 +30,7 @@
 .auth-card p { font-size: 15px; color: var(--muted); margin-bottom: 28px; }
 .auth-card .error { color: #DC2626; font-size: 14px; margin-top: 12px; display: none; }
 </style>
-<script defer src="nav.js?v=2"></script>
+<script defer src="nav.min.js?v=2"></script>
 </head>
 <body>
 
@@ -81,6 +84,22 @@
   <p style="margin-top:20px;font-size:13px;color:var(--muted);">Don't have an account? <a href="/vendors" style="color:var(--accent);font-weight:500;">Apply as Vendor</a></p>
   <p style="margin-top:8px;font-size:13px;"><a href="/" style="color:var(--muted);">&larr; Back to site</a></p>
 </div>
+
+<section class="seo-content-expansion" style="margin-top: 60px; padding: 40px 0; background: var(--surface); border-top: 1px solid var(--border);">
+<div class="w" style="max-width: 800px; margin-inline: auto;">
+  <h2 style="font-size: 20px; color: var(--fg); margin-bottom: 16px;">About Walking-Fish Group & Our Commitment to Excellence</h2>
+  <p style="color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 16px;">
+    Walking-Fish Group stands at the forefront of creative entertainment and media production in West Africa. We are dedicated to delivering unforgettable experiences that transcend traditional boundaries. By blending innovative event management with high-end digital media production, we create a dynamic ecosystem that fosters culture, community, and connection. Our team is passionate about curating moments that resonate deeply with audiences, from massive music festivals to intimate gatherings.
+  </p>
+  <p style="color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 16px;">
+    We believe that every interaction should be meaningful. Whether through Walkie-Talkie Experiences, where we bring people together in physical spaces, or Muster Point Pictures, where we capture and share these stories digitally, our approach is always culture-first. We meticulously design each project to ensure that our creative vision aligns perfectly with the needs of our attendees, partners, and corporate sponsors. Our ultimate goal is to build an inclusive environment where art and technology thrive together.
+  </p>
+  <p style="color: var(--muted); font-size: 15px; line-height: 1.7;">
+    Adaptability is our core philosophy, inspired by our namesake. We continuously evolve our strategies to stay ahead in a rapidly changing industry, ensuring that every event and production is not only relevant but extraordinary. By leveraging cutting-edge technology and a profound understanding of cultural dynamics, Walking-Fish Group continues to set new standards for excellence in entertainment. We invite you to join us on this journey of exploration and celebration, as we redefine what it means to connect in the modern world.
+  </p>
+</div>
+</section>
+
 </main>
 
 <section id="faq" style="margin-top: 40px; margin-bottom: 80px; max-width: 720px; margin-inline: auto; padding-inline: 20px;">
@@ -156,7 +175,7 @@
 }
 </script>
 
-<script src="vendor-auth.js?v=2"></script>
+<script src="vendor-auth.min.js?v=2"></script>
 <script>
 document.getElementById('login-form').addEventListener('submit', function(e) {
   e.preventDefault();
