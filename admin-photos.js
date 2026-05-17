@@ -12,8 +12,7 @@ async function api(path, options) {
     headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + getServiceKey(), ...(options ? options.headers : {}) }
   });
   if (!res.ok) { var txt = await res.text(); throw new Error(txt); }
-  if (res.status === 204) return;
-  return res.json();
+  try { return await res.json(); } catch (e) { return; }
 }
 
 async function loadPhotos() {
