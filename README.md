@@ -13,7 +13,7 @@ A static brochure website for Walking-Fish Group, a Gambian creative entertainme
 python3 -m http.server 8080
 ```
 
-For clean URLs (no `.html` extension), use the local server approach — Vercel's rewrites handle this in production.
+For clean URLs (no `.html` extension), use the local server approach: Vercel's rewrites handle this in production.
 
 ## Tech Stack
 
@@ -32,20 +32,20 @@ For clean URLs (no `.html` extension), use the local server approach — Vercel'
 ### Page Structure
 
 Every page loads scripts in this order (deferred where applicable):
-1. `gift.js` — animated overlay modals (form success states, confetti)
-2. `nav.js` — hamburger toggle, `aria-current` detection
-3. `supabase-config.js` — defines `SUPABASE_URL` and `SUPABASE_ANON_KEY` globals
-4. `photos.js` (public pages) — renders images from Supabase storage into `[data-photos]` containers
-5. `admin-photos.js` (`admin.html` only) — CRUD for site photos
-6. `vendor-auth.js` (admin/vendor auth pages) — Supabase Auth login, vendor application CRUD, invite token workflow
+1. `gift.js`: animated overlay modals (form success states, confetti)
+2. `nav.js`: hamburger toggle, `aria-current` detection
+3. `supabase-config.js`: defines `SUPABASE_URL` and `SUPABASE_ANON_KEY` globals
+4. `photos.js` (public pages): renders images from Supabase storage into `[data-photos]` containers
+5. `admin-photos.js` (`admin.html` only): CRUD for site photos
+6. `vendor-auth.js` (admin/vendor auth pages): Supabase Auth login, vendor application CRUD, invite token workflow
 
 ### Supabase Integration
 
-- **`site_images` table** — photo records (`section`, `position`, `file_path`, `alt_text`)
-- **`site-photos` bucket** — stores uploaded images in `section/` subdirectories
-- **`vendor_applications`** — vendor submissions from the public form
-- **`vendor_profiles`** — registered vendor accounts linked to `auth.users`
-- **`invite_tokens`** — time-limited invite links for vendor registration
+- **`site_images` table**: photo records (`section`, `position`, `file_path`, `alt_text`)
+- **`site-photos` bucket**: stores uploaded images in `section/` subdirectories
+- **`vendor_applications`**: vendor submissions from the public form
+- **`vendor_profiles`**: registered vendor accounts linked to `auth.users`
+- **`invite_tokens`**: time-limited invite links for vendor registration
 
 Public pages use the anon key (RLS-protected, read-only). The admin panel uses a service role key entered via the admin login form and stored in `sessionStorage` — never hardcoded.
 

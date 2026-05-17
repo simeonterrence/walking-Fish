@@ -1,4 +1,4 @@
-// Admin photo management — loaded on admin.html only
+// Admin photo management: loaded on admin.html only
 // Service key is set via login form (sessionStorage) or falls back to a
 // prompt. NEVER hardcode service_role keys in source files.
 function getServiceKey() {

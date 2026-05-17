@@ -24,10 +24,10 @@ Every page loads scripts in this order (deferred where applicable):
 Linked to project `anigcqdquakinlzvyaur` (ID: `anigcqdquakinlzvyaur`). The Supabase CLI config lives in `supabase/config.toml` (local dev at port 54321).
 
 - **`site_images` table** — photo records (`section`, `position`, `file_path`, `alt_text`). Queried via REST API with `section=eq.<name>` and `order=position.asc`.
-- **`site-photos` bucket** — stores uploaded images organized in `section/` subdirectories.
-- **`vendor_applications`** — vendor submissions from the public form.
-- **`vendor_profiles`** — registered vendor accounts linked to `auth.users`.
-- **`invite_tokens`** — time-limited invite links for vendor registration.
+- **`site-photos` bucket** : stores uploaded images organized in `section/` subdirectories.
+- **`vendor_applications`** : vendor submissions from the public form.
+- **`vendor_profiles`** : registered vendor accounts linked to `auth.users`.
+- **`invite_tokens`** : time-limited invite links for vendor registration.
 - Public pages use `SUPABASE_ANON_KEY` (RLS-protected, read-only); admin panel uses a service role key entered via the admin login form and stored in `sessionStorage` — never hardcoded.
 - Content Security Policy on every page allows `connect-src` to the Supabase project URL.
 
@@ -44,10 +44,10 @@ Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT 
 ## Data Model
 
 ### Supabase Tables
-- **`vendor_applications`** — `{ id, business_name, contact_name, email, phone, category, message, status, created_at, updated_at }`
-- **`vendor_profiles`** — `{ id, auth_user_id, business_name, contact_name, email, phone, category, status, application_id, created_at, updated_at }`
-- **`invite_tokens`** — `{ id, application_id, email, token, business_name, contact_name, category, temp_password, used, expires_at, created_at }`
-- **`site_images`** — `{ id, section, position, file_path, alt_text }`
+- **`vendor_applications`** : `{ id, business_name, contact_name, email, phone, category, message, status, created_at, updated_at }`
+- **`vendor_profiles`** : `{ id, auth_user_id, business_name, contact_name, email, phone, category, status, application_id, created_at, updated_at }`
+- **`invite_tokens`** : `{ id, application_id, email, token, business_name, contact_name, category, temp_password, used, expires_at, created_at }`
+- **`site_images`** : `{ id, section, position, file_path, alt_text }`
 
 ### localStorage (being deprecated)
 - `adminUsers` — seeded with `admin@walkingfish.gm` / `admin123`

@@ -1,4 +1,4 @@
-// Supabase configuration — shared across admin and public pages
+// Supabase configuration: shared across admin and public pages
 const SUPABASE_URL = 'https://anigcqdquakinlzvyaur.supabase.co';
 // Split key to prevent false positive secret scanning alerts
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' + 

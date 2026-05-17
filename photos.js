@@ -1,4 +1,4 @@
-// photos.js — fetches site photos from Supabase and displays them on public pages
+// photos.js: fetches site photos from Supabase and displays them on public pages
 (function() {
   var CONTAINER_SELECTOR = '[data-photos]';
   var containers = document.querySelectorAll(CONTAINER_SELECTOR);

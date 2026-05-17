@@ -1,5 +1,5 @@
 /* ============================================
-   Walking-Fish Group — shared stylesheet
+   Walking-Fish Group: shared stylesheet
    Modern-minimal direction + warm coral accent
    ============================================ */
 
@@ -611,7 +611,7 @@ nav .nav-links a { min-height: 44px; display: inline-flex; align-items: center; 
   .gift-confetti { display: none; }
 }
 
-/* ---------- Accent text — small/body sized ---------- */
+/* ---------- Accent text: small/body sized ---------- */
 a.accent-link, .accent-text { color: var(--accent-text); }
 
 /* ---------- SEO content details/summary ---------- */
@@ -680,7 +680,7 @@ a.accent-link, .accent-text { color: var(--accent-text); }
   border-color: var(--accent);
 }
 
-/* ---------- Hormozi proof visual — outcome placeholder ---------- */
+/* ---------- Hormozi proof visual: outcome placeholder ---------- */
 .proof-visual {
   position: relative;
   width: 100%;
