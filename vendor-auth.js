@@ -131,7 +131,10 @@ function updateApplicationStatus(e, t) {
       status: t
     })
   }).then(function (e) {
-    if (e.ok) return e.json();
+    if (e.ok) {
+      if (e.status === 204) return null;
+      return e.text().then(function (t) { return t ? JSON.parse(t) : null; }).catch(function () { return null; });
+    }
     return e.text().then(function (txt) {
       var msg = "Failed to update application.";
       try {
@@ -163,7 +166,10 @@ function generateInviteToken(e, t, n, r, o, a) {
       expires_at: u
     })
   }).then(function (e) {
-    if (e.ok) return e.json();
+    if (e.ok) {
+      if (e.status === 204) return null;
+      return e.text().then(function (t) { return t ? JSON.parse(t) : null; }).catch(function () { return null; });
+    }
     return e.text().then(function (txt) {
       var msg = "Failed to generate invite.";
       try {
@@ -206,7 +212,10 @@ function preCreateVendorUser(e, t, n) {
     if (e.status === 422 || e.status === 400) {
       return null; // Gracefully proceed if user already exists
     }
-    if (e.ok) return e.json();
+    if (e.ok) {
+      if (e.status === 204) return null;
+      return e.text().then(function (t) { return t ? JSON.parse(t) : null; }).catch(function () { return null; });
+    }
     return e.text().then(function (txt) {
       var msg = "Failed to pre-create user.";
       try {
