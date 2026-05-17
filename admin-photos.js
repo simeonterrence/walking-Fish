@@ -9,7 +9,7 @@ const STORAGE_BUCKET = 'site-photos';
 async function api(path, options) {
   var res = await fetch(SUPABASE_URL + path, {
     ...options,
-    headers: { Authorization: 'Bearer ' + getServiceKey(), ...(options ? options.headers : {}) }
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + getServiceKey(), ...(options ? options.headers : {}) }
   });
   if (!res.ok) { var txt = await res.text(); throw new Error(txt); }
   return res.json();
