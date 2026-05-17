@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Walking-Fish Group is a creative entertainment and experiences company building culture-driven festivals, live events, and media production across Africa.">
 <meta name="view-transition" content="same-origin">
@@ -48,10 +48,11 @@
 </script>
 <title>Walking-Fish Group | The Moments That Bring People Together</title>
 <link rel="stylesheet" href="style.css?v=2">
-<script defer src="gift.js?v=2"></script>
-<script defer src="nav.js?v=2"></script>
-<script defer src="supabase-config.js?v=2"></script>
-<script defer src="photos.js?v=2"></script>
+<script defer src="gift.min.js?v=2"></script>
+<script defer src="nav.min.js?v=2"></script>
+<script defer src="supabase-config.min.js?v=2"></script>
+<script defer src="photos.min.js?v=2"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
 .context-line {
   text-align: center; font-size: 16px; color: var(--muted); max-width: 600px; margin: 0 auto;
@@ -127,46 +128,33 @@
       <input type="email" id="newsletter-email" aria-label="Email address for newsletter" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:var(--surface); color:var(--fg);" required>
       <button type="submit" class="btn btn-primary">Get Early Access</button>
     </form>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAA_REPLACE_WITH_REAL_SITEKEY" data-theme="auto" style="margin-top: 12px;"></div>
   </div>
   <p class="lead-magnet">Early-bird ticket access &middot; Exclusive behind-the-scenes &middot; First dibs on new events</p>
 </div>
 </section>
 
 <section id="faq" style="margin-top: 40px; max-width: 720px; margin-inline: auto;">
-  <h2 class="label" style="text-align:center; margin-bottom: 24px; color:var(--accent);">Frequently Asked Questions</h2>
+  <h2 class="label" style="text-align:center; margin-bottom: 24px; color:var(--accent);">Common Questions</h2>
   
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">What exactly does Walking-Fish Group do?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>We are a creative entertainment and experiences company based in The Gambia. We specialize in culture-driven festivals, live music events, interactive karaoke nights, curated picnic gatherings, media production, and cinematic drone storytelling. Through our two subsidiaries, Walkie-Talkie Experiences and Muster Point Pictures, we bridge the gap between physical gatherings and digital media.</p>
+  <details class="seo-content">
+    <summary>Are the events just like any other party?</summary>
+    <div>
+      <p>Unlike standard parties, our flagship events like Piroake Fest are fully immersive environments. We combine high-energy karaoke, premium live bands, and interactive games zones so you are actively participating, not just watching from the sidelines.</p>
     </div>
   </details>
 
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">Why should I attend a Walkie-Talkie Experience event?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>Our flagship events, like Piroake Fest, are designed to turn ordinary nights into unforgettable memories. We don't just host parties; we build immersive environments. You can expect high-energy karaoke arenas, premium live band performances, engaging interactive games zones, exclusive VIP lounges, and curated vendor activations all in one seamlessly designed place.</p>
+  <details class="seo-content">
+    <summary>Is it worth the ticket price?</summary>
+    <div>
+      <p>Absolutely. A single ticket gives you access to multiple experiences—from VIP lounges to live music and interactive gaming. We pack more entertainment value into one night than you would typically get across an entire weekend, ensuring you get maximum return on your investment.</p>
     </div>
   </details>
 
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">How can my business become a vendor or partner?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>We regularly partner with food and beverage operators, merchandise creators, games operators, and corporate sponsors. By becoming a vendor at a Walking-Fish Group event, you gain direct access to thousands of engaged attendees. We offer prime booth placements, dedicated marketing promotion across our channels, comprehensive vendor support, and post-event insights. You can apply directly through our online Vendor Portal.</p>
-    </div>
-  </details>
-
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">Where are you located and how do I contact you?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>We operate primarily in The Gambia, West Africa, but our media and entertainment footprint is expanding across the continent. For general inquiries, you can reach us at hello@walkingfish.gm. If you are interested in vendor applications, email vendors@walkingfish.gm. For media and press coverage, contact press@walkingfish.gm, and for production inquiries, reach out to studio@walkingfish.gm.</p>
-    </div>
-  </details>
-
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">What is the meaning behind the name Walking-Fish?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>Our name represents ultimate adaptability—a creature equally at home in two entirely different worlds. Much like the walking fish, we operate fluidly across live physical experiences and high-quality digital media production. We seamlessly move between bringing people together in physical spaces and capturing those profound moments for the digital world, aiming to become Africa's most innovative entertainment ecosystem.</p>
+  <details class="seo-content">
+    <summary>I am a brand. What is the real ROI of partnering with you?</summary>
+    <div>
+      <p>You get direct access to thousands of highly engaged attendees in a premium setting. Beyond just physical booth space, we provide dedicated marketing promotion and deep post-event insights to ensure your brand actually connects with your target audience effectively.</p>
     </div>
   </details>
 </section>
@@ -178,42 +166,26 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What exactly does Walking-Fish Group do?",
+      "name": "Are the events just like any other party?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "We are a creative entertainment and experiences company based in The Gambia. We specialize in culture-driven festivals, live music events, interactive karaoke nights, curated picnic gatherings, media production, and cinematic drone storytelling."
+        "text": "Unlike standard parties, our flagship events like Piroake Fest are fully immersive environments. We combine high-energy karaoke, premium live bands, and interactive games zones so you are actively participating, not just watching from the sidelines."
       }
     },
     {
       "@type": "Question",
-      "name": "Why should I attend a Walkie-Talkie Experience event?",
+      "name": "Is it worth the ticket price?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Our flagship events, like Piroake Fest, are designed to turn ordinary nights into unforgettable memories. We don't just host parties; we build immersive environments with karaoke arenas, live bands, and interactive games."
+        "text": "Absolutely. A single ticket gives you access to multiple experiences—from VIP lounges to live music and interactive gaming. We pack more entertainment value into one night than you would typically get across an entire weekend, ensuring you get maximum return on your investment."
       }
     },
     {
       "@type": "Question",
-      "name": "How can my business become a vendor or partner?",
+      "name": "I am a brand. What is the real ROI of partnering with you?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "We partner with food and beverage operators, merchandise creators, and corporate sponsors. Vendors gain direct access to thousands of engaged attendees, prime booth placements, and comprehensive marketing support."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Where are you located and how do I contact you?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "We operate primarily in The Gambia, West Africa. General inquiries: hello@walkingfish.gm. Vendor applications: vendors@walkingfish.gm. Press: press@walkingfish.gm."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the meaning behind the name Walking-Fish?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Our name represents ultimate adaptability. Much like the walking fish, we operate fluidly across live physical experiences and high-quality digital media production."
+        "text": "You get direct access to thousands of highly engaged attendees in a premium setting. Beyond just physical booth space, we provide dedicated marketing promotion and deep post-event insights to ensure your brand actually connects with your target audience effectively."
       }
     }
   ]

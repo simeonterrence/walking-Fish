@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Piroake Fest 2026: Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival featuring live music, games, VIP lounges, and moments.">
 <meta property="og:title" content="Piroake Fest | Walking-Fish Group">
@@ -63,10 +63,11 @@
 <title>Piroake Fest | Walking-Fish Group</title>
 <link rel="preload" href="piroake-hero.mp4" as="video" type="video/mp4" fetchpriority="high">
 <link rel="stylesheet" href="style.css?v=2">
-<script defer src="gift.js?v=2"></script>
-<script defer src="nav.js?v=2"></script>
-<script defer src="supabase-config.js?v=2"></script>
-<script defer src="photos.js?v=2"></script>
+<script defer src="gift.min.js?v=2"></script>
+<script defer src="nav.min.js?v=2"></script>
+<script defer src="supabase-config.min.js?v=2"></script>
+<script defer src="photos.min.js?v=2"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
 :root {
   --d-text: oklch(70% 0.005 250);
@@ -177,8 +178,9 @@
 <main id="main-content">
 
 <section class="piroake-hero">
-<video class="piroake-hero-video" autoplay muted loop playsinline poster="bg-abstract-coral.gif">
+<video class="piroake-hero-video" autoplay muted loop playsinline poster="bg-abstract-coral.gif" aria-label="Piroake Fest background video">
   <source src="piroake-hero.mp4" type="video/mp4">
+  <track kind="captions" src="piroake-captions.vtt" srclang="en" label="English" default>
 </video>
 <div class="w">
   <p class="label">Flagship Event</p>
@@ -200,9 +202,12 @@
 <section id="piroake-signup" class="dark-section" style="padding-block: 40px;">
 <div class="w" style="max-width: 480px; margin-inline: auto; text-align: center;">
   <p style="font-size: 15px; color: var(--d-muted);">Get early-bird pricing, presale access, and lineup announcements first.</p>
-  <form id="piroake-early" style="display: flex; gap: 12px; margin-top: 16px;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
-    <input type="email" aria-label="Email for Piroake updates" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
-    <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Get Early Access</button>
+  <form id="piroake-early" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px; align-items: center;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
+    <div style="display: flex; gap: 12px; width: 100%;">
+      <input type="email" aria-label="Email for Piroake updates" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
+      <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Get Early Access</button>
+    </div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAA_REPLACE_WITH_REAL_SITEKEY" data-theme="dark" data-size="compact"></div>
   </form>
 </div>
 </section>
