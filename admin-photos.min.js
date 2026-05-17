@@ -26,7 +26,7 @@
 function getServiceKey(forcePrompt) {
   var key = localStorage.getItem('wf_service_key');
   if (!key && forcePrompt) {
-    key = prompt('Enter Supabase service role key (from Project Settings → API):');
+    key = prompt('Enter Supabase service role key (you can copy the long SUPABASE_SERVICE_KEY string from your local .env file):');
     if (key) {
       localStorage.setItem('wf_service_key', key);
     }
