@@ -6,6 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
 <meta property="og:title" content="Sign In | Walking-Fish Group">
+<meta property="og:description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
+<meta property="og:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Sign In | Walking-Fish Group">
+<meta name="twitter:description" content="Sign in to Walking-Fish Group. Admin and vendor portal access.">
+<meta name="twitter:image" content="https://walkingfish.gm/bg-abstract-coral.gif">
 <link rel="canonical" href="https://walkingfish.gm/login">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
 <title>Sign In | Walking-Fish Group</title>
@@ -67,13 +73,13 @@
     <details style="margin-bottom:20px;font-size:13px;color:var(--muted);text-align:left;">
       <summary style="cursor:pointer;">Photo management key (optional)</summary>
       <p style="margin-top:8px;font-size:13px;">Admins: paste your Supabase service role key to manage site photos. Find it in Project Settings → API.</p>
-      <input type="password" id="service-key" placeholder="eyJhbGciOiJIUzI1NiIs..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:13px;margin-top:6px;">
+      <input type="password" id="service-key" aria-label="Supabase service role key (optional)" placeholder="eyJhbGciOiJIUzI1NiIs..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:13px;margin-top:6px;">
     </details>
     <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Sign In</button>
     <p class="error" id="login-error">Invalid email or password. Try again.</p>
   </form>
   <p style="margin-top:20px;font-size:13px;color:var(--muted);">Don't have an account? <a href="/vendors" style="color:var(--accent);font-weight:500;">Apply as Vendor</a></p>
-  <p style="margin-top:8px;font-size:13px;"><a href="index.html" style="color:var(--muted);">&larr; Back to site</a></p>
+  <p style="margin-top:8px;font-size:13px;"><a href="/" style="color:var(--muted);">&larr; Back to site</a></p>
 </div>
 </main>
 
