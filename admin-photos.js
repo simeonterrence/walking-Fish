@@ -65,7 +65,9 @@ async function uploadPhoto() {
       body: JSON.stringify({ section: section, position: position, file_path: fileName, alt_text: alt })
     });
 
-    document.getElementById('photo-form').reset();
+    document.getElementById('photo-file').value = '';
+    document.getElementById('photo-position').value = '0';
+    document.getElementById('photo-alt').value = '';
     loadPhotos();
     alert('Photo uploaded!');
   } catch (e) { alert('Error: ' + e.message); }
