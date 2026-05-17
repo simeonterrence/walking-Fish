@@ -303,6 +303,16 @@ document.addEventListener('DOMContentLoaded', function() {
       var isRegenerate = target.hasAttribute('data-regenerate');
 
       var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') {
+        svcKey = getServiceKey(true);
+      }
+
+      if (!svcKey) {
+        alert('Supabase Service Role Key is required to approve applications and pre-create vendor accounts. Action cancelled.');
+        target.disabled = false;
+        target.textContent = origText;
+        return;
+      }
 
       function doGenerateInvite(app) {
         var tempPw = generateTempPassword();

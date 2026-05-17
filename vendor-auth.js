@@ -40,6 +40,67 @@ function authHeaders() {
   };
 }
 
+function refreshSession() {
+  var session = getStoredSession();
+  if (!session || !session.refresh_token) {
+    return Promise.reject(new Error("No active session to refresh."));
+  }
+  return fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    headers: anonHeaders(),
+    body: JSON.stringify({
+      refresh_token: session.refresh_token
+    })
+  }).then(function (res) {
+    if (!res.ok) {
+      clearStoredSession();
+      throw new Error("Session expired. Please log in again.");
+    }
+    return res.json();
+  }).then(function (data) {
+    var jwt = decodeJWT(data.access_token);
+    var role = jwt && jwt.app_metadata && jwt.app_metadata.role;
+    var updatedSession = {
+      type: "admin_role" === role ? "admin" : "vendor_role" === role ? "vendor" : null,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: jwt ? jwt.exp : null,
+      user: data.user,
+      role: role
+    };
+    setStoredSession(updatedSession);
+    return updatedSession;
+  });
+}
+
+function fetchWithAuth(url, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  
+  var session = getStoredSession();
+  if (session && session.expires_at) {
+    var now = Math.floor(Date.now() / 1000);
+    if (session.expires_at - now < 300) { // less than 5 minutes left
+      return refreshSession().then(function(newSession) {
+        options.headers["Authorization"] = "Bearer " + newSession.access_token;
+        options.headers["apikey"] = SUPABASE_ANON_KEY;
+        return fetch(url, options);
+      }).catch(function(err) {
+        console.error("Auto token refresh failed:", err);
+        var token = getStoredSession().access_token || "";
+        options.headers["Authorization"] = "Bearer " + token;
+        options.headers["apikey"] = SUPABASE_ANON_KEY;
+        return fetch(url, options);
+      });
+    }
+  }
+
+  var token = session.access_token || "";
+  options.headers["Authorization"] = "Bearer " + token;
+  options.headers["apikey"] = SUPABASE_ANON_KEY;
+  return fetch(url, options);
+}
+
 function setSession(e, t) {
   var n = getStoredSession();
   n.type = e;
@@ -116,17 +177,19 @@ function submitApplication(e) {
 }
 
 function getApplications() {
-  return fetch(SUPABASE_URL + "/rest/v1/vendor_applications?order=created_at.desc", {
-    headers: authHeaders()
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/vendor_applications?order=created_at.desc", {
+    method: "GET"
   }).then(function (e) {
     return e.ok ? e.json() : Promise.reject(new Error("Failed to load applications."));
   });
 }
 
 function updateApplicationStatus(e, t) {
-  return fetch(SUPABASE_URL + "/rest/v1/vendor_applications?id=eq." + encodeURIComponent(e), {
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/vendor_applications?id=eq." + encodeURIComponent(e), {
     method: "PATCH",
-    headers: authHeaders(),
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       status: t
     })
@@ -152,9 +215,11 @@ function generateInviteToken(e, t, n, r, o, a) {
   window.crypto.getRandomValues(i);
   for (var c = "inv_", d = 0; d < 16; d++) c += s[i[d] % 36];
   var u = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  return fetch(SUPABASE_URL + "/rest/v1/invite_tokens", {
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/invite_tokens", {
     method: "POST",
-    headers: authHeaders(),
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       application_id: e,
       email: t,
@@ -280,9 +345,11 @@ function validateInviteToken(e) {
 }
 
 function markTokenUsed(e) {
-  return fetch(SUPABASE_URL + "/rest/v1/rpc/mark_token_used", {
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/mark_token_used", {
     method: "POST",
-    headers: authHeaders(),
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       token_id: e
     })
@@ -375,16 +442,16 @@ function changeVendorPassword(e) {
 }
 
 function getVendorUsers() {
-  return fetch(SUPABASE_URL + "/rest/v1/vendor_profiles?order=created_at.desc", {
-    headers: authHeaders()
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/vendor_profiles?order=created_at.desc", {
+    method: "GET"
   }).then(function (e) {
     return e.ok ? e.json() : Promise.reject(new Error("Failed to load vendors."));
   });
 }
 
 function getVendorById(e) {
-  return fetch(SUPABASE_URL + "/rest/v1/vendor_profiles?id=eq." + encodeURIComponent(e), {
-    headers: authHeaders()
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/vendor_profiles?id=eq." + encodeURIComponent(e), {
+    method: "GET"
   }).then(function (e) {
     return e.ok ? e.json() : Promise.reject(new Error("Failed to load vendor."));
   }).then(function (e) {
@@ -410,9 +477,8 @@ function getApplicationStats() {
 }
 
 function deleteVendorAccount(e) {
-  return fetch(SUPABASE_URL + "/rest/v1/vendor_profiles?id=eq." + encodeURIComponent(e), {
-    method: "DELETE",
-    headers: authHeaders()
+  return fetchWithAuth(SUPABASE_URL + "/rest/v1/vendor_profiles?id=eq." + encodeURIComponent(e), {
+    method: "DELETE"
   }).then(function (e) {
     return e.ok ? (clearSession(), !0) : Promise.reject(new Error("Failed to delete account."));
   });

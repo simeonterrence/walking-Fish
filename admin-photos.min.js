@@ -24,7 +24,7 @@
 // Service key is set via login form (sessionStorage) or falls back to a
 // prompt. NEVER hardcode service_role keys in source files.
 function getServiceKey(forcePrompt) {
-  var key = localStorage.getItem('wf_service_key');
+  var key = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
   if (!key && forcePrompt) {
     key = prompt('Enter Supabase service role key (you can copy the long SUPABASE_SERVICE_KEY string from your local .env file):');
     if (key) {
