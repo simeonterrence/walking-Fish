@@ -1,12 +1,34 @@
+// Auto-load Service Key from local .env if running on localhost
+(function() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    if (!localStorage.getItem('wf_service_key')) {
+      fetch('/.env')
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+          var match = text.match(/SUPABASE_SERVICE_KEY\s*=\s*(.+)/);
+          if (match && match[1]) {
+            var val = match[1].trim();
+            localStorage.setItem('wf_service_key', val);
+            // If the user was viewing the gallery, reload to show photos instantly
+            if (typeof loadPhotos === 'function') {
+              loadPhotos();
+            }
+          }
+        })
+        .catch(function() {});
+    }
+  }
+})();
+
 // Admin photo management: loaded on admin.html only
 // Service key is set via login form (sessionStorage) or falls back to a
 // prompt. NEVER hardcode service_role keys in source files.
 function getServiceKey(forcePrompt) {
-  var key = sessionStorage.getItem('wf_service_key');
+  var key = localStorage.getItem('wf_service_key');
   if (!key && forcePrompt) {
     key = prompt('Enter Supabase service role key (from Project Settings → API):');
     if (key) {
-      sessionStorage.setItem('wf_service_key', key);
+      localStorage.setItem('wf_service_key', key);
     }
   }
   return key;
