@@ -83,6 +83,79 @@
 </div>
 </main>
 
+<section id="faq" style="margin-top: 40px; margin-bottom: 80px; max-width: 720px; margin-inline: auto; padding-inline: 20px;">
+  <h2 class="label" style="text-align:center; margin-bottom: 24px; color:var(--accent);">Frequently Asked Questions about Walking-Fish Portals</h2>
+  
+  <details class="seo-content" style="margin-bottom: 12px;">
+    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">What is the Walking-Fish Group portal?</summary>
+    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
+      <p>The Walking-Fish Group portal is the secure login area for administrators and approved event vendors. This centralized dashboard allows our team to manage operations for Walkie-Talkie Experiences, coordinate with food and merchandise vendors for Piroake Fest, and oversee media production schedules for Muster Point Pictures. Access is strictly limited to authorized personnel and registered partners.</p>
+    </div>
+  </details>
+
+  <details class="seo-content" style="margin-bottom: 12px;">
+    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">How do I become an approved vendor?</summary>
+    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
+      <p>If you are a food, beverage, or merchandise business interested in partnering with us for our next major event, you must first submit an application through our vendor page. Once your business is vetted and approved by the Walking-Fish Group event coordination team, you will receive login credentials to access the vendor dashboard, where you can manage your booth details, review event guidelines, and track performance metrics.</p>
+    </div>
+  </details>
+
+  <details class="seo-content" style="margin-bottom: 12px;">
+    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">I forgot my password, how do I reset it?</summary>
+    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
+      <p>If you have lost or forgotten your vendor or administrator password, please contact the site administrator directly at hello@walkingfish.gm. For security reasons related to our live events and media assets, we do not currently offer automated password resets. A member of our team will verify your identity before issuing a temporary password.</p>
+    </div>
+  </details>
+
+  <details class="seo-content" style="margin-bottom: 12px;">
+    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">What is the photo management key?</summary>
+    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
+      <p>The photo management key is a secure credential used exclusively by Walking-Fish Group system administrators. It integrates directly with our Supabase storage backend to allow authorized users to upload, manage, and curate high-resolution event photography from Walkie-Talkie Experiences and media assets from Muster Point Pictures. Vendors do not need this key.</p>
+    </div>
+  </details>
+</section>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the Walking-Fish Group portal?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The Walking-Fish Group portal is the secure login area for administrators and approved event vendors to manage operations, coordinate with vendors, and oversee media production schedules."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I become an approved vendor?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Submit an application through our vendor page. Once approved by the event coordination team, you will receive login credentials for the vendor dashboard."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "I forgot my password, how do I reset it?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Contact the site administrator directly at hello@walkingfish.gm. We verify your identity before issuing a temporary password."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the photo management key?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The photo management key is a secure credential for system administrators to upload and manage high-resolution event photography via our Supabase storage backend."
+      }
+    }
+  ]
+}
+</script>
+
 <script src="vendor-auth.js?v=2"></script>
 <script>
 document.getElementById('login-form').addEventListener('submit', function(e) {
