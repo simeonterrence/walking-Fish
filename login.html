@@ -189,7 +189,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     if (session.role === 'admin_role') {
       var sk = document.getElementById('service-key').value.trim();
       if (sk) sessionStorage.setItem('wf_service_key', sk);
-      window.location.href = 'admin.html';
+      window.location.href = '/admin';
     } else if (session.role === 'vendor_role') {
       return fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(session.user.id) + '&select=id,business_name,email,category,status,created_at', {
         headers: {
@@ -204,7 +204,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
         s.type = 'vendor';
         s.data = profile;
         setStoredSession(s);
-        window.location.href = 'vendor-dashboard.html';
+        window.location.href = '/vendor-dashboard';
       });
     } else {
       clearSession();
