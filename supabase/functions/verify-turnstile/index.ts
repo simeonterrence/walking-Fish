@@ -32,9 +32,11 @@ function emailShell(body: string) {
 }
 
 // ─── Per-table email builders ────────────────────────────────────────────────
-function buildEmail(table: string, data: Record<string, any>): { to: string; subject: string; html: string } | null {
+function buildEmails(table: string, data: Record<string, any>): Array<{ to: string; subject: string; html: string }> {
+  const emails: Array<{ to: string; subject: string; html: string }> = [];
+
   if (table === "vendor_applications") {
-    return {
+    emails.push({
       to: "vendor@walkingfish.gm",
       subject: `New Vendor Application: ${data.business_name || "Unknown"}`,
       html: emailShell(`
@@ -48,13 +50,26 @@ function buildEmail(table: string, data: Record<string, any>): { to: string; sub
         </table>
         <p style="margin-top:24px;font-size:13px;color:#999;">Review in the <a href="https://www.walkingfish.gm/admin">admin panel</a>.</p>
       `),
-    };
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: `We've received your vendor application — Walking-Fish`,
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">Application Received</h2>
+          <p>Hi ${data.contact_name || "there"},</p>
+          <p>Thanks for applying to be a vendor with Walking-Fish. We've received your details for <strong>${data.business_name || "your business"}</strong>.</p>
+          <p>Our team will review your application and get back to you shortly.</p>
+        `),
+      });
+    }
   }
 
   if (table === "contact_messages") {
     const inquiry = data.subject || data.inquiry || "";
     const to = resolveContactInbox(inquiry);
-    return {
+    emails.push({
       to,
       subject: `[Contact] ${inquiry || "New Message"} — ${data.name || data.email}`,
       html: emailShell(`
@@ -70,11 +85,23 @@ function buildEmail(table: string, data: Record<string, any>): { to: string; sub
         </div>
         <p style="margin-top:16px;font-size:12px;color:#bbb;">Routed to: ${to}</p>
       `),
-    };
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: `We've received your message — Walking-Fish`,
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">Message Received</h2>
+          <p>Hi ${data.name || "there"},</p>
+          <p>Thanks for reaching out to us regarding <strong>${inquiry || "your inquiry"}</strong>. We've received your message and a member of our team will be in touch soon.</p>
+        `),
+      });
+    }
   }
 
   if (table === "early_access") {
-    return {
+    emails.push({
       to: "admin@walkingfish.gm",
       subject: `Early Access Signup: ${data.email}`,
       html: emailShell(`
@@ -82,10 +109,23 @@ function buildEmail(table: string, data: Record<string, any>): { to: string; sub
         <p><strong>${data.email}</strong> signed up for early access to Piroake Fest 2026.</p>
         ${data.ticket_code ? `<p>Ticket code: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
       `),
-    };
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: `You're on the list! — Piroake Fest 2026`,
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">You're on the list!</h2>
+          <p>Thanks for signing up for early access to Piroake Fest 2026.</p>
+          ${data.ticket_code ? `<p>Your ticket code is: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
+          <p>We'll notify you as soon as tickets become available.</p>
+        `),
+      });
+    }
   }
 
-  return null;
+  return emails;
 }
 
 async function sendEmail(table: string, data: Record<string, any>) {
@@ -95,40 +135,42 @@ async function sendEmail(table: string, data: Record<string, any>) {
     return;
   }
 
-  const email = buildEmail(table, data);
-  if (!email) return;
+  const emails = buildEmails(table, data);
+  if (!emails.length) return;
 
   // walkingfish.gm is verified in Resend (DKIM + SPF confirmed May 18).
   const fromAddress = "Walking-Fish <noreply@walkingfish.gm>";
 
-  console.log(`[Email] Attempting to send to ${email.to} (table: ${table}, subject: ${email.subject})`);
+  for (const email of emails) {
+    console.log(`[Email] Attempting to send to ${email.to} (table: ${table}, subject: ${email.subject})`);
 
-  try {
-    const payload = {
-      from: fromAddress,
-      to: [email.to],
-      subject: email.subject,
-      html: email.html,
-    };
+    try {
+      const payload = {
+        from: fromAddress,
+        to: [email.to],
+        subject: email.subject,
+        html: email.html,
+      };
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    const responseText = await res.text();
+      const responseText = await res.text();
 
-    if (!res.ok) {
-      console.error(`[Email] Resend API error ${res.status}: ${responseText}`);
-    } else {
-      console.log(`[Email] ✓ Sent to ${email.to} — Resend response: ${responseText}`);
+      if (!res.ok) {
+        console.error(`[Email] Resend API error ${res.status}: ${responseText}`);
+      } else {
+        console.log(`[Email] ✓ Sent to ${email.to} — Resend response: ${responseText}`);
+      }
+    } catch (err: any) {
+      console.error(`[Email] Send failed for ${email.to}: ${err.message}`);
     }
-  } catch (err: any) {
-    console.error(`[Email] Send failed: ${err.message}`);
   }
 }
 
