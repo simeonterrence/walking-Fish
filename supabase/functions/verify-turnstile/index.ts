@@ -98,10 +98,8 @@ async function sendEmail(table: string, data: Record<string, any>) {
   const email = buildEmail(table, data);
   if (!email) return;
 
-  // Use Resend's default verified domain as sender.
-  // walkingfish.gm can be used once the domain is verified in Resend dashboard:
-  //   https://resend.com/domains  → Add & verify walkingfish.gm DNS records
-  const fromAddress = "Walking-Fish <onboarding@resend.dev>";
+  // walkingfish.gm is verified in Resend (DKIM + SPF confirmed May 18).
+  const fromAddress = "Walking-Fish <noreply@walkingfish.gm>";
 
   console.log(`[Email] Attempting to send to ${email.to} (table: ${table}, subject: ${email.subject})`);
 
