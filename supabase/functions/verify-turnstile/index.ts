@@ -124,6 +124,25 @@ async function sendEmail(table: string, data: Record<string, any>) {
   }
 }
 
+async function signMessage(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", key, messageData);
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -147,8 +166,24 @@ Deno.serve(async (req) => {
     }
 
     // Verify Turnstile — if key not set, skip (dev mode). If set, always verify.
+    let isVerifiedVisitor = false;
     const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
-    if (secretKey && token !== "bypass") {
+
+    if (secretKey && token && token.startsWith("v1.")) {
+      const parts = token.split(".");
+      if (parts.length === 3 && parts[0] === "v1") {
+        const expiry = parseInt(parts[1], 10);
+        const sig = parts[2];
+        if (!isNaN(expiry) && expiry > Date.now()) {
+          const expectedSig = await signMessage(secretKey, "verified:" + expiry);
+          if (sig === expectedSig) {
+            isVerifiedVisitor = true;
+          }
+        }
+      }
+    }
+
+    if (secretKey && token !== "bypass" && !isVerifiedVisitor) {
       const formData = new FormData();
       formData.append("secret", secretKey);
       formData.append("response", token);
@@ -186,11 +221,19 @@ Deno.serve(async (req) => {
       .insert([data])
       .select();
 
+    // Generate verified token if successfully verified
+    let verifiedToken: string | undefined = undefined;
+    if (secretKey) {
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+      const sig = await signMessage(secretKey, "verified:" + expiresAt);
+      verifiedToken = `v1.${expiresAt}.${sig}`;
+    }
+
     if (error) {
       console.error("Supabase insert error:", error);
       if (table === "early_access" && error.code === "23505") {
         return new Response(
-          JSON.stringify({ success: true, duplicate: true, message: "You're already on the list!" }),
+          JSON.stringify({ success: true, duplicate: true, message: "You're already on the list!", verifiedToken }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -203,7 +246,7 @@ Deno.serve(async (req) => {
     // Fire-and-forget email — never blocks the response
     sendEmail(table, data).catch((err) => console.error("Background email error:", err));
 
-    return new Response(JSON.stringify({ success: true, data: insertedData }), {
+    return new Response(JSON.stringify({ success: true, data: insertedData, verifiedToken }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

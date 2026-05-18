@@ -1,3 +1,40 @@
+// Style injection for bypassing Turnstile if previously verified
+(function() {
+  try {
+    var token = localStorage.getItem("wf_verified_visitor_token");
+    if (token) {
+      var parts = token.split(".");
+      if (parts.length === 3 && parts[0] === "v1") {
+        var expiry = parseInt(parts[1], 10);
+        if (!isNaN(expiry) && expiry > Date.now()) {
+          var style = document.createElement("style");
+          style.id = "wf-bypass-turnstile-style";
+          style.innerHTML = ".cf-turnstile { display: none !important; }";
+          document.head.appendChild(style);
+        } else {
+          localStorage.removeItem("wf_verified_visitor_token");
+        }
+      }
+    }
+  } catch (e) {}
+})();
+
+function getVerifiedVisitorToken() {
+  try {
+    var token = localStorage.getItem("wf_verified_visitor_token");
+    if (!token) return null;
+    var parts = token.split(".");
+    if (parts.length === 3 && parts[0] === "v1") {
+      var expiry = parseInt(parts[1], 10);
+      if (!isNaN(expiry) && expiry > Date.now()) {
+        return token;
+      }
+    }
+    localStorage.removeItem("wf_verified_visitor_token");
+  } catch (e) {}
+  return null;
+}
+
 function decodeJWT(e) {
   try {
     var t = e.split(".")[1],
@@ -169,10 +206,27 @@ function submitApplication(e) {
   }).then(function (res) {
     if (!res.ok) {
       return res.json().then(function (err) {
+        if (err.error === "Invalid CAPTCHA token") {
+          try {
+            localStorage.removeItem("wf_verified_visitor_token");
+            var styleEl = document.getElementById("wf-bypass-turnstile-style");
+            if (styleEl) styleEl.remove();
+            if (typeof turnstile !== "undefined" && typeof turnstile.reset === "function") {
+              turnstile.reset();
+            }
+          } catch (_) {}
+        }
         throw new Error(err.error || "Failed to submit application.");
       });
     }
     return res.json();
+  }).then(function (data) {
+    if (data.verifiedToken) {
+      try {
+        localStorage.setItem("wf_verified_visitor_token", data.verifiedToken);
+      } catch (_) {}
+    }
+    return data;
   });
 }
 

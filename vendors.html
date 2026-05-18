@@ -244,6 +244,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (turnstileInput) turnstileToken = turnstileInput.value;
     }
 
+    // FALLBACK: if Turnstile is bypassed/hidden, check if we have a verified visitor token
+    if (!turnstileToken && typeof getVerifiedVisitorToken === 'function') {
+      turnstileToken = getVerifiedVisitorToken();
+    }
+
     if (!turnstileToken) {
       alert("Please complete the CAPTCHA check.");
       return;

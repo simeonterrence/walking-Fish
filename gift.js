@@ -1,3 +1,40 @@
+// Style injection for bypassing Turnstile if previously verified
+(function() {
+  try {
+    var token = localStorage.getItem("wf_verified_visitor_token");
+    if (token) {
+      var parts = token.split(".");
+      if (parts.length === 3 && parts[0] === "v1") {
+        var expiry = parseInt(parts[1], 10);
+        if (!isNaN(expiry) && expiry > Date.now()) {
+          var style = document.createElement("style");
+          style.id = "wf-bypass-turnstile-style";
+          style.innerHTML = ".cf-turnstile { display: none !important; }";
+          document.head.appendChild(style);
+        } else {
+          localStorage.removeItem("wf_verified_visitor_token");
+        }
+      }
+    }
+  } catch (e) {}
+})();
+
+function getVerifiedVisitorToken() {
+  try {
+    var token = localStorage.getItem("wf_verified_visitor_token");
+    if (!token) return null;
+    var parts = token.split(".");
+    if (parts.length === 3 && parts[0] === "v1") {
+      var expiry = parseInt(parts[1], 10);
+      if (!isNaN(expiry) && expiry > Date.now()) {
+        return token;
+      }
+    }
+    localStorage.removeItem("wf_verified_visitor_token");
+  } catch (e) {}
+  return null;
+}
+
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function trapFocus(el) {
@@ -120,6 +157,11 @@ function giftPiroakeEarly(form) {
     if (hidden) turnstileToken = hidden.value;
   }
 
+  // FALLBACK: if Turnstile is bypassed/hidden, check if we have a verified visitor token
+  if (!turnstileToken && typeof getVerifiedVisitorToken === 'function') {
+    turnstileToken = getVerifiedVisitorToken();
+  }
+
   // Call edge function to persist the signup
   const SUPA_URL = (typeof SUPABASE_URL !== 'undefined') ? SUPABASE_URL : 'https://anigcqdquakinlzvyaur.supabase.co';
   const SUPA_KEY = (typeof SUPABASE_ANON_KEY !== 'undefined') ? SUPABASE_ANON_KEY : '';
@@ -133,7 +175,34 @@ function giftPiroakeEarly(form) {
         table: 'early_access',
         data: { email, ticket_code: code }
       })
-    }).then(r => r.json()).catch(() => ({ success: false }));
+    }).then(r => {
+      if (!r.ok) {
+        return r.json().then(err => {
+          if (err.error === "Invalid CAPTCHA token") {
+            try {
+              localStorage.removeItem("wf_verified_visitor_token");
+              const styleEl = document.getElementById("wf-bypass-turnstile-style");
+              if (styleEl) styleEl.remove();
+              if (typeof turnstile !== "undefined" && typeof turnstile.reset === "function") {
+                turnstile.reset();
+              }
+            } catch (_) {}
+          }
+          throw new Error(err.error || "Failed to submit early access.");
+        });
+      }
+      return r.json();
+    }).then(data => {
+      if (data.verifiedToken) {
+        try {
+          localStorage.setItem("wf_verified_visitor_token", data.verifiedToken);
+        } catch (_) {}
+      }
+      return data;
+    }).catch(err => {
+      console.error(err);
+      return { success: false };
+    });
   };
 
   doSubmit(turnstileToken).finally(() => {
@@ -171,6 +240,11 @@ function giftContactSent(form) {
     if (hidden) turnstileToken = hidden.value;
   }
 
+  // FALLBACK: if Turnstile is bypassed/hidden, check if we have a verified visitor token
+  if (!turnstileToken && typeof getVerifiedVisitorToken === 'function') {
+    turnstileToken = getVerifiedVisitorToken();
+  }
+
   const btn = form && form.querySelector('button[type="submit"]');
   const origText = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
@@ -186,7 +260,33 @@ function giftContactSent(form) {
       table: 'contact_messages',
       data: { name, email, subject: inquiry, message }
     })
-  }).catch(() => {}).finally(() => {
+  }).then(r => {
+    if (!r.ok) {
+      return r.json().then(err => {
+        if (err.error === "Invalid CAPTCHA token") {
+          try {
+            localStorage.removeItem("wf_verified_visitor_token");
+            const styleEl = document.getElementById("wf-bypass-turnstile-style");
+            if (styleEl) styleEl.remove();
+            if (typeof turnstile !== "undefined" && typeof turnstile.reset === "function") {
+              turnstile.reset();
+            }
+          } catch (_) {}
+        }
+        throw new Error(err.error || "Failed to submit contact message.");
+      });
+    }
+    return r.json();
+  }).then(data => {
+    if (data.verifiedToken) {
+      try {
+        localStorage.setItem("wf_verified_visitor_token", data.verifiedToken);
+      } catch (_) {}
+    }
+    return data;
+  }).catch(err => {
+    console.error(err);
+  }).finally(() => {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     openGiftBox(`
       <div class="gift-plane"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L21 4l-4 8 4 8-17-8z"/><path d="M4 12h13"/></svg></div>
