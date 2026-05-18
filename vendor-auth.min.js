@@ -390,6 +390,7 @@ function registerVendor(e, t, n, r) {
       type: "vendor",
       access_token: r.access_token,
       refresh_token: r.refresh_token,
+      expires_at: o ? o.exp : null,
       user: r.user,
       role: o && o.app_metadata && o.app_metadata.role
     }), fetch(SUPABASE_URL + "/rest/v1/vendor_profiles", {

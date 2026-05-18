@@ -397,7 +397,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var email = session.user && session.user.email;
     if (!email) { errorEl.textContent = 'Session expired. Sign in again.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Change Password'; return; }
 
-    authLogin(email, current).then(function() {
+    authLogin(email, current).catch(function(err) {
+      return Promise.reject(new Error('Current password is incorrect.'));
+    }).then(function() {
       return changeVendorPassword(newPw);
     }).then(function() {
       successEl.textContent = 'Password changed successfully.';
@@ -406,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('pw-new').value = '';
       document.getElementById('pw-confirm').value = '';
     }).catch(function(err) {
-      errorEl.textContent = 'Current password is incorrect.';
+      errorEl.textContent = err.message || 'Failed to change password.';
       errorEl.style.display = 'block';
     }).then(function() {
       btn.disabled = false;
