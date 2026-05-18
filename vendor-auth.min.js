@@ -354,7 +354,10 @@ function markTokenUsed(e) {
       token_id: e
     })
   }).then(function (e) {
-    return e.ok ? e.json() : Promise.reject(new Error("Failed to mark token used."));
+    if (!e.ok) return Promise.reject(new Error("Failed to mark token used."));
+    return e.text().then(function (txt) {
+      return txt ? JSON.parse(txt) : null;
+    }).catch(function () { return null; });
   });
 }
 
@@ -401,7 +404,13 @@ function registerVendor(e, t, n, r) {
         application_id: e
       })
     }).then(function (e) {
-      if (e.ok) return e.json();
+      // 201 = created (empty body), 200 = returned row — both are success
+      // 409 = conflict (profile already exists) — treat as success
+      if (e.ok || e.status === 409) {
+        return e.text().then(function (txt) {
+          return txt ? JSON.parse(txt) : null;
+        }).catch(function () { return null; });
+      }
       return e.text().then(function (txt) {
         var msg = "Failed to create vendor profile.";
         try {
@@ -429,7 +438,11 @@ function changeVendorPassword(e) {
       password: e
     })
   }).then(function (e) {
-    if (e.ok) return e.json();
+    if (e.ok) {
+      return e.text().then(function (txt) {
+        return txt ? JSON.parse(txt) : null;
+      }).catch(function () { return null; });
+    }
     return e.text().then(function (txt) {
       var msg = "Failed to set password.";
       try {
