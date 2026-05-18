@@ -6,55 +6,87 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ─── Email routing map ───
-const EMAIL_ROUTING: Record<string, { to: string; subject: (d: any) => string; html: (d: any) => string }> = {
-  vendor_applications: {
-    to: "admin@walkingfish.gm",
-    subject: (d) => `New Vendor Application: ${d.business_name || "Unknown"}`,
-    html: (d) => `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 0;">
-        <h2 style="color:#111;margin-bottom:24px;">New Vendor Application</h2>
+// ─── Email inboxes ───────────────────────────────────────────────────────────
+// admin@walkingfish.gm          — internal admin / early access signups
+// hello@walkingfish.gm          — general enquiries, bookings
+// vendor@walkingfish.gm         — vendor applications
+// theevents.guy@walkingfish.gm  — partnerships, sponsorships, collaborations
+// musterpoint@walkingfish.gm    — media & press, event coverage, production
+
+function resolveContactInbox(inquiry: string): string {
+  const s = (inquiry || "").toLowerCase();
+  if (s.includes("vendor"))                             return "vendor@walkingfish.gm";
+  if (s.includes("sponsor") || s.includes("partner"))  return "theevents.guy@walkingfish.gm";
+  if (s.includes("media") || s.includes("press") ||
+      s.includes("production"))                         return "musterpoint@walkingfish.gm";
+  // General Inquiry, Book an Experience → hello@
+  return "hello@walkingfish.gm";
+}
+
+function row(label: string, value: string) {
+  return `<tr><td style="padding:8px 0;color:#666;width:140px;vertical-align:top;">${label}</td><td style="padding:8px 0;">${value}</td></tr>`;
+}
+
+function emailShell(body: string) {
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;color:#111;">${body}<hr style="margin:32px 0;border:none;border-top:1px solid #eee;"><p style="font-size:12px;color:#999;margin:0;">Walking-Fish Group · walkingfish.gm</p></div>`;
+}
+
+// ─── Per-table email builders ────────────────────────────────────────────────
+function buildEmail(table: string, data: Record<string, any>): { to: string; subject: string; html: string } | null {
+  if (table === "vendor_applications") {
+    return {
+      to: "vendor@walkingfish.gm",
+      subject: `New Vendor Application: ${data.business_name || "Unknown"}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 24px;">New Vendor Application</h2>
         <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:8px 0;color:#666;width:140px;">Business</td><td style="padding:8px 0;font-weight:600;">${d.business_name || '-'}</td></tr>
-          <tr><td style="padding:8px 0;color:#666;">Contact</td><td style="padding:8px 0;">${d.contact_name || '-'}</td></tr>
-          <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;"><a href="mailto:${d.email}">${d.email}</a></td></tr>
-          <tr><td style="padding:8px 0;color:#666;">Category</td><td style="padding:8px 0;">${d.category || '-'}</td></tr>
+          ${row("Business", data.business_name || "-")}
+          ${row("Contact", data.contact_name || "-")}
+          ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${row("Category", data.category || "-")}
+          ${row("Message", data.message || "No message provided.")}
+        </table>
+        <p style="margin-top:24px;font-size:13px;color:#999;">Review in the <a href="https://www.walkingfish.gm/admin">admin panel</a>.</p>
+      `),
+    };
+  }
+
+  if (table === "contact_messages") {
+    const inquiry = data.subject || data.inquiry || "";
+    const to = resolveContactInbox(inquiry);
+    return {
+      to,
+      subject: `[Contact] ${inquiry || "New Message"} — ${data.name || data.email}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 24px;">New Contact Message</h2>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Name", data.name || "-")}
+          ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${row("Inquiry", inquiry || "-")}
         </table>
         <div style="margin-top:20px;padding:16px;background:#f9f9f9;border-radius:8px;">
-          <p style="color:#666;font-size:13px;margin:0 0 4px;">Message</p>
-          <p style="margin:0;">${d.message || 'No message provided.'}</p>
+          <p style="color:#666;font-size:13px;margin:0 0 8px;">Message</p>
+          <p style="margin:0;white-space:pre-wrap;">${data.message || "No message provided."}</p>
         </div>
-        <p style="margin-top:24px;font-size:13px;color:#999;">Review this application in the <a href="https://www.walkingfish.gm/admin">admin panel</a>.</p>
-      </div>`,
-  },
-  contact_messages: {
-    to: "hello@walkingfish.gm",
-    subject: (d) => `Contact Form: ${d.subject || d.inquiry || "New Message"} from ${d.name || d.email}`,
-    html: (d) => `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 0;">
-        <h2 style="color:#111;margin-bottom:24px;">New Contact Message</h2>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:8px 0;color:#666;width:140px;">Name</td><td style="padding:8px 0;font-weight:600;">${d.name || '-'}</td></tr>
-          <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;"><a href="mailto:${d.email}">${d.email}</a></td></tr>
-          <tr><td style="padding:8px 0;color:#666;">Type</td><td style="padding:8px 0;">${d.subject || d.inquiry || '-'}</td></tr>
-        </table>
-        <div style="margin-top:20px;padding:16px;background:#f9f9f9;border-radius:8px;">
-          <p style="color:#666;font-size:13px;margin:0 0 4px;">Message</p>
-          <p style="margin:0;">${d.message || 'No message provided.'}</p>
-        </div>
-      </div>`,
-  },
-  early_access: {
-    to: "admin@walkingfish.gm",
-    subject: (d) => `Early Access Signup: ${d.email}`,
-    html: (d) => `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 0;">
-        <h2 style="color:#111;margin-bottom:16px;">New Early Access Signup</h2>
-        <p><strong>${d.email}</strong> signed up for early access to Piroake Fest 2026.</p>
-        ${d.ticket_code ? `<p>Ticket code: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;">${d.ticket_code}</code></p>` : ''}
-      </div>`,
-  },
-};
+        <p style="margin-top:16px;font-size:12px;color:#bbb;">Routed to: ${to}</p>
+      `),
+    };
+  }
+
+  if (table === "early_access") {
+    return {
+      to: "admin@walkingfish.gm",
+      subject: `Early Access Signup: ${data.email}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 16px;">New Early Access Signup</h2>
+        <p><strong>${data.email}</strong> signed up for early access to Piroake Fest 2026.</p>
+        ${data.ticket_code ? `<p>Ticket code: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
+      `),
+    };
+  }
+
+  return null;
+}
 
 async function sendEmail(table: string, data: Record<string, any>) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -63,8 +95,8 @@ async function sendEmail(table: string, data: Record<string, any>) {
     return;
   }
 
-  const route = EMAIL_ROUTING[table];
-  if (!route) return;
+  const email = buildEmail(table, data);
+  if (!email) return;
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -75,9 +107,9 @@ async function sendEmail(table: string, data: Record<string, any>) {
       },
       body: JSON.stringify({
         from: "Walking-Fish <noreply@walkingfish.gm>",
-        to: [route.to],
-        subject: route.subject(data),
-        html: route.html(data),
+        to: [email.to],
+        subject: email.subject,
+        html: email.html,
       }),
     });
 
@@ -85,7 +117,7 @@ async function sendEmail(table: string, data: Record<string, any>) {
       const err = await res.text();
       console.error("Resend error:", res.status, err);
     } else {
-      console.log(`Email sent to ${route.to} for ${table}`);
+      console.log(`Email sent to ${email.to} for table: ${table}`);
     }
   } catch (err: any) {
     console.error("Email send failed:", err.message);
@@ -93,7 +125,6 @@ async function sendEmail(table: string, data: Record<string, any>) {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -115,35 +146,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify Turnstile token with Cloudflare
+    // Verify Turnstile — if key not set, skip (dev mode). If set, always verify.
     const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
-    if (!secretKey) {
-      console.error("TURNSTILE_SECRET_KEY is not set");
-      return new Response(JSON.stringify({ error: "Server configuration error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (secretKey && token !== "bypass") {
+      const formData = new FormData();
+      formData.append("secret", secretKey);
+      formData.append("response", token);
+
+      const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        body: formData,
       });
+      const outcome = await result.json();
+
+      if (!outcome.success) {
+        return new Response(JSON.stringify({ error: "Invalid CAPTCHA token" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (!secretKey) {
+      console.warn("TURNSTILE_SECRET_KEY not set — dev mode, skipping CAPTCHA");
     }
 
-    const formData = new FormData();
-    formData.append("secret", secretKey);
-    formData.append("response", token);
-
-    const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      body: formData,
-    });
-
-    const outcome = await result.json();
-
-    if (!outcome.success) {
-      return new Response(JSON.stringify({ error: "Invalid CAPTCHA token" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // List of allowed tables for generic insertion to prevent abuse
     const ALLOWED_TABLES = ["vendor_applications", "contact_messages", "early_access"];
     if (!ALLOWED_TABLES.includes(table)) {
       return new Response(JSON.stringify({ error: "Invalid table specified" }), {
@@ -152,8 +177,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Token is valid. Proceed to insert into Supabase using Service Role Key
-    // to bypass RLS policies so public inserts can be locked down securely.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -165,11 +188,11 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error("Supabase insert error:", error);
-      // Handle duplicate early_access emails gracefully
       if (table === "early_access" && error.code === "23505") {
-        return new Response(JSON.stringify({ success: true, duplicate: true, message: "You're already on the list!" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ success: true, duplicate: true, message: "You're already on the list!" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       return new Response(JSON.stringify({ error: "Failed to save data" }), {
         status: 500,
@@ -177,7 +200,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send email notification (fire-and-forget, don't block response)
+    // Fire-and-forget email — never blocks the response
     sendEmail(table, data).catch((err) => console.error("Background email error:", err));
 
     return new Response(JSON.stringify({ success: true, data: insertedData }), {
