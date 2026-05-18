@@ -73,11 +73,7 @@
       <label for="password">Password</label>
       <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
     </div>
-    <details style="margin-bottom:20px;font-size:13px;color:var(--muted);text-align:left;">
-      <summary style="cursor:pointer;">Photo management key (optional)</summary>
-      <p style="margin-top:8px;font-size:13px;">Admins: paste your Supabase service role key to manage site photos. Find it in Project Settings → API.</p>
-      <input type="password" id="service-key" aria-label="Supabase service role key (optional)" placeholder="eyJhbGciOiJIUzI1NiIs..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:13px;margin-top:6px;">
-    </details>
+
     <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Sign In</button>
     <p class="error" id="login-error">Invalid email or password. Try again.</p>
   </form>
@@ -126,12 +122,7 @@
     </div>
   </details>
 
-  <details class="seo-content" style="margin-bottom: 12px;">
-    <summary style="cursor:pointer;font-size:15px;color:var(--fg);padding:16px;border:1px solid var(--border);border-radius:var(--radius);font-weight:500; background:var(--surface);">What is the photo management key?</summary>
-    <div style="padding:20px;font-size:15px;color:var(--muted);line-height:1.7; border: 1px solid var(--border); border-top:none; border-bottom-left-radius:var(--radius); border-bottom-right-radius:var(--radius); margin-top:-4px;">
-      <p>The photo management key is a secure credential used exclusively by Walking-Fish Group system administrators. It integrates directly with our Supabase storage backend to allow authorized users to upload, manage, and curate high-resolution event photography from Walkie-Talkie Experiences and media assets from Muster Point Pictures. Vendors do not need this key.</p>
-    </div>
-  </details>
+
 </section>
 
 <script type="application/ld+json">
@@ -162,14 +153,6 @@
         "@type": "Answer",
         "text": "Contact the site administrator directly at admin@walkingfish.gm. We verify your identity before issuing a temporary password."
       }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the photo management key?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The photo management key is a secure credential for system administrators to upload and manage high-resolution event photography via our Supabase storage backend."
-      }
     }
   ]
 }
@@ -187,8 +170,6 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
 
   authLogin(email, password).then(function(session) {
     if (session.role === 'admin_role') {
-      var sk = document.getElementById('service-key').value.trim();
-      if (sk) localStorage.setItem('wf_service_key', sk);
       window.location.href = '/admin';
     } else if (session.role === 'vendor_role') {
       return fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(session.user.id) + '&select=id,business_name,email,category,status,created_at', {
@@ -219,27 +200,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
   });
 });
 
-// Auto-load/pre-fill Supabase service key
-(function() {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    fetch('/.env')
-      .then(function(r) { return r.text(); })
-      .then(function(text) {
-        var match = text.match(/SUPABASE_SERVICE_KEY\s*=\s*(.+)/);
-        if (match && match[1]) {
-          var val = match[1].trim();
-          localStorage.setItem('wf_service_key', val);
-          var el = document.getElementById('service-key');
-          if (el) el.value = val;
-        }
-      })
-      .catch(function() {});
-  } else {
-    var stored = localStorage.getItem('wf_service_key');
-    var el = document.getElementById('service-key');
-    if (stored && el) el.value = stored;
-  }
-})();
+
 </script>
 
 <nav class="bottom-tabs" aria-label="Main navigation">
