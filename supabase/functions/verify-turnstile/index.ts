@@ -98,29 +98,39 @@ async function sendEmail(table: string, data: Record<string, any>) {
   const email = buildEmail(table, data);
   if (!email) return;
 
+  // Use Resend's default verified domain as sender.
+  // walkingfish.gm can be used once the domain is verified in Resend dashboard:
+  //   https://resend.com/domains  → Add & verify walkingfish.gm DNS records
+  const fromAddress = "Walking-Fish <onboarding@resend.dev>";
+
+  console.log(`[Email] Attempting to send to ${email.to} (table: ${table}, subject: ${email.subject})`);
+
   try {
+    const payload = {
+      from: fromAddress,
+      to: [email.to],
+      subject: email.subject,
+      html: email.html,
+    };
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: "Walking-Fish <noreply@walkingfish.gm>",
-        to: [email.to],
-        subject: email.subject,
-        html: email.html,
-      }),
+      body: JSON.stringify(payload),
     });
 
+    const responseText = await res.text();
+
     if (!res.ok) {
-      const err = await res.text();
-      console.error("Resend error:", res.status, err);
+      console.error(`[Email] Resend API error ${res.status}: ${responseText}`);
     } else {
-      console.log(`Email sent to ${email.to} for table: ${table}`);
+      console.log(`[Email] ✓ Sent to ${email.to} — Resend response: ${responseText}`);
     }
   } catch (err: any) {
-    console.error("Email send failed:", err.message);
+    console.error(`[Email] Send failed: ${err.message}`);
   }
 }
 
