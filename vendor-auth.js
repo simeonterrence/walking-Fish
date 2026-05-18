@@ -275,20 +275,20 @@ function preCreateVendorUser(e, t, n) {
     })
   }).then(function (r) {
     if (r.status === 422 || r.status === 400) {
-      // User already exists! Let's fetch the user list to find this user's ID, and then update their password to the new tempPassword!
-      return fetch(SUPABASE_URL + "/auth/v1/admin/users", {
+      // User already exists — find them by email and update their password to the new temp password
+      return fetch(SUPABASE_URL + "/auth/v1/admin/users?email=" + encodeURIComponent(t), {
         headers: {
           apikey: e,
           Authorization: "Bearer " + e
         }
       }).then(function (res) {
-        if (!res.ok) throw new Error("Failed to list users for update.");
+        if (!res.ok) throw new Error("Failed to look up user by email.");
         return res.json();
       }).then(function (data) {
-        var users = data.users || [];
+        var users = data.users || data || [];
         var targetUser = null;
         for (var i = 0; i < users.length; i++) {
-          if (users[i].email === t) {
+          if ((users[i].email || "").toLowerCase() === t.toLowerCase()) {
             targetUser = users[i];
             break;
           }
@@ -296,7 +296,7 @@ function preCreateVendorUser(e, t, n) {
         if (!targetUser) {
           throw new Error("User exists but could not be located in Auth.");
         }
-        // Update user's password using the admin API
+        // Update the password so it matches the new invite token
         return fetch(SUPABASE_URL + "/auth/v1/admin/users/" + encodeURIComponent(targetUser.id), {
           method: "PUT",
           headers: {
@@ -306,14 +306,12 @@ function preCreateVendorUser(e, t, n) {
           },
           body: JSON.stringify({
             password: n,
-            email_confirm: !0,
-            app_metadata: {
-              role: "vendor_role"
-            }
+            email_confirm: true,
+            app_metadata: { role: "vendor_role" }
           })
         }).then(function (r2) {
-          if (!r2.ok) throw new Error("Failed to update pre-existing user's password.");
-          return r2.json();
+          if (!r2.ok) throw new Error("Failed to update pre-existing user password.");
+          return r2.text().then(function (txt) { return txt ? JSON.parse(txt) : null; }).catch(function () { return null; });
         });
       });
     }
@@ -372,11 +370,17 @@ function registerVendor(e, t, n, r) {
   }).then(function (e) {
     if (e.ok) return e.json();
     return e.text().then(function (txt) {
-      var msg = "Setup link expired. Contact the admin.";
+      var msg = "Account setup failed. Please ask the admin to regenerate your invite link.";
       try {
         var err = JSON.parse(txt);
-        if (err && err.error_description) msg += " (" + err.error_description + ")";
-        else if (err && err.message) msg += " (" + err.message + ")";
+        // 400 with invalid_grant = password mismatch (admin needs to regenerate invite)
+        if (err && err.error === "invalid_grant") {
+          msg = "Your invite link is no longer valid. Please ask the admin to send a new one.";
+        } else if (err && err.error_description) {
+          msg += " (" + err.error_description + ")";
+        } else if (err && err.message) {
+          msg += " (" + err.message + ")";
+        }
       } catch (ex) {}
       return Promise.reject(new Error(msg));
     });
