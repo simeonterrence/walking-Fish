@@ -214,7 +214,7 @@ function generateInviteToken(e, t, n, r, o, a) {
     i = new Uint8Array(16);
   window.crypto.getRandomValues(i);
   for (var c = "inv_", d = 0; d < 16; d++) c += s[i[d] % 36];
-  var u = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  var u = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   return fetchWithAuth(SUPABASE_URL + "/rest/v1/invite_tokens", {
     method: "POST",
     headers: {
