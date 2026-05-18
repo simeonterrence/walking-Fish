@@ -87,13 +87,24 @@ a:hover { opacity: 0.75; }
 nav {
   position: fixed; top: 0; left: 0; right: 0;
   height: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
-  background: rgba(250, 250, 252, 0.92); /* fallback for browsers without oklch support (Galaxy S10, older Samsung Browser) */
-  background: oklch(99% 0.002 240 / 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   z-index: 200; /* Must be > .bottom-tabs (150) so nav-links stacking context sits above tab bar */
   padding-top: env(safe-area-inset-top, 0px);
+}
+/* Use ::before for the frosted glass background so that 'backdrop-filter' on nav
+   does NOT create a containing block for its fixed-position descendants (.nav-links).
+   Without this, Chrome/WebKit treat nav as the containing block and .nav-links
+   bottom:80px positions off-screen inside the 64px nav bar. */
+nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(250, 250, 252, 0.92); /* fallback for browsers without oklch support */
+  background: oklch(99% 0.002 240 / 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: -1;
+  pointer-events: none;
 }
 nav .w {
   display: flex; align-items: center; justify-content: space-between;
@@ -331,9 +342,9 @@ section + section { border-top: 1px solid var(--border); }
 .btn-icon { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ---------- Grid ---------- */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
 
 /* ---------- Cards ---------- */
 .card {
@@ -481,16 +492,19 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
 .countdown-item .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
 
 /* Gallery grid */
-.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .gallery-item {
   aspect-ratio: 4/3;
   background: var(--border);
   border-radius: var(--radius);
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; color: var(--muted);
-  transition: background .2s;
+  border: 1px solid var(--border);
+  transition: background .2s, border-color .2s;
 }
-.gallery-item:hover { background: var(--border); filter: brightness(0.96); }
+.gallery-item:hover { background: var(--border); filter: brightness(0.96); border-color: var(--accent); }
+.gallery-item.wide { grid-column: span 2; aspect-ratio: 2/1; }
+.gallery-item.tall { grid-row: span 2; aspect-ratio: auto; height: 100%; }
 
 /* Blog */
 .blog-card .meta { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
@@ -567,7 +581,7 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
-  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 768px) {
   .section-reveal {
@@ -582,13 +596,19 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
   .bottom-tabs { display: block; }
   main { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
   footer { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
   section { padding-block: 48px; }
   .hero { min-height: auto; padding-block: 60px; }
   .page-header { padding-block: 80px 40px; }
-  .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .countdown { gap: 16px; }
   .countdown-item .num { font-size: 32px; }
+}
+
+@media (max-width: 500px) {
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); }
+  .gallery-item.wide { grid-column: span 1; aspect-ratio: 4/3; }
+  .gallery-item.tall { grid-row: span 1; aspect-ratio: 4/3; }
 }
 
 /* ---------- Touch optimizations ---------- */
@@ -606,7 +626,7 @@ nav .nav-links a { min-height: 44px; display: inline-flex; align-items: center; 
   }
   .gift-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .gift-overlay.open .gift-box { transform: none; }
-  nav { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  nav::before { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .gift-item, .gift-ticket, .gift-plane { opacity: 1; transform: none; animation: none; }
   .gift-confetti { display: none; }
 }

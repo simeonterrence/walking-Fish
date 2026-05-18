@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co;">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Browse the Walking-Fish Group gallery: moments from festivals, events, and productions. A visual archive of our best experiences and cultural moments.">
 <meta property="og:title" content="Walking-Fish Gallery | Festival & Event Photos">
@@ -22,7 +22,7 @@
 <script defer src="supabase-config.min.js?v=2"></script>
 <script defer src="photos.min.js?v=2"></script>
 <style>
-.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .gallery-item {
   aspect-ratio: 4/3; background: var(--border); border-radius: var(--radius);
   display: flex; align-items: center; justify-content: center;
@@ -31,9 +31,9 @@
 }
 .gallery-item:hover { border-color: var(--accent); }
 .gallery-item.wide { grid-column: span 2; aspect-ratio: 2/1; }
-.gallery-item.tall { grid-row: span 2; }
-@media (max-width: 768px) { .gallery-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 500px) { .gallery-grid { grid-template-columns: 1fr; } .gallery-item.wide { grid-column: span 1; aspect-ratio: 4/3; } .gallery-item.tall { grid-row: span 1; } }
+.gallery-item.tall { grid-row: span 2; aspect-ratio: auto; height: 100%; }
+@media (max-width: 768px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 500px) { .gallery-grid { grid-template-columns: minmax(0, 1fr); } .gallery-item.wide { grid-column: span 1; aspect-ratio: 4/3; } .gallery-item.tall { grid-row: span 1; aspect-ratio: 4/3; } }
 </style>
 </head>
 <body data-page="gallery">
