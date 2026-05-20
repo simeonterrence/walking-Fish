@@ -589,9 +589,33 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
     transition: opacity .5s ease, transform .5s ease;
   }
   .section-reveal.revealed { opacity: 1; transform: translateY(0); }
-  header nav { display: block; }
-  header nav .nav-toggle { display: none; }
-  header nav .nav-links { width: 280px; max-width: 80vw; }
+  header nav { 
+    display: block; 
+    pointer-events: none; /* Let touches pass through empty space in fixed header */
+  }
+  header nav .logo,
+  header nav .nav-toggle {
+    pointer-events: auto; /* Re-enable logo and hamburger clicks */
+  }
+  header nav .nav-toggle { 
+    display: flex;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 210;
+  }
+  header nav .nav-links { 
+    width: 280px; 
+    max-width: 80vw; 
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(20px);
+  }
+  header nav .nav-links.nav-open {
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
   main { padding-top: var(--nav-h); }
   .bottom-tabs { display: block; }
   main { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
