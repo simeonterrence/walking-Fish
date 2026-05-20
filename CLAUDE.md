@@ -41,6 +41,8 @@ Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT 
 - The migration spec is at `docs/spec-supabase-auth-migration.md`.
 - The migration SQL is at `supabase/migrations/20260516000001_create_vendor_tables.sql` and `supabase/migrations/20260516000002_add_delete_rls_policies.sql`.
 
+**Note**: The localStorage-based `adminUsers` system is deprecated. An initial admin user should be created in Supabase Dashboard after migrations are applied.
+
 ## Data Model
 
 ### Supabase Tables
@@ -48,15 +50,26 @@ Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT 
 - **`vendor_profiles`** : `{ id, auth_user_id, business_name, contact_name, email, phone, category, status, application_id, created_at, updated_at }`
 - **`invite_tokens`** : `{ id, application_id, email, token, business_name, contact_name, category, temp_password, used, expires_at, created_at }`
 - **`site_images`** : `{ id, section, position, file_path, alt_text }`
+- **`contact_messages`** : `{ id, name, email, subject, message, created_at }` — Contact form submissions
+- **`early_access`** : `{ id, email, ticket_code, created_at }` — Piroake Fest early access signups
 
-### localStorage (being deprecated)
-- `adminUsers` — seeded with `admin@walkingfish.gm` / `admin123`
-- `vendorApplications`, `inviteTokens`, `vendorUsers` — managed in localStorage
-- Session stored as `wf_session: { type, data }` in `sessionStorage`
+### Migrations
+Located in `supabase/migrations/`:
+- `20260516000001_create_vendor_tables.sql` — Vendor tables with RLS
+- `20260516000002_add_delete_rls_policies.sql` — DELETE policies for vendor management
+- `20260518000003_create_early_access_and_contact_tables.sql` — Contact + early access tables
+- `20260518000004_security_hardening.sql` — Security hardening policies
+
+### localStorage (deprecated)
+- `adminUsers`, `vendorApplications`, `inviteTokens`, `vendorUsers` — legacy localStorage (deprecated; migrated to Supabase)
 
 ## CSS Design System (`style.css`)
 
 Uses OKLCH color space with CSS custom properties. Brand accent: `oklch(62% 0.16 35)` (coral). Layout: `--max-w: 1200px`, `--gutter: 24px`, single `.w` container. Grid classes `.grid-2/3/4` collapse at 768px. Mobile nav hidden, `.bottom-tabs` fixed bar appears. `prefers-reduced-motion` kills all animations and blur. Touch targets: `min-height: 44px`.
+
+## Analytics
+
+PostHog is listed as an analytics provider in the privacy policy. The CSP in `vercel.json` allows `connect-src` to Supabase and Cloudflare Turnstile endpoints.
 
 ## Common Tasks
 
@@ -67,6 +80,25 @@ Uses OKLCH color space with CSS custom properties. Brand accent: `oklch(62% 0.16
 - **Photo sections**: Gallery uses `data-photos="gallery"`, partners use `data-photos="partners"`. Adding a new section requires the HTML attribute + matching Supabase `site_images` records.
 - **Environment**: Copy `.env.example` to `.env` and fill in Supabase credentials. Never commit `.env`.
 - **JSON-LD + meta tags**: Every page has Organization + WebSite structured data, Open Graph, Twitter Card, and canonical URL — copied from the existing page template.
+
+### Testing
+
+- **Integration tests**: `python3 test_all_flows.py` — runs end-to-end tests for early access, vendor applications, and contact message flows via the verify-turnstile Edge Function.
+- **Early access tests**: `python3 test_early_access.py` — tests early access signup functionality.
+- **Password change tests**: `python3 test_pw_change.py` — tests vendor password reset flows.
+
+## Edge Functions
+
+**`verify-turnstile`** (`supabase/functions/verify-turnstile/`) — Handles form submissions for three tables:
+- `vendor_applications` — Vendor applications via `/vendors` form
+- `contact_messages` — Contact form via `/contact` form
+- `early_access` — Early access signups (piroake fest ticket codes)
+
+The function verifies Cloudflare Turnstile CAPTCHA, inserts into Supabase, and sends email notifications via Resend:
+- Admin emails → `admin@walkingfish.gm`, `vendor@walkingfish.gm`, `theevents.guy@walkingfish.gm`, `musterpoint@walkingfish.gm` (smart routing based on inquiry subject)
+- Auto-responder emails → form submitter
+
+**Email configuration**: `noreply@walkingfish.gm` is verified in Resend (DKIM + SPF confirmed May 18).
 
 ## Common Patterns (copy when creating a new page)
 

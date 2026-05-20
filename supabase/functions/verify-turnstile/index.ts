@@ -118,8 +118,17 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
         html: emailShell(`
           <h2 style="margin:0 0 24px;">You're on the list!</h2>
           <p>Thanks for signing up for early access to Piroake Fest 2026.</p>
-          ${data.ticket_code ? `<p>Your ticket code is: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
-          <p>We'll notify you as soon as tickets become available.</p>
+          ${data.ticket_code ? `<p>Your presale ticket code is: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
+          <p>Here is a preview of the exclusive early-bird ticket pricing reserved for list members:</p>
+          <div style="background:#f9f9f9;padding:16px;border-radius:8px;margin:16px 0;font-size:14px;">
+            <ul style="margin:0;padding-left:20px;line-height:1.6;color:#333;">
+              <li><strong>Regular Ticket:</strong> D300 <span style="color:#888;">(Gate: D400)</span></li>
+              <li><strong>VIP Ticket:</strong> D800 <span style="color:#888;">(Gate: D1,000)</span></li>
+              <li><strong>Group Ticket (5 Pax):</strong> D1,300</li>
+              <li><strong>Festival Side Games:</strong> D50 per 5 minutes</li>
+            </ul>
+          </div>
+          <p>We will notify you the moment the official presale goes live so you can secure your spots before they sell out.</p>
         `),
       });
     }
