@@ -140,6 +140,9 @@ function giftPiroakeEarly(form) {
   const email = emailInput ? emailInput.value.trim() : '';
   if (!email) return;
 
+  const phoneInput = form.querySelector('input[type="tel"]');
+  const phone = phoneInput ? phoneInput.value.trim() : '';
+
   // Generate ticket code client-side (also stored server-side)
   const code = 'PIR-' + Math.random().toString(36).slice(2, 7).toUpperCase();
   const position = Math.floor(Math.random() * 200) + 10;
@@ -173,7 +176,7 @@ function giftPiroakeEarly(form) {
       body: JSON.stringify({
         token: token || 'bypass',
         table: 'early_access',
-        data: { email, ticket_code: code }
+        data: { email, ticket_code: code, phone }
       })
     }).then(r => {
       if (!r.ok) {
@@ -230,6 +233,7 @@ function giftPiroakeEarly(form) {
 function giftContactSent(form) {
   const name = form ? (form.querySelector('#name')?.value || '') : '';
   const email = form ? (form.querySelector('#email')?.value || '') : '';
+  const phone = form ? (form.querySelector('#phone')?.value || '') : '';
   const inquiry = form ? (form.querySelector('#inquiry')?.value || '') : '';
   const message = form ? (form.querySelector('#message')?.value || '') : '';
 
@@ -258,7 +262,7 @@ function giftContactSent(form) {
     body: JSON.stringify({
       token: turnstileToken || 'bypass',
       table: 'contact_messages',
-      data: { name, email, subject: inquiry, message }
+      data: { name, email, subject: inquiry, message, phone }
     })
   }).then(r => {
     if (!r.ok) {

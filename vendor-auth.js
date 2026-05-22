@@ -199,6 +199,7 @@ function submitApplication(e) {
         business_name: e.business,
         contact_name: e.contactName,
         email: e.email,
+        phone: e.phone,
         category: e.category,
         message: e.message
       }

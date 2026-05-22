@@ -338,12 +338,11 @@
 <section id="piroake-signup" class="dark-section" style="padding-block: 40px;">
 <div class="w" style="max-width: 480px; margin-inline: auto; text-align: center;">
   <p style="font-size: 15px; color: var(--d-muted);">Get early-bird pricing, presale access, and lineup announcements first.</p>
-  <form id="piroake-early" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px; align-items: center;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
-    <div style="display: flex; gap: 12px; width: 100%;">
-      <input type="email" aria-label="Email for Piroake updates" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
-      <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Get Early Access</button>
-    </div>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="dark" data-size="compact"></div>
+  <form id="piroake-early" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px; width: 100%; max-width: 400px; margin-inline: auto;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
+    <input type="email" aria-label="Email for Piroake updates" placeholder="Your email address" style="width: 100%; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
+    <input type="tel" aria-label="WhatsApp phone number" placeholder="WhatsApp Number (e.g. +220...)" style="width: 100%; padding:10px 14px; border:1px solid var(--d-muted); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:oklch(22% 0.02 240); color:var(--surface);" required>
+    <button type="submit" class="btn btn-primary" style="width: 100%;">Get Early Access</button>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="dark" data-size="compact" style="margin-top: 4px;"></div>
   </form>
 </div>
 </section>

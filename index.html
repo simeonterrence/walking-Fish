@@ -122,12 +122,13 @@
   <p class="label">Stay Connected</p>
   <h2 style="margin-bottom: 8px;">Get early access.</h2>
   <p style="margin-bottom: 20px; font-size: 15px; color: var(--muted);">Early-bird tickets, behind-the-scenes stories, and first dibs on new events, straight to your inbox.</p>
-  <div style="display: flex; gap: 12px;">
-    <form id="home-early" style="display:flex;gap:12px;flex:1;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
-      <input type="email" id="newsletter-email" aria-label="Email address for newsletter" placeholder="Your email address" style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:var(--surface); color:var(--fg);" required>
-      <button type="submit" class="btn btn-primary">Get Early Access</button>
+  <div style="width: 100%; max-width: 440px; margin-inline: auto;">
+    <form id="home-early" style="display:flex; flex-direction:column; gap:12px;" onsubmit="event.preventDefault(); giftPiroakeEarly(this);">
+      <input type="email" id="newsletter-email" aria-label="Email address for newsletter" placeholder="Your email address" style="width: 100%; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:var(--surface); color:var(--fg);" required>
+      <input type="tel" id="newsletter-phone" aria-label="WhatsApp phone number" placeholder="WhatsApp Number (e.g. +220...)" style="width: 100%; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--font-body); font-size:15px; background:var(--surface); color:var(--fg);" required>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Get Early Access</button>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin-top: 4px; display: flex; justify-content: center;"></div>
     </form>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin-top: 12px;"></div>
   </div>
   <p class="lead-magnet">Early-bird ticket access &middot; Exclusive behind-the-scenes &middot; First dibs on new events</p>
 </div>

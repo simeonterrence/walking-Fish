@@ -50,8 +50,8 @@ Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT 
 - **`vendor_profiles`** : `{ id, auth_user_id, business_name, contact_name, email, phone, category, status, application_id, created_at, updated_at }`
 - **`invite_tokens`** : `{ id, application_id, email, token, business_name, contact_name, category, temp_password, used, expires_at, created_at }`
 - **`site_images`** : `{ id, section, position, file_path, alt_text }`
-- **`contact_messages`** : `{ id, name, email, subject, message, created_at }` — Contact form submissions
-- **`early_access`** : `{ id, email, ticket_code, created_at }` — Piroake Fest early access signups
+- **`contact_messages`** : `{ id, name, email, phone, subject, message, created_at }` — Contact form submissions
+- **`early_access`** : `{ id, email, phone, ticket_code, created_at }` — Piroake Fest early access signups
 
 ### Migrations
 Located in `supabase/migrations/`:
@@ -59,6 +59,7 @@ Located in `supabase/migrations/`:
 - `20260516000002_add_delete_rls_policies.sql` — DELETE policies for vendor management
 - `20260518000003_create_early_access_and_contact_tables.sql` — Contact + early access tables
 - `20260518000004_security_hardening.sql` — Security hardening policies
+- `20260522000005_add_phone_columns.sql` — Phone/WhatsApp columns for contact_messages + early_access
 
 ### localStorage (deprecated)
 - `adminUsers`, `vendorApplications`, `inviteTokens`, `vendorUsers` — legacy localStorage (deprecated; migrated to Supabase)

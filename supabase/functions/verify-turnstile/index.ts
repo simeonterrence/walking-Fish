@@ -45,6 +45,7 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
           ${row("Business", data.business_name || "-")}
           ${row("Contact", data.contact_name || "-")}
           ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${data.phone ? row("WhatsApp", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
           ${row("Category", data.category || "-")}
           ${row("Message", data.message || "No message provided.")}
         </table>
@@ -77,6 +78,7 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
         <table style="width:100%;border-collapse:collapse;">
           ${row("Name", data.name || "-")}
           ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${data.phone ? row("WhatsApp", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
           ${row("Inquiry", inquiry || "-")}
         </table>
         <div style="margin-top:20px;padding:16px;background:#f9f9f9;border-radius:8px;">
@@ -107,6 +109,7 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
       html: emailShell(`
         <h2 style="margin:0 0 16px;">New Early Access Signup</h2>
         <p><strong>${data.email}</strong> signed up for early access to Piroake Fest 2026.</p>
+        ${data.phone ? `<p>WhatsApp Number: <a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a></p>` : ""}
         ${data.ticket_code ? `<p>Ticket code: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticket_code}</code></p>` : ""}
       `),
     });

@@ -165,6 +165,10 @@
       <input type="email" id="email" placeholder="you@example.com" required>
     </div>
     <div class="form-group">
+      <label for="phone">WhatsApp Number</label>
+      <input type="tel" id="phone" placeholder="e.g. +220..." required>
+    </div>
+    <div class="form-group">
       <label for="category">Category</label>
       <select id="category" required>
         <option value="">Select a category</option>
@@ -230,9 +234,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var business = document.getElementById('business').value.trim();
     var contactName = document.getElementById('contact-name').value.trim();
     var email = document.getElementById('email').value.trim();
+    var phone = document.getElementById('phone').value.trim();
     var category = document.getElementById('category').value;
     var message = document.getElementById('message').value.trim();
-    if (!business || !contactName || !email || !category || !message) return;
+    if (!business || !contactName || !email || !phone || !category || !message) return;
 
     // Retrieve Turnstile token
     var turnstileToken = '';
@@ -257,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
       business: business,
       contactName: contactName,
       email: email,
+      phone: phone,
       category: category,
       message: message,
       token: turnstileToken
