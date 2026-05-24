@@ -1,891 +1,776 @@
-// tickets.js — Piroake Fest Ticket Shop & Dashboard
-// Handles: ticket type listing, cart, ModemPay/Wave checkout, magic link auth, dashboard
-
-(function() {
+/* tickets.js — Piroake Fest 2026 ticket shop and dashboard
+ *
+ * Handles four views:
+ *   1. Shop — ticket type listing, cart, checkout (ModemPay / Wave)
+ *   2. ModemPay — create order → create intent → simulate webhook → show tickets
+ *   3. Wave Transfer — create order → insert payment proof → pending verification
+ *   4. Dashboard — Supabase Auth magic link, ticket display, QR codes, balances,
+ *      transaction history
+ *
+ * API endpoints used (all via anon key unless JWT-authenticated):
+ *   GET  /rest/v1/ticket_types?is_active=eq.true&order=sort_order.asc
+ *   GET  /rest/v1/orders?email=eq.X...  (authenticated)
+ *   GET  /rest/v1/tickets?customer_email=eq.X...  (authenticated)
+ *   GET  /rest/v1/balance_transactions?order=created_at.desc  (authenticated, RLS-filtered)
+ *   POST /functions/v1/ticketing/create-order
+ *   POST /functions/v1/ticketing/create-intent
+ *   POST /functions/v1/ticketing/webhook
+ *   POST /rest/v1/payment_proofs  (anon, for Wave proof submission)
+ *   POST /auth/v1/magic_link       (anon, for magic link login)
+ *   POST /auth/v1/token            (anon, for token refresh)
+ */
+(function () {
   'use strict';
 
-  const SUPA_URL = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://anigcqdquakinlzvyaur.supabase.co';
-  const SUPA_ANON = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : '';
-  const EDGE_URL = SUPA_URL + '/functions/v1/ticketing';
+  const TICKET_FN = SUPABASE_URL + '/functions/v1/ticketing';
+  const ANON_H = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 
-  // ─── State ────────────────────────────────────────────────────────────────
-  const state = {
-    ticketTypes: [],
-    cart: {},              // { [ticketTypeId]: quantity }
-    selectedPayment: 'modempay',
-    session: null,         // Supabase Auth session
-  };
+  /* ─── State ─────────────────────────────────────────────────────────────── */
+  let cart = {};                  // { [ticketTypeId]: quantity }
+  let ticketTypes = [];           // cached ticket type rows
+  let selectedPayment = 'modempay';
+  let orderId = null;
+  let orderTotal = 0;
+  let userEmail = null;           // set after login hash is parsed
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  const $ = function (id) { return document.getElementById(id); };
 
-  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
-
-  function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
+  /* ─── Init ──────────────────────────────────────────────────────────────── */
+  function init() {
+    loadTicketTypes();
+    setupTabs();
+    setupCheckout();
+    setupDashboard();
+    checkLoginHash();
   }
 
-  function formatCurrency(amount) {
-    return 'D' + Number(amount).toLocaleString();
-  }
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 1 — SHOP: TICKET TYPE LISTING & CART
+     ═══════════════════════════════════════════════════════════════════════════ */
 
-  function showError(containerId, msg) {
-    var el = document.getElementById(containerId);
-    if (!el) return;
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-
-  function hideError(containerId) {
-    var el = document.getElementById(containerId);
-    if (el) el.style.display = 'none';
-  }
-
-  function loading(containerId, show) {
-    var el = document.getElementById(containerId);
-    if (!el) return;
-    if (show) {
-      el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-    }
-  }
-
-  function getSupabaseClient() {
-    // Simple Supabase client using REST API pattern
-    return {
-      from: function(table) {
-        return {
-          select: function(columns) {
-            var url = SUPA_URL + '/rest/v1/' + table + '?' + (columns ? 'select=' + encodeURIComponent(columns) : '');
-            return {
-              eq: function(col, val) {
-                url += '&' + col + '=eq.' + encodeURIComponent(val);
-                return this;
-              }.bind(this),
-              filter: function(col, op, val) {
-                url += '&' + col + '=' + op + '.' + encodeURIComponent(val);
-                return this;
-              }.bind(this),
-              order: function(col, opts) {
-                url += '&order=' + encodeURIComponent(col) + (opts && opts.ascending === false ? '.desc' : '');
-                return this;
-              }.bind(this),
-              limit: function(n) {
-                url += '&limit=' + n;
-                return this;
-              }.bind(this),
-              single: function() {
-                url += '&limit=1';
-                return fetch(url, {
-                  headers: {
-                    'apikey': SUPA_ANON,
-                    'Authorization': 'Bearer ' + SUPA_ANON,
-                    'Accept': 'application/json',
-                  }
-                }).then(function(r) {
-                  if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Failed to fetch'); });
-                  return r.json().then(function(data) {
-                    if (!data || data.length === 0) return { data: null, error: { message: 'Not found' } };
-                    return { data: data[0], error: null };
-                  });
-                });
-              }.bind(this),
-              then: function(cb) {
-                return fetch(url, {
-                  headers: {
-                    'apikey': SUPA_ANON,
-                    'Authorization': 'Bearer ' + SUPA_ANON,
-                    'Accept': 'application/json',
-                  }
-                }).then(function(r) {
-                  if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Failed to fetch'); });
-                  return r.json().then(function(data) { return { data: data, error: null }; });
-                }).then(cb);
-              }
-            };
-          },
-          insert: function(data) {
-            return {
-              select: function() {
-                return {
-                  single: function() {
-                    return fetch(SUPA_URL + '/rest/v1/' + table, {
-                      method: 'POST',
-                      headers: {
-                        'apikey': SUPA_ANON,
-                        'Authorization': 'Bearer ' + SUPA_ANON,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation',
-                      },
-                      body: JSON.stringify(Array.isArray(data) ? data : [data]),
-                    }).then(function(r) {
-                      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Insert failed'); });
-                      return r.json().then(function(d) { return { data: d, error: null }; });
-                    });
-                  }
-                };
-              }
-            };
-          }
-        };
-      },
-      rpc: function(fn, params) {
-        return fetch(SUPA_URL + '/rest/v1/rpc/' + fn, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPA_ANON,
-            'Authorization': 'Bearer ' + SUPA_ANON,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(params || {}),
-        }).then(function(r) {
-          if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'RPC failed'); });
-          return r.json().then(function(d) { return { data: d, error: null }; });
-        });
-      },
-      auth: {
-        signInWithOtp: function(opts) {
-          // Use Supabase Auth REST API
-          return fetch(SUPA_URL + '/auth/v1/otp', {
-            method: 'POST',
-            headers: {
-              'apikey': SUPA_ANON,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email: opts.email, create_user: true }),
-          }).then(function(r) {
-            if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'OTP send failed'); });
-            return { data: null, error: null };
-          });
-        },
-        setSession: function(session) {
-          state.session = session;
-          try {
-            if (session) sessionStorage.setItem('wf_tickets_session', JSON.stringify(session));
-            else sessionStorage.removeItem('wf_tickets_session');
-          } catch (e) {}
-        },
-        getSession: function() {
-          if (state.session) return { data: { session: state.session }, error: null };
-          try {
-            var stored = sessionStorage.getItem('wf_tickets_session');
-            if (stored) {
-              state.session = JSON.parse(stored);
-              return { data: { session: state.session }, error: null };
-            }
-          } catch (e) {}
-          return { data: { session: null }, error: null };
-        },
-        onAuthStateChange: function(cb) {
-          // Poll for hash fragment (magic link redirect)
-          var handleHash = function() {
-            var hash = window.location.hash;
-            if (hash && hash.indexOf('access_token') !== -1) {
-              var params = new URLSearchParams(hash.replace('#', ''));
-              var session = {
-                access_token: params.get('access_token'),
-                refresh_token: params.get('refresh_token'),
-                expires_at: parseInt(params.get('expires_in') || '3600', 10) * 1000 + Date.now(),
-                user: { email: params.get('email') },
-              };
-              if (session.access_token) {
-                state.session = session;
-                try { sessionStorage.setItem('wf_tickets_session', JSON.stringify(session)); } catch (e) {}
-                window.location.hash = '';
-                cb('SIGNED_IN', session);
-                // Reload dashboard
-                loadDashboard();
-              }
-            }
-          };
-          handleHash();
-          window.addEventListener('hashchange', handleHash);
-        }
-      }
-    };
-  }
-
-  var supabase = getSupabaseClient();
-
-  // ─── Ticket Type Loading ──────────────────────────────────────────────────
-
-  function loadTicketTypes() {
-    var container = document.getElementById('ticket-types-container');
-    if (!container) return;
-
-    supabase
-      .from('ticket_types')
-      .select('id,name,slug,type,price,capacity,sold,sort_order,is_active')
-      .order('sort_order', { ascending: true })
-      .then(function(result) {
-        if (result.error) {
-          container.innerHTML = '<div class="error-message">Failed to load ticket types. Please refresh.</div>';
-          return;
-        }
-
-        state.ticketTypes = result.data || [];
-
-        if (state.ticketTypes.length === 0) {
-          container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:40px 0;">No tickets available yet. Check back soon!</p>';
-          return;
-        }
-
-        renderTicketTypes();
+  async function loadTicketTypes() {
+    var el = $('ticket-types-container');
+    try {
+      var res = await fetch(SUPABASE_URL + '/rest/v1/ticket_types?is_active=eq.true&order=sort_order.asc', {
+        headers: { apikey: SUPABASE_ANON_KEY }
       });
-  }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      ticketTypes = await res.json();
 
-  function renderTicketTypes() {
-    var container = document.getElementById('ticket-types-container');
-    if (!container) return;
+      var entries  = ticketTypes.filter(function (t) { return t.type === 'entry' || t.type === 'parking'; });
+      var credits  = ticketTypes.filter(function (t) { return t.type === 'activity_credit'; });
+      var html = '';
 
-    var entryTypes = state.ticketTypes.filter(function(t) { return t.type === 'entry' || t.type === 'parking'; });
-    var activityTypes = state.ticketTypes.filter(function(t) { return t.type === 'activity_credit'; });
+      if (entries.length) {
+        html += '<h2 style="font-size:20px;margin-bottom:16px;">Entry Passes</h2>';
+        html += renderCards(entries);
+      }
+      if (credits.length) {
+        html += '<h2 style="font-size:20px;margin:32px 0 16px;">Games Passes</h2>';
+        html += renderCards(credits);
+      }
 
-    var html = '';
+      el.innerHTML = html;
 
-    // Section: Entry & Parking
-    html += '<h3 style="font-size:15px;color:var(--muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.06em;">Entry &amp; Parking</h3>';
-    html += '<div style="display:grid;gap:12px;margin-bottom:32px;">';
-    entryTypes.forEach(function(t) { html += renderTicketCard(t); });
-    html += '</div>';
+      /* attach +/- handlers via delegation on container */
+      el.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        var card = btn.closest('[data-tid]');
+        if (!card) return;
+        var id = card.getAttribute('data-tid');
+        if (btn.getAttribute('data-action') === 'inc') incCart(id);
+        else if (btn.getAttribute('data-action') === 'dec') decCart(id);
+      });
 
-    // Section: Activity Credits
-    html += '<h3 style="font-size:15px;color:var(--muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.06em;">Games &amp; Activity Credits</h3>';
-    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Pre-load credits for on-site games, karaoke, and activities. Unused credits are fully refundable.</p>';
-    html += '<div style="display:grid;gap:12px;">';
-    activityTypes.forEach(function(t) { html += renderTicketCard(t); });
-    html += '</div>';
-
-    container.innerHTML = html;
-  }
-
-  function renderTicketCard(t) {
-    var qty = state.cart[t.id] || 0;
-    var remaining = t.capacity - t.sold;
-    var soldOut = remaining <= 0;
-
-    var typeLabel = '';
-    if (t.type === 'entry') typeLabel = 'Entry Pass';
-    else if (t.type === 'parking') typeLabel = 'Parking';
-    else typeLabel = 'Activity Credit';
-
-    return '<div class="ticket-card' + (soldOut ? '" style="opacity:0.5;"' : '"') + ' data-type-id="' + t.id + '">' +
-      '<div class="ticket-card-info">' +
-        '<h3>' + escapeHtml(t.name) + '</h3>' +
-        '<div class="desc">' + typeLabel + (soldOut ? ' &middot; <strong style="color:#c53030;">Sold out</strong>' : remaining < 100 ? ' &middot; <strong style="color:var(--accent);">Only ' + remaining + ' left!</strong>' : '') + '</div>' +
-      '</div>' +
-      '<div style="text-align:right;">' +
-        '<div class="ticket-card-price">' + formatCurrency(t.price) + '</div>' +
-        '<div class="ticket-card-actions" style="margin-top:8px;justify-content:flex-end;">' +
-          '<button class="qty-btn" data-ticket-id="' + t.id + '" data-action="decrement"' + (qty <= 0 ? ' disabled' : '') + '>&minus;</button>' +
-          '<span class="qty-val" id="qty-' + t.id + '">' + qty + '</span>' +
-          '<button class="qty-btn" data-ticket-id="' + t.id + '" data-action="increment"' + (soldOut ? ' disabled' : '') + '>+</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // ─── Cart Management ──────────────────────────────────────────────────────
-
-  function updateCart(ticketId, delta) {
-    var t = state.ticketTypes.find(function(t) { return t.id === ticketId; });
-    if (!t) return;
-
-    var current = state.cart[ticketId] || 0;
-    var newQty = Math.max(0, current + delta);
-
-    if (newQty === 0) {
-      delete state.cart[ticketId];
-    } else {
-      // Check capacity
-      var remaining = t.capacity - t.sold;
-      if (newQty > remaining) newQty = remaining;
-      state.cart[ticketId] = newQty;
+    } catch (err) {
+      el.innerHTML = '<div class="error-message">Could not load ticket types. Please refresh.</div>';
+      console.error('[tickets] loadTicketTypes:', err);
     }
+  }
 
+  function renderCards(types) {
+    return types.map(function (t) {
+      var desc = t.type === 'activity_credit'
+        ? t.price.toLocaleString() + ' credits for on-site games, karaoke & activities'
+        : t.type === 'parking'
+          ? 'On-site parking pass'
+          : 'General admission to Piroake Fest 2026';
+      return '<div class="ticket-card" data-tid="' + t.id + '">'
+        + '<div class="ticket-card-info">'
+        +   '<h3>' + escHtml(t.name) + '</h3>'
+        +   '<div class="desc">' + desc + '</div>'
+        + '</div>'
+        + '<div class="ticket-card-price">D' + t.price.toLocaleString() + '</div>'
+        + '<div class="ticket-card-actions">'
+        +   '<button class="qty-btn" data-action="dec" aria-label="Decrease">−</button>'
+        +   '<span class="qty-val" id="qty-' + t.id + '">0</span>'
+        +   '<button class="qty-btn" data-action="inc" aria-label="Increase">+</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  /* ─── Cart helpers ──────────────────────────────────────────────────────── */
+
+  function incCart(id) {
+    cart[id] = (cart[id] || 0) + 1;
     renderCart();
-    renderTicketTypes();
-    updateCheckoutButton();
+  }
+
+  function decCart(id) {
+    if (!cart[id]) return;
+    cart[id] = cart[id] - 1;
+    if (cart[id] <= 0) delete cart[id];
+    renderCart();
   }
 
   function renderCart() {
-    var container = document.getElementById('cart-contents');
-    var totalEl = document.getElementById('cart-total');
-    var totalAmt = document.getElementById('cart-total-amount');
-    if (!container) return;
+    /* update quantity badges on ticket cards */
+    ticketTypes.forEach(function (t) {
+      var el = $('qty-' + t.id);
+      if (el) el.textContent = cart[t.id] || 0;
+    });
 
-    var ids = Object.keys(state.cart);
+    var contents = $('cart-contents');
+    var totalWrap = $('cart-total');
+    var totalAmt  = $('cart-total-amount');
+
+    var ids = Object.keys(cart).filter(function (id) { return cart[id] > 0; });
+
     if (ids.length === 0) {
-      container.innerHTML = '<div class="cart-empty">Select tickets above</div>';
-      if (totalEl) totalEl.style.display = 'none';
+      contents.innerHTML = '<div class="cart-empty">Select tickets above</div>';
+      totalWrap.style.display = 'none';
+      $('checkout-section').classList.remove('active');
       return;
     }
 
     var total = 0;
     var html = '';
-    ids.forEach(function(id) {
-      var t = state.ticketTypes.find(function(t) { return t.id === id; });
+    ids.forEach(function (id) {
+      var t = ticketTypes.find(function (tt) { return tt.id === id; });
       if (!t) return;
-      var qty = state.cart[id];
-      var lineTotal = t.price * qty;
-      total += lineTotal;
-      html += '<div class="cart-item">' +
-        '<span class="cart-item-name">' + escapeHtml(t.name) + '</span>' +
-        '<span class="cart-item-qty">' + qty + 'x</span>' +
-        '<span class="cart-item-cost">' + formatCurrency(lineTotal) + '</span>' +
-      '</div>';
+      var qty = cart[id];
+      var subtotal = t.price * qty;
+      total += subtotal;
+      html += '<div class="cart-item">'
+        + '<span class="cart-item-name">' + escHtml(t.name) + '</span>'
+        + '<span class="cart-item-qty">\u00d7' + qty + '</span>'
+        + '<span class="cart-item-cost">D' + subtotal.toLocaleString() + '</span>'
+        + '</div>';
     });
 
-    container.innerHTML = html;
-    if (totalEl) totalEl.style.display = 'block';
-    if (totalAmt) totalAmt.textContent = formatCurrency(total);
+    orderTotal = total;
+    contents.innerHTML = html;
+    totalAmt.textContent = 'D' + total.toLocaleString();
+    totalWrap.style.display = 'block';
 
-    // Update Wave amount
-    var waveAmt = document.getElementById('wave-amount');
-    if (waveAmt) waveAmt.textContent = formatCurrency(total);
+    var section = $('checkout-section');
+    section.classList.add('active');
+    var email = $('checkout-email').value.trim();
+    $('checkout-btn').disabled = !email || total <= 0;
   }
 
-  function updateCheckoutButton() {
-    var btn = document.getElementById('checkout-btn');
-    if (!btn) return;
-    var hasItems = Object.keys(state.cart).length > 0;
-    btn.disabled = !hasItems;
+  function escHtml(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
   }
 
-  function getCartTotal() {
-    var total = 0;
-    Object.keys(state.cart).forEach(function(id) {
-      var t = state.ticketTypes.find(function(t) { return t.id === id; });
-      if (t) total += t.price * state.cart[id];
-    });
-    return total;
-  }
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 2 — TABS
+     ═══════════════════════════════════════════════════════════════════════════ */
 
-  // ─── Payment Method Selection ─────────────────────────────────────────────
-
-  function initPaymentSelection() {
-    var options = $$('.payment-option input[name="payment"]');
-    options.forEach(function(radio) {
-      radio.addEventListener('change', function() {
-        state.selectedPayment = this.value;
-        $$('.payment-option').forEach(function(el) { el.classList.remove('selected'); });
-        var parent = this.closest('.payment-option');
-        if (parent) parent.classList.add('selected');
-
-        var waveDetails = document.getElementById('wave-details');
-        if (waveDetails) {
-          waveDetails.classList.toggle('active', this.value === 'wave');
-        }
-      });
-    });
-
-    // Select default
-    var defaultRadio = document.querySelector('.payment-option input[value="modempay"]');
-    if (defaultRadio) {
-      defaultRadio.checked = true;
-      var parent = defaultRadio.closest('.payment-option');
-      if (parent) parent.classList.add('selected');
-    }
-  }
-
-  // ─── Checkout Flow ────────────────────────────────────────────────────────
-
-  function initCheckout() {
-    var btn = document.getElementById('checkout-btn');
-    if (!btn) return;
-    btn.addEventListener('click', handleCheckout);
-  }
-
-  function handleCheckout() {
-    var email = document.getElementById('checkout-email');
-    var nameInput = document.getElementById('checkout-name');
-    var errorEl = document.getElementById('checkout-error');
-    hideError('checkout-error');
-
-    if (!email || !email.value || !email.value.includes('@')) {
-      showError('checkout-error', 'Please enter a valid email address.');
-      if (email) email.focus();
-      return;
-    }
-
-    var items = Object.keys(state.cart).filter(function(id) { return state.cart[id] > 0; }).map(function(id) {
-      return { ticket_type_id: id, quantity: state.cart[id] };
-    });
-
-    if (items.length === 0) {
-      showError('checkout-error', 'Your cart is empty.');
-      return;
-    }
-
-    var btn = document.getElementById('checkout-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
-
-    // 1. Create order via Edge Function
-    fetch(EDGE_URL + '/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-      body: JSON.stringify({
-        email: email.value.trim(),
-        customer_name: nameInput ? nameInput.value.trim() : '',
-        items: items,
-      }),
-    })
-    .then(function(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed to create order'); });
-      return r.json();
-    })
-    .then(function(orderData) {
-      if (!orderData.success) throw new Error(orderData.error || 'Failed to create order');
-
-      var orderId = orderData.order_id;
-
-      if (state.selectedPayment === 'modempay') {
-        // 2a. Create ModemPay intent
-        return fetch(EDGE_URL + '/create-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-          body: JSON.stringify({
-            order_id: orderId,
-            amount: orderData.total,
-            email: email.value.trim(),
-            description: 'Piroake Fest 2026 ticket purchase',
-          }),
-        })
-        .then(function(r) {
-          if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Payment initiation failed'); });
-          return r.json();
-        })
-        .then(function(intentData) {
-          if (intentData.payment_url) {
-            // Redirect to ModemPay
-            window.location.href = intentData.payment_url;
-            // Show redirect message in case redirect doesn't happen (popup blocker etc.)
-            showConfirmation('redirect', {
-              email: email.value.trim(),
-              orderId: orderId,
-              paymentUrl: intentData.payment_url,
-            });
-          } else {
-            throw new Error('No payment URL returned from ModemPay');
-          }
-        });
-      } else {
-        // 2b. Wave Transfer — show proof submission
-        showConfirmation('wave_pending', {
-          email: email.value.trim(),
-          orderId: orderId,
-          total: orderData.total,
-        });
-      }
-    })
-    .catch(function(err) {
-      showError('checkout-error', err.message || 'Something went wrong. Please try again.');
-      if (btn) { btn.disabled = false; btn.textContent = 'Proceed to Checkout'; }
-    });
-  }
-
-  // ─── Confirmation Display ─────────────────────────────────────────────────
-
-  function showConfirmation(mode, data) {
-    // Hide shop view sections
-    var cartContents = document.getElementById('cart-contents');
-    var cartTotal = document.getElementById('cart-total');
-    var checkoutSection = document.getElementById('checkout-section');
-    var checkoutError = document.getElementById('checkout-error');
-
-    if (cartContents) cartContents.innerHTML = '';
-    if (cartTotal) cartTotal.style.display = 'none';
-    if (checkoutSection) checkoutSection.classList.remove('active');
-    if (checkoutError) checkoutError.style.display = 'none';
-
-    var confView = document.getElementById('confirmation-view');
-    var confMsg = document.getElementById('confirmation-msg');
-    var confTickets = document.getElementById('confirmation-tickets');
-    if (!confView) return;
-
-    if (mode === 'redirect') {
-      confMsg.textContent = 'You are being redirected to ModemPay to complete your payment.';
-      if (confTickets) {
-        confTickets.innerHTML =
-          '<div class="success-message">' +
-            '<strong>Order #' + data.orderId.slice(0, 8) + '</strong><br>' +
-            'If you are not redirected automatically, ' +
-            '<a href="' + escapeHtml(data.paymentUrl) + '" style="color:var(--accent);">click here</a> to continue.' +
-          '</div>';
-      }
-    } else if (mode === 'wave_pending') {
-      confMsg.textContent = 'Your order is pending payment verification.';
-      if (confTickets) {
-        confTickets.innerHTML =
-          '<div class="success-message" style="text-align:left;">' +
-            '<p style="margin-bottom:8px;"><strong>Order #' + data.orderId.slice(0, 8) + '</strong></p>' +
-            '<p>Send <strong>' + formatCurrency(data.total) + '</strong> to one of the following:</p>' +
-            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin:12px 0;">' +
-              '<div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:8px; text-align:center;">' +
-                '<div style="font-size:10px; text-transform:uppercase; color:var(--muted); margin-bottom:2px;">Wave Number</div>' +
-                '<div style="font-family:var(--font-mono); font-size:14px; font-weight:700;">+220 696 3419</div>' +
-              '</div>' +
-              '<div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:8px; text-align:center;">' +
-                '<div style="font-size:10px; text-transform:uppercase; color:var(--muted); margin-bottom:2px;">Bank Account</div>' +
-                '<div style="font-family:var(--font-mono); font-size:14px; font-weight:700;">206370720110</div>' +
-              '</div>' +
-            '</div>' +
-            '<p style="font-size:13px;">Keep your reference number. We\'ll notify you once the payment is verified.<br>' +
-            'Tickets will be emailed to <strong>' + escapeHtml(data.email) + '</strong>.</p>' +
-          '</div>';
-      }
-    }
-
-    confView.classList.add('active');
-
-    // Clear cart
-    state.cart = {};
-    renderCart();
-    updateCheckoutButton();
-
-    var btn = document.getElementById('checkout-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Proceed to Checkout'; }
-  }
-
-  // ─── Dashboard — Magic Link Auth ──────────────────────────────────────────
-
-  function initDashboard() {
-    var loginBtn = document.getElementById('dashboard-login-btn');
-    var logoutBtn = document.getElementById('dashboard-logout-btn');
-
-    if (loginBtn) {
-      loginBtn.addEventListener('click', function() {
-        var email = document.getElementById('dashboard-email');
-        var msg = document.getElementById('dashboard-login-msg');
-        if (!email || !email.value || !email.value.includes('@')) {
-          if (msg) msg.textContent = 'Please enter a valid email address.';
-          return;
-        }
-        if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Sending…'; }
-        if (msg) msg.textContent = '';
-
-        supabase.auth.signInWithOtp({ email: email.value.trim() })
-          .then(function(result) {
-            if (result.error) throw result.error;
-            if (msg) msg.textContent = 'Magic link sent! Check your email (check spam too).';
-          })
-          .catch(function(err) {
-            if (msg) msg.textContent = err.message || 'Failed to send. Try again.';
-          })
-          .finally(function() {
-            if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Send Magic Link'; }
-          });
-      });
-    }
-
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', function() {
-        supabase.auth.setSession(null);
-        showDashboardLogin();
-      });
-    }
-
-    // Check for existing session
-    var sessionResult = supabase.auth.getSession();
-    if (sessionResult.data && sessionResult.data.session) {
-      loadDashboard();
-    }
-
-    // Listen for auth state changes
-    supabase.auth.onAuthStateChange(function(event, session) {
-      if (event === 'SIGNED_IN') {
-        loadDashboard();
-      }
-    });
-  }
-
-  function loadDashboard() {
-    var session = state.session;
-    if (!session) {
-      showDashboardLogin();
-      return;
-    }
-
-    var prompt = document.getElementById('dashboard-login-prompt');
-    var content = document.getElementById('dashboard-content');
-    var userEmail = document.getElementById('dashboard-user-email');
-
-    if (prompt) prompt.style.display = 'none';
-    if (content) content.style.display = 'block';
-    if (userEmail) userEmail.textContent = session.user && session.user.email ? session.user.email : '';
-
-    // Fetch tickets for this email
-    var email = session.user && session.user.email ? session.user.email : '';
-    if (!email) {
-      showDashboardLogin();
-      return;
-    }
-
-    loading('dashboard-tickets-list', true);
-
-    supabase
-      .from('tickets')
-      .select('id,code,type,status,balance,customer_name,ticket_type_id,order_id,created_at')
-      .filter('customer_email', 'eq', email)
-      .then(function(result) {
-        if (result.error) {
-          document.getElementById('dashboard-tickets-list').innerHTML =
-            '<div class="error-message">Failed to load tickets.</div>';
-          return;
-        }
-
-        var tickets = result.data || [];
-        renderDashboardTickets(tickets);
-      });
-  }
-
-  function renderDashboardTickets(tickets) {
-    var container = document.getElementById('dashboard-tickets-list');
-    if (!container) return;
-
-    if (tickets.length === 0) {
-      container.innerHTML =
-        '<div style="text-align:center;padding:40px 0;">' +
-          '<p style="color:var(--muted);margin-bottom:16px;">You don\'t have any tickets yet.</p>' +
-          '<a href="#shop-view" class="btn btn-primary" onclick="document.querySelector(\'[data-tab=shop]\').click()">Buy Tickets</a>' +
-        '</div>';
-      return;
-    }
-
-    var entryTickets = tickets.filter(function(t) { return t.type === 'entry' || t.type === 'parking'; });
-    var activityTickets = tickets.filter(function(t) { return t.type === 'activity_credit'; });
-
-    var html = '';
-
-    // Entry tickets
-    if (entryTickets.length > 0) {
-      html += '<h3 style="font-size:15px;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.06em;">Entry &amp; Parking</h3>';
-      entryTickets.forEach(function(t) {
-        html += renderDashboardCard(t);
-      });
-    }
-
-    // Activity credit tickets
-    if (activityTickets.length > 0) {
-      html += '<h3 style="font-size:15px;color:var(--muted);margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.06em;">Activity Credits</h3>';
-      activityTickets.forEach(function(t) {
-        html += renderDashboardCard(t);
-      });
-    }
-
-    container.innerHTML = html;
-
-    // Load transaction history for first activity credit ticket
-    var firstActivity = activityTickets[0];
-    if (firstActivity) {
-      loadTransactionHistory(firstActivity.id);
-    }
-  }
-
-  function renderDashboardCard(t) {
-    var isUsed = t.status === 'used';
-    var isExhausted = t.status === 'exhausted';
-    var isActive = t.status === 'active';
-
-    var statusLabel = isActive ? '' : isUsed ? 'Used' : isExhausted ? 'Exhausted' : t.status;
-    var qrUrl = window.location.origin + '/t?t=' + t.code;
-
-    return '<div class="ticket-dashboard-card">' +
-      '<div class="ticket-db-info">' +
-        '<h3>' + escapeHtml(t.customer_name || 'Ticket') + '</h3>' +
-        '<div class="code">' + escapeHtml(t.code) + '</div>' +
-        '<div class="meta">' +
-          (statusLabel ? '<span style="color:#c53030;font-weight:500;">' + statusLabel + '</span> &middot; ' : '') +
-          'Type: ' + t.type +
-        '</div>' +
-      '</div>' +
-      (t.type === 'activity_credit' ? '<div class="ticket-db-balance"><div class="amt">' + formatCurrency(t.balance) + '</div><div class="lbl">Balance</div></div>' : '') +
-      '<div class="ticket-db-actions">' +
-        '<button class="btn btn-secondary btn-icon qr-toggle-btn" data-qr="' + escapeHtml(qrUrl) + '" title="Show QR code" style="font-size:18px;padding:8px 12px;">&#9632;</button>' +
-        (t.type === 'activity_credit' && isActive ?
-          '<a href="/top-up?t=' + t.code + '" class="btn btn-primary" style="font-size:13px;padding:8px 16px;">Top Up</a>' : '') +
-      '</div>' +
-    '</div>';
-  }
-
-  // ─── Transaction History ──────────────────────────────────────────────────
-
-  function loadTransactionHistory(ticketId) {
-    var section = document.getElementById('txn-history-section');
-    var list = document.getElementById('txn-history-list');
-    if (!section || !list) return;
-
-    supabase
-      .from('balance_transactions')
-      .select('id,type,amount_delta,balance_after,source,notes,created_at')
-      .filter('ticket_id', 'eq', ticketId)
-      .then(function(result) {
-        if (result.error || !result.data || result.data.length === 0) {
-          return;
-        }
-
-        section.style.display = 'block';
-        var txns = result.data.sort(function(a, b) {
-          return new Date(b.created_at) - new Date(a.created_at);
-        });
-
-        var html = '';
-        txns.forEach(function(txn) {
-          var isPositive = txn.amount_delta > 0;
-          var date = new Date(txn.created_at);
-          var dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-          html += '<div class="transaction-item">' +
-            '<span class="transaction-date">' + dateStr + '</span>' +
-            '<span class="transaction-type">' + escapeHtml(txn.type.replace(/_/g, ' ')) + '</span>' +
-            '<span class="transaction-source">' + escapeHtml(txn.source) + '</span>' +
-            '<span class="transaction-amount ' + (isPositive ? 'positive' : 'negative') + '">' +
-              (isPositive ? '+' : '') + formatCurrency(txn.amount_delta) +
-            '</span>' +
-          '</div>';
-        });
-
-        list.innerHTML = html;
-      });
-  }
-
-  // ─── Dashboard Login / Logout UI ──────────────────────────────────────────
-
-  function showDashboardLogin() {
-    var prompt = document.getElementById('dashboard-login-prompt');
-    var content = document.getElementById('dashboard-content');
-    if (prompt) prompt.style.display = 'block';
-    if (content) content.style.display = 'none';
-
-    var section = document.getElementById('txn-history-section');
-    if (section) section.style.display = 'none';
-  }
-
-  // ─── Tab Switching (Shop / Dashboard) ─────────────────────────────────────
-
-  function initTabs() {
-    $$('.section-tab').forEach(function(tab) {
-      tab.addEventListener('click', function() {
-        var tabName = this.getAttribute('data-tab');
-        // Update tab styles
-        $$('.section-tab').forEach(function(t) {
+  function setupTabs() {
+    document.querySelectorAll('[data-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.section-tab').forEach(function (t) {
           t.classList.remove('active');
           t.setAttribute('aria-selected', 'false');
         });
-        this.classList.add('active');
-        this.setAttribute('aria-selected', 'true');
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
 
-        // Show/hide views
-        var shopView = document.getElementById('shop-view');
-        var dashView = document.getElementById('dashboard-view');
-        if (shopView) shopView.style.display = tabName === 'shop' ? '' : 'none';
-        if (dashView) dashView.style.display = tabName === 'dashboard' ? '' : 'none';
-
-        if (tabName === 'dashboard') {
-          loadDashboard();
+        var view = tab.getAttribute('data-tab');
+        $('shop-view').style.display      = view === 'shop' ? '' : 'none';
+        $('dashboard-view').classList.toggle('active', view === 'dashboard');
+        if (view === 'dashboard' && !userEmail) {
+          checkSession();
         }
       });
     });
   }
 
-  // ─── QR Code Toggle ──────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 3 — CHECKOUT
+     ═══════════════════════════════════════════════════════════════════════════ */
 
-  function initQRToggle() {
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.qr-toggle-btn');
-      if (!btn) return;
-      var qrUrl = btn.getAttribute('data-qr');
-      if (!qrUrl) return;
-
-      // Show QR in a simple overlay
-      var existing = document.getElementById('qr-overlay');
-      if (existing) existing.remove();
-
-      var overlay = document.createElement('div');
-      overlay.id = 'qr-overlay';
-      overlay.style.cssText =
-        'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);' +
-        'display:flex;align-items:center;justify-content:center;padding:24px;';
-      overlay.addEventListener('click', function(ev) { if (ev.target === overlay) overlay.remove(); });
-
-      overlay.innerHTML =
-        '<div style="background:var(--surface);border-radius:16px;padding:32px;max-width:340px;width:100%;text-align:center;">' +
-          '<p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Scan this at the venue</p>' +
-          '<div id="qr-code-container" style="margin:0 auto 16px;width:220px;height:220px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);">Loading QR…</div>' +
-          '<p style="font-size:13px;word-break:break-all;color:var(--muted);">' + escapeHtml(qrUrl) + '</p>' +
-          '<button class="btn btn-secondary" style="margin-top:16px;width:100%;" onclick="this.closest(\'#qr-overlay\').remove()">Close</button>' +
-        '</div>';
-
-      document.body.appendChild(overlay);
-
-      // Generate QR via image tag (works under existing CSP: img-src 'self' data: https:)
-      var qrContainer = document.getElementById('qr-code-container');
-      if (qrContainer) {
-        var img = document.createElement('img');
-        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrUrl);
-        img.alt = 'QR Code';
-        img.style.cssText = 'width:220px;height:220px;border-radius:4px;';
-        img.onerror = function() {
-          qrContainer.innerHTML = '<a href="' + escapeHtml(qrUrl) + '" style="color:var(--accent);">Open link</a>';
-        };
-        qrContainer.appendChild(img);
-      }
+  function setupCheckout() {
+    /* email input — enable/disable checkout button */
+    $('checkout-email').addEventListener('input', function () {
+      var email = $('checkout-email').value.trim();
+      $('checkout-btn').disabled = !email || orderTotal <= 0;
     });
+
+    /* payment method selection */
+    document.querySelectorAll('[data-payment]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        document.querySelectorAll('[data-payment]').forEach(function (p) {
+          p.classList.remove('selected');
+        });
+        el.classList.add('selected');
+        el.querySelector('input[type="radio"]').checked = true;
+        selectedPayment = el.getAttribute('data-payment');
+        $('wave-details').classList.toggle('active', selectedPayment === 'wave');
+      });
+    });
+
+    $('checkout-btn').addEventListener('click', handleCheckout);
+
+    /* back from confirmation */
+    $('confirmation-back-btn').addEventListener('click', resetShop);
   }
 
-  // ─── Event Delegation for Qty Buttons ─────────────────────────────────────
-
-  function initQtyButtons() {
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.qty-btn');
-      if (!btn) return;
-      var ticketId = btn.getAttribute('data-ticket-id');
-      var action = btn.getAttribute('data-action');
-      if (!ticketId) return;
-
-      if (action === 'increment') {
-        updateCart(ticketId, 1);
-      } else if (action === 'decrement') {
-        updateCart(ticketId, -1);
-      }
-    });
-  }
-
-  // ─── Wave Transfer Proof Submission via Payment Proofs ─────────────────────
-
-  // When Wave is selected, we show the confirmation with payment details.
-  // The proof is submitted by the admin verifying the payment (Task 1.3).
-  // The order is created with status 'pending_verification'.
-
-  // ─── Init ──────────────────────────────────────────────────────────────────
-
-  function init() {
-    loadTicketTypes();
-    initPaymentSelection();
-    initCheckout();
-    initDashboard();
-    initTabs();
-    initQtyButtons();
-    initQRToggle();
-
-    // Show checkout section when cart has items (via cart rendering)
-    var checkoutSection = document.getElementById('checkout-section');
-    var origRender = renderCart;
-    renderCart = function() {
-      origRender();
-      var hasItems = Object.keys(state.cart).length > 0;
-      if (checkoutSection) {
-        checkoutSection.classList.toggle('active', hasItems);
-      }
-    };
+  function resetShop() {
+    $('confirmation-view').classList.remove('active');
+    $('checkout-section').classList.add('active');
+    cart = {};
+    orderId = null;
     renderCart();
   }
+
+  /* ─── Handle Checkout ───────────────────────────────────────────────────── */
+
+  async function handleCheckout() {
+    var btn    = $('checkout-btn');
+    var errEl  = $('checkout-error');
+    errEl.style.display = 'none';
+
+    var email = $('checkout-email').value.trim();
+    var name  = $('checkout-name').value.trim();
+
+    if (!email) {
+      errEl.textContent = 'Please enter your email address.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    var items = Object.keys(cart)
+      .filter(function (id) { return cart[id] > 0; })
+      .map(function (id) { return { ticket_type_id: id, quantity: cart[id] }; });
+
+    if (!items.length) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Processing\u2026';
+
+    try {
+      /* 1. Create order via Edge Function */
+      var orderRes = await fetch(TICKET_FN + '/create-order', {
+        method: 'POST',
+        headers: ANON_H,
+        body: JSON.stringify({ email: email, customer_name: name, items: items })
+      });
+      var orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.success) {
+        throw new Error(orderData.error || 'Failed to create order');
+      }
+
+      orderId = orderData.order_id;
+
+      if (selectedPayment === 'modempay') {
+        await checkoutModemPay(email, name);
+      } else {
+        await checkoutWave(email);
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Proceed to Checkout';
+    }
+  }
+
+  /* ─── ModemPay Flow ─────────────────────────────────────────────────────── */
+
+  async function checkoutModemPay(email, name) {
+    var btn = $('checkout-btn');
+
+    /* 2. Create payment intent */
+    var intentRes = await fetch(TICKET_FN + '/create-intent', {
+      method: 'POST',
+      headers: ANON_H,
+      body: JSON.stringify({
+        order_id: orderId,
+        amount:   orderTotal,
+        email:    email,
+        description: 'Piroake Fest tickets \u2014 ' + (name || email)
+      })
+    });
+    var intentData = await intentRes.json();
+    if (!intentRes.ok || !intentData.success) {
+      throw new Error(intentData.error || 'Failed to create payment intent');
+    }
+
+    btn.textContent = 'Redirecting\u2026';
+
+    /* hide checkout, show payment simulator */
+    $('checkout-section').classList.remove('active');
+    var conf = $('confirmation-view');
+    conf.classList.add('active');
+    conf.innerHTML =
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\uD83D\uDCB3</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Complete Payment</h2>'
+      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 20px;">'
+      +   'Your order of <strong>D' + orderTotal.toLocaleString() + '</strong> is ready.<br>'
+      +   '<span style="font-size:13px;">In production you would be redirected to ModemPay.</span>'
+      + '</p>'
+      + '<button class="btn btn-primary" id="sim-btn" style="width:100%;">'
+      +   '<span id="sim-text">Simulate Payment Complete</span>'
+      + '</button>'
+      + '<div id="sim-status" style="margin-top:12px;"></div>';
+
+    $('sim-btn').addEventListener('click', async function () {
+      var simBtn  = $('sim-btn');
+      var simText = $('sim-text');
+      var status  = $('sim-status');
+      simBtn.disabled = true;
+      simText.textContent = 'Verifying payment\u2026';
+
+      try {
+        var whRes = await fetch(TICKET_FN + '/webhook', {
+          method: 'POST',
+          headers: ANON_H,
+          body: JSON.stringify({
+            event: 'charge.succeeded',
+            intent_id: intentData.intent_id,
+            status: 'completed'
+          })
+        });
+        var whData = await whRes.json();
+
+        if (whData.success && whData.tickets_created > 0) {
+          status.innerHTML = '<div class="success-message">\u2705 Payment confirmed! '
+            + whData.tickets_created + ' ticket(s) created.</div>';
+          simText.textContent = 'Done!';
+          simBtn.disabled = true;
+
+          /* append ticket link */
+          var link = document.createElement('div');
+          link.style.cssText = 'margin-top:16px;padding:16px;background:var(--accent-dim);border-radius:var(--radius);text-align:center;';
+          link.innerHTML = '<p style="font-size:14px;margin-bottom:8px;">Check your email for ticket details and QR codes.</p>'
+            + '<a href="/tickets" class="btn btn-primary" style="display:inline-flex;">View My Tickets</a>';
+          conf.appendChild(link);
+        } else {
+          status.innerHTML = '<div class="error-message">'
+            + (whData.error || 'Payment processing\u2026 check your tickets in a moment.') + '</div>';
+          simText.textContent = 'Try Again';
+          simBtn.disabled = false;
+        }
+      } catch (e) {
+        status.innerHTML = '<div class="error-message">' + e.message + '</div>';
+        simText.textContent = 'Try Again';
+        simBtn.disabled = false;
+      }
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Proceed to Checkout';
+  }
+
+  /* ─── Wave Transfer Flow ─────────────────────────────────────────────────── */
+
+  async function checkoutWave(email) {
+    var ref = $('wave-ref').value.trim();
+    if (!ref) {
+      var errEl = $('checkout-error');
+      errEl.textContent = 'Please enter your transaction reference / proof.';
+      errEl.style.display = 'block';
+      $('checkout-btn').disabled = false;
+      $('checkout-btn').textContent = 'Proceed to Checkout';
+      return;
+    }
+
+    /* 2. Insert payment proof (anon → RLS allows INSERT) */
+    var proofRes = await fetch(SUPABASE_URL + '/rest/v1/payment_proofs', {
+      method: 'POST',
+      headers: ANON_H,
+      body: JSON.stringify({
+        order_id:         orderId,
+        email:            email,
+        amount:           orderTotal,
+        reference_number: ref
+      })
+    });
+
+    if (!proofRes.ok) {
+      var errData = {};
+      try { errData = await proofRes.json(); } catch (_) {}
+      throw new Error(errData.message || errData.error || 'Failed to submit payment proof');
+    }
+
+    /* 3. Show pending verification */
+    $('checkout-section').classList.remove('active');
+    var conf = $('confirmation-view');
+    conf.classList.add('active');
+    conf.innerHTML =
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\uD83D\uDCCB</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Order Placed \u2014 Payment Pending</h2>'
+      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 20px;">'
+      +   'Please send <strong>D' + orderTotal.toLocaleString() + '</strong> to one of the following:'
+      + '</p>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;">'
+      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
+      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Wave</div>'
+      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">+220 696 3419</div>'
+      +   '</div>'
+      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
+      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Bank</div>'
+      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">206370720110</div>'
+      +   '</div>'
+      + '</div>'
+      + '<p style="font-size:13px;color:var(--muted);text-align:center;">'
+      +   'Reference: <strong>' + escHtml(ref) + '</strong><br>'
+      +   'Credit will be applied after verification.'
+      + '</p>'
+      + '<p style="font-size:13px;color:var(--muted);text-align:center;margin-top:16px;">'
+      +   '<a href="/tickets" style="color:var(--accent);font-weight:500;">Check your tickets</a> after payment.'
+      + '</p>'
+      + '<button class="btn btn-secondary" id="confirmation-back-btn" style="width:100%;margin-top:16px;">Buy More Tickets</button>';
+
+    conf.querySelector('#confirmation-back-btn').addEventListener('click', resetShop);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 4 — DASHBOARD: MAGIC LINK AUTH
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function setupDashboard() {
+    $('dashboard-login-btn').addEventListener('click', sendMagicLink);
+    $('dashboard-email').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') sendMagicLink();
+    });
+    $('dashboard-logout-btn').addEventListener('click', handleLogout);
+  }
+
+  async function sendMagicLink() {
+    var email = $('dashboard-email').value.trim();
+    var msg   = $('dashboard-login-msg');
+    var btn   = $('dashboard-login-btn');
+
+    if (!email) { msg.textContent = 'Please enter your email.'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending\u2026';
+    msg.textContent = '';
+
+    try {
+      var res = await fetch(SUPABASE_URL + '/auth/v1/magic_link', {
+        method: 'POST',
+        headers: ANON_H,
+        body: JSON.stringify({
+          email: email,
+          redirect_to: window.location.origin + '/tickets'
+        })
+      });
+
+      if (res.ok) {
+        btn.textContent = 'Check your email';
+        msg.innerHTML = 'We sent you a magic link! Click it to sign in.';
+        msg.style.color = '';
+      } else {
+        var d;
+        try { d = await res.json(); } catch (_) { d = {}; }
+        throw new Error(d.msg || d.error || 'Failed to send magic link');
+      }
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.style.color = '#c53030';
+      btn.disabled = false;
+      btn.textContent = 'Send Magic Link';
+    }
+  }
+
+  /* ─── Parse login redirect (hash or query params) ───────────────────────── */
+
+  function checkLoginHash() {
+    var hash   = window.location.hash;
+    var params = new URLSearchParams(window.location.search);
+
+    /* Supabase Auth usually returns tokens in the URL hash fragment */
+    var accessToken  = null;
+    var refreshToken = null;
+
+    if (hash && hash.indexOf('access_token') !== -1) {
+      var h = hash.charAt(0) === '#' ? hash.substring(1) : hash;
+      var hp = new URLSearchParams(h);
+      accessToken  = hp.get('access_token');
+      refreshToken = hp.get('refresh_token');
+    }
+
+    /* also check query params (some auth flows use ? instead of #) */
+    if (!accessToken) {
+      accessToken  = params.get('access_token');
+      refreshToken = params.get('refresh_token');
+    }
+
+    if (accessToken) {
+      sessionStorage.setItem('wf_ticket_session', JSON.stringify({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      }));
+      try {
+        var payload = JSON.parse(atob(accessToken.split('.')[1]));
+        userEmail = payload.email;
+        window.history.replaceState({}, document.title, '/tickets');
+
+        /* if dashboard tab is visible, load it */
+        if ($('dashboard-view').classList.contains('active')) {
+          loadDashboard();
+        }
+        return;
+      } catch (e) {
+        console.error('[tickets] parse token:', e);
+      }
+    }
+
+    /* no redirect — check existing session */
+    checkSession();
+  }
+
+  function checkSession() {
+    var raw = sessionStorage.getItem('wf_ticket_session');
+    if (!raw) return;
+
+    try {
+      var s = JSON.parse(raw);
+      var payload = JSON.parse(atob(s.access_token.split('.')[1]));
+
+      if (payload.exp * 1000 > Date.now()) {
+        userEmail = payload.email;
+        loadDashboard();
+      } else if (s.refresh_token) {
+        /* expired — try refreshing */
+        refreshSession(s.refresh_token);
+      } else {
+        sessionStorage.removeItem('wf_ticket_session');
+      }
+    } catch (e) {
+      sessionStorage.removeItem('wf_ticket_session');
+    }
+  }
+
+  async function refreshSession(refreshToken) {
+    try {
+      var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: ANON_H,
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (res.ok) {
+        var data = await res.json();
+        sessionStorage.setItem('wf_ticket_session', JSON.stringify({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token
+        }));
+        var payload = JSON.parse(atob(data.access_token.split('.')[1]));
+        userEmail = payload.email;
+        loadDashboard();
+      } else {
+        sessionStorage.removeItem('wf_ticket_session');
+      }
+    } catch (e) {
+      sessionStorage.removeItem('wf_ticket_session');
+    }
+  }
+
+  /* ─── Logout ────────────────────────────────────────────────────────────── */
+
+  function handleLogout() {
+    sessionStorage.removeItem('wf_ticket_session');
+    userEmail = null;
+    $('dashboard-content').style.display = 'none';
+    $('dashboard-login-prompt').style.display = 'block';
+    $('dashboard-email').value = '';
+    $('dashboard-login-msg').textContent = '';
+    $('dashboard-login-btn').disabled = false;
+    $('dashboard-login-btn').textContent = 'Send Magic Link';
+
+    /* switch to shop tab */
+    document.querySelectorAll('[data-tab]').forEach(function (t) {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    var shopTab = document.querySelector('[data-tab="shop"]');
+    if (shopTab) {
+      shopTab.classList.add('active');
+      shopTab.setAttribute('aria-selected', 'true');
+    }
+    $('shop-view').style.display = '';
+    $('dashboard-view').classList.remove('active');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 5 — DASHBOARD: TICKET DISPLAY
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function loadDashboard() {
+    $('dashboard-login-prompt').style.display = 'none';
+    $('dashboard-content').style.display = 'block';
+    $('dashboard-user-email').textContent = userEmail;
+
+    try {
+      var raw = sessionStorage.getItem('wf_ticket_session');
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      var authH = { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.access_token, 'Content-Type': 'application/json' };
+      var encEmail = encodeURIComponent(userEmail);
+
+      var [ticketsRes, txnsRes] = await Promise.all([
+        fetch(SUPABASE_URL + '/rest/v1/tickets?customer_email=eq.' + encEmail
+          + '&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types(name,slug,price)'
+          + '&order=created_at.desc', { headers: authH }),
+        fetch(SUPABASE_URL + '/rest/v1/balance_transactions'
+          + '?select=id,ticket_id,type,amount_delta,balance_after,source,created_at'
+          + '&order=created_at.desc&limit=50', { headers: authH }).catch(function () { return null; })
+      ]);
+
+      var tickets = ticketsRes.ok ? await ticketsRes.json() : [];
+      renderTickets(tickets);
+
+      if (txnsRes && txnsRes.ok) {
+        var txns = await txnsRes.json();
+        renderTransactions(txns);
+      }
+
+    } catch (err) {
+      $('dashboard-tickets-list').innerHTML = '<div class="error-message">Failed to load tickets. Please try again.</div>';
+      console.error('[tickets] loadDashboard:', err);
+    }
+  }
+
+  function renderTickets(tickets) {
+    var container = $('dashboard-tickets-list');
+
+    if (!tickets || tickets.length === 0) {
+      container.innerHTML =
+        '<div style="text-align:center;padding:40px 20px;border:2px dashed var(--border);border-radius:16px;">'
+        + '<div style="font-size:48px;margin-bottom:16px;">\uD83C\uDFAB</div>'
+        + '<h3 style="margin-bottom:8px;">No Tickets Yet</h3>'
+        + '<p style="font-size:14px;color:var(--muted);margin-bottom:20px;">You haven\u2019t purchased any tickets yet.</p>'
+        + '<a href="/tickets" class="btn btn-primary">Buy Tickets</a>'
+        + '</div>';
+      return;
+    }
+
+    var html = '';
+    tickets.forEach(function (t) {
+      var typeName = (t.ticket_types && t.ticket_types.name) || 'Ticket';
+      var typeSlug = t.type || 'entry';
+      var isActivity = t.type === 'activity_credit';
+      var balance = t.balance || 0;
+      var statusBadge = t.status !== 'active' ? ' <span style="font-size:12px;color:var(--muted);text-transform:uppercase;">(' + t.status + ')</span>' : '';
+
+      var qrDataUri = null;
+      try {
+        if (t.metadata && typeof t.metadata === 'object' && t.metadata.qr_data_uri) {
+          qrDataUri = t.metadata.qr_data_uri;
+        } else if (typeof t.metadata === 'string') {
+          var parsed = JSON.parse(t.metadata);
+          if (parsed.qr_data_uri) qrDataUri = parsed.qr_data_uri;
+        }
+      } catch (_) {}
+
+      var qrContent = t.qr_url || ('https://walkingfish.gm/t?t=' + t.code);
+
+      html +=
+        '<div class="ticket-dashboard-card">'
+        + '<div class="ticket-db-info">'
+        +   '<h3>' + escHtml(typeName) + statusBadge + '</h3>'
+        +   '<div class="code">' + escHtml(t.code) + '</div>'
+        +   '<div class="meta">Purchased ' + fmtDate(t.created_at) + '</div>'
+        + '</div>'
+        + (isActivity
+          ? '<div class="ticket-db-balance"><div class="amt">D' + balance.toLocaleString() + '</div><div class="lbl">Balance</div></div>'
+          : '')
+        + '<div class="ticket-db-actions">'
+        +   '<button class="btn btn-secondary" style="font-size:13px;" data-qr-id="' + t.id + '">'
+        +     (qrDataUri ? 'Show QR' : 'View Code')
+        +   '</button>'
+        + '</div>'
+        + '</div>'
+        + '<div id="qr-' + t.id + '" style="display:none;margin:-8px 0 16px;text-align:center;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">'
+        + (qrDataUri
+          ? '<img src="' + qrDataUri + '" alt="QR Code for ' + escHtml(t.code) + '" style="width:200px;height:200px;">'
+          : '<p style="font-size:13px;color:var(--muted);">Show this code at the gate:</p>'
+            + '<p style="font-family:var(--font-mono);font-size:18px;font-weight:700;letter-spacing:0.1em;margin-top:8px;">' + escHtml(t.code) + '</p>'
+            + '<p style="font-size:12px;color:var(--muted);margin-top:8px;">'
+            +   '<a href="' + qrContent + '" target="_blank" style="color:var(--accent);">View Ticket Page</a>'
+            + '</p>')
+        + '</div>';
+    });
+
+    container.innerHTML = html;
+
+    /* QR toggle handlers */
+    container.querySelectorAll('[data-qr-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id   = btn.getAttribute('data-qr-id');
+        var el   = $('qr-' + id);
+        if (!el) return;
+        var show = el.style.display === 'none';
+        el.style.display = show ? 'block' : 'none';
+        btn.textContent = show ? 'Hide QR' : (el.querySelector('img') ? 'Show QR' : 'View Code');
+      });
+    });
+  }
+
+  /* ─── Transactions ──────────────────────────────────────────────────────── */
+
+  function renderTransactions(txns) {
+    var section = $('txn-history-section');
+
+    if (!txns || txns.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    var list = $('txn-history-list');
+
+    list.innerHTML = txns.map(function (txn) {
+      var sign  = txn.amount_delta >= 0 ? '+' : '';
+      var cls   = txn.amount_delta >= 0 ? 'positive' : 'negative';
+      var label = txn.type === 'top_up' ? 'Top-Up' : txn.type === 'debit' ? 'Debit' : 'Purchase';
+      return '<div class="transaction-item">'
+        + '<span class="transaction-date">' + fmtDate(txn.created_at) + '</span>'
+        + '<span class="transaction-type">' + label + '</span>'
+        + '<span class="transaction-amount ' + cls + '">' + sign + 'D' + Math.abs(txn.amount_delta).toLocaleString() + '</span>'
+        + '<span class="transaction-source" style="font-size:12px;color:var(--muted);"></span>'
+        + '</div>';
+    }).join('');
+  }
+
+  /* ─── Helpers ────────────────────────────────────────────────────────────── */
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    } catch (_) { return iso; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BOOT
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
+
 })();

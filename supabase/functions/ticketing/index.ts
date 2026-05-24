@@ -29,6 +29,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleDebit(req);
     case "/bulk-topup":
       return handleBulkTopup(req);
+    case "/debug-ticket":
+      return handleDebugTicket(req);
     default:
       return new Response(JSON.stringify({ error: "Not found" }), {
         status: 404,
@@ -168,13 +170,16 @@ async function createTicketsForOrder(
       }
 
       // Record initial balance transaction for activity credits
+      // The balance is already set in the insert above; this just creates the audit trail.
+      // We insert directly rather than calling update_ticket_balance (which would double-add).
       if (initialBalance > 0) {
-        await supabase.rpc("update_ticket_balance", {
-          p_ticket_id: ticket.id,
-          p_amount_delta: initialBalance,
-          p_txn_type: "initial_purchase",
-          p_source: "initial",
-          p_notes: `Initial purchase — ${ticketType.name}`,
+        await supabase.from("balance_transactions").insert({
+          ticket_id: ticket.id,
+          type: "initial_purchase",
+          amount_delta: initialBalance,
+          balance_after: initialBalance,
+          source: "initial",
+          notes: `Initial purchase — ${ticketType.name}`,
         });
       }
 
@@ -425,7 +430,37 @@ async function handleWebhook(req: Request): Promise<Response> {
       const customerName = orderMetadata.customer_name || undefined;
       const customerEmail = order.email;
 
+      // Debug: if no items found, return detailed debug info
+      if (!items || items.length === 0) {
+        const debug = {
+          success: false,
+          error: 'No items in metadata',
+          metadata_keys: Object.keys(orderMetadata),
+          has_items: 'items' in orderMetadata,
+          items_json: JSON.stringify(orderMetadata.items),
+          items_is_array: Array.isArray(orderMetadata.items),
+        };
+        console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
+        return new Response(JSON.stringify(debug), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const tickets = await createTicketsForOrder(supabase, order.id, customerEmail, items, customerName);
+
+      // Debug: if tickets_created is 0, return debug info
+      if (tickets.length === 0) {
+        const debug = {
+          success: false,
+          error: 'createTicketsForOrder returned 0 tickets',
+          items_length: items.length,
+          first_item_type_id: items[0]?.ticket_type_id,
+        };
+        console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
+        return new Response(JSON.stringify(debug), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       // Send confirmation email
       if (tickets.length > 0) {
@@ -1215,6 +1250,102 @@ async function handleBulkTopup(req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({ error: "Failed to process bulk top-up" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /debug-ticket
+// Debug endpoint to test createTicketsForOrder directly
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleDebugTicket(req: Request): Promise<Response> {
+  try {
+    const { order_id, email, ticket_type_id, quantity } = await req.json();
+
+    if (!order_id || !ticket_type_id) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: order_id, ticket_type_id' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+    const items: OrderItem[] = [{ ticket_type_id, quantity: quantity || 1 }];
+
+    // Step 1: Try to find ticket type
+    const { data: ticketType, error: typeErr } = await supabase
+      .from("ticket_types")
+      .select("id, name, slug, type, price")
+      .eq("id", ticket_type_id)
+      .single();
+
+    if (typeErr || !ticketType) {
+      return new Response(
+        JSON.stringify({ step: 1, error: 'Ticket type not found', db_error: typeErr }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 2: Try to increment sold count
+    const { data: canSell, error: sellErr } = await supabase.rpc("increment_ticket_sold_count", {
+      ticket_type_id,
+    });
+
+    if (sellErr) {
+      return new Response(
+        JSON.stringify({ step: 2, error: 'RPC call failed', db_error: sellErr }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (canSell === false) {
+      return new Response(
+        JSON.stringify({ step: 2, error: 'Sold out', canSell }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 3: Generate ticket code
+    const { data: code, error: codeErr } = await supabase.rpc("generate_ticket_code");
+
+    if (codeErr || !code) {
+      return new Response(
+        JSON.stringify({ step: 3, error: 'Code generation failed', db_error: codeErr }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 4: Insert ticket
+    const { data: ticket, error: ticketErr } = await supabase
+      .from("tickets")
+      .insert({
+        order_id,
+        ticket_type_id,
+        type: ticketType.type,
+        code,
+        balance: 0,
+        customer_email: email || 'debug@test.com',
+        customer_name: 'Debug User',
+        qr_url: `https://walkingfish.gm/t?t=${code}`,
+      })
+      .select()
+      .single();
+
+    if (ticketErr) {
+      return new Response(
+        JSON.stringify({ step: 4, error: 'Ticket insert failed', db_error: ticketErr }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, ticket, ticketType }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 }

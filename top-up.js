@@ -1,613 +1,602 @@
-// top-up.js — Piroake Fest Self-Service Top-Up
-// Handles: ticket lookup by code, bundle selection, balance cap, ModemPay/Wave payment
-
-(function() {
+/* top-up.js — Piroake Fest 2026 Self-Service Top-Up
+ *
+ * Allows users to top-up activity credit tickets by entering their ticket code.
+ * Supports ModemPay (online payment simulation) and Wave Transfer (manual).
+ *
+ * Views: landing (code entry) → loading → form (bundles, amount, payment) → success
+ *
+ * API:
+ *   POST /functions/v1/ticketing/lookup-ticket
+ *   POST /functions/v1/ticketing/create-order
+ *   POST /functions/v1/ticketing/create-intent
+ *   POST /functions/v1/ticketing/webhook
+ *   GET  /rest/v1/top_up_bundles?is_active=eq.true&order=sort_order.asc
+ *   GET  /rest/v1/system_config?key=eq.balance_cap
+ */
+(function () {
   'use strict';
 
-  var SUPA_URL = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://anigcqdquakinlzvyaur.supabase.co';
-  var SUPA_ANON = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : '';
-  var EDGE_URL = SUPA_URL + '/functions/v1/ticketing';
+  const TICKET_FN = SUPABASE_URL + '/functions/v1/ticketing';
+  const ANON_H = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 
-  // ─── State ────────────────────────────────────────────────────────────────
-  var state = {
-    ticket: null,           // Currently loaded ticket
-    bundles: [],            // Top-up bundles from table
-    selectedBundleId: null, // ID of selected bundle (null for custom)
-    customAmount: 0,        // Custom amount input
-    selectedPayment: 'modempay',
-    balanceCap: 5000,       // From system_config
-  };
+  /* ─── State ─────────────────────────────────────────────────────────────── */
+  let ticket = null;            // Current looked-up ticket
+  let bundles = [];             // top_up_bundles from DB
+  let balanceCap = 5000;        // From system_config
+  let selectedAmount = 0;       // D
+  let selectedBundleIdx = -1;
+  let selectedPayment = 'modempay';
+  let orderId = null;
+  let orderTotal = 0;
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  const $ = function (id) { return document.getElementById(id); };
 
-  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
-
-  function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
-  }
-
-  function formatCurrency(amount) {
-    return 'D' + Number(amount).toLocaleString();
-  }
-
-  function show(id) {
-    var el = typeof id === 'string' ? document.getElementById(id) : id;
-    if (el) el.style.display = '';
-  }
-
-  function hide(id) {
-    var el = typeof id === 'string' ? document.getElementById(id) : id;
-    if (el) el.style.display = 'none';
-  }
-
-  function showError(id, msg) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-
-  function hideError(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  }
-
-  function getTopupAmount() {
-    // Determine the selected amount: bundle or custom
-    if (state.selectedBundleId) {
-      var bundle = state.bundles.find(function(b) { return b.id === state.selectedBundleId; });
-      if (bundle) return bundle.amount;
-    }
-    return state.customAmount;
-  }
-
-  // ─── Supabase REST helpers ────────────────────────────────────────────────
-
-  function fetchFromSupabase(path) {
-    return fetch(SUPA_URL + path, {
-      headers: {
-        'apikey': SUPA_ANON,
-        'Authorization': 'Bearer ' + SUPA_ANON,
-        'Accept': 'application/json',
-      }
-    }).then(function(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Request failed'); });
-      return r.json();
-    });
-  }
-
-  // ─── Screen Display ───────────────────────────────────────────────────────
-
-  function showLanding() {
-    hide('topup-loading');
-    hide('topup-error');
-    hide('topup-form-container');
-    hide('topup-success');
-    show('topup-landing');
-  }
-
-  function showLoading() {
-    hide('topup-landing');
-    hide('topup-error');
-    hide('topup-form-container');
-    hide('topup-success');
-    show('topup-loading');
-  }
-
-  function showErrorScreen() {
-    hide('topup-landing');
-    hide('topup-loading');
-    hide('topup-form-container');
-    hide('topup-success');
-    show('topup-error');
-  }
-
-  function showForm() {
-    hide('topup-landing');
-    hide('topup-loading');
-    hide('topup-error');
-    hide('topup-success');
-    show('topup-form-container');
-  }
-
-  function showSuccess() {
-    hide('topup-landing');
-    hide('topup-loading');
-    hide('topup-error');
-    hide('topup-form-container');
-    show('topup-success');
-  }
-
-  // ─── Initialization ───────────────────────────────────────────────────────
-
+  /* ─── Init ──────────────────────────────────────────────────────────────── */
   function init() {
-    loadBundles();
-    loadBalanceCap();
-    initEventListeners();
-
-    // Check for ?t= query param
-    var params = new URLSearchParams(window.location.search);
-    var code = params.get('t');
-    if (code) {
-      document.getElementById('topup-code-input').value = code;
-      lookupTicket(code);
-    }
+    setupLookup();
+    setupForm();
+    showView('landing');
   }
 
-  function loadBundles() {
-    fetchFromSupabase('/rest/v1/top_up_bundles?select=id,amount,is_active,sort_order&is_active=eq.true&order=sort_order.asc')
-      .then(function(bundles) {
-        state.bundles = bundles || [];
-        renderBundles();
-      })
-      .catch(function(err) {
-        console.error('[top-up] Failed to load bundles:', err.message);
-        // Fallback bundles if table not available
-        state.bundles = [
-          { id: 'fallback-100', amount: 100 },
-          { id: 'fallback-200', amount: 200 },
-          { id: 'fallback-500', amount: 500 },
-          { id: 'fallback-1000', amount: 1000 },
-        ];
-        renderBundles();
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 1 — TICKET LOOKUP
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function setupLookup() {
+    var codeInput = $('topup-code-input');
+    var goBtn = $('topup-lookup-btn');
+    var errorBack = $('topup-error-back-btn');
+
+    if (!codeInput || !goBtn) return;
+
+    codeInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') lookupTicket();
+    });
+    goBtn.addEventListener('click', lookupTicket);
+
+    if (errorBack) {
+      errorBack.addEventListener('click', function () {
+        $('topup-code-input').value = '';
+        $('topup-code-input').focus();
+        showView('landing');
       });
-  }
-
-  function loadBalanceCap() {
-    fetchFromSupabase('/rest/v1/system_config?select=key,value&key=eq.balance_cap&limit=1')
-      .then(function(configs) {
-        if (configs && configs.length > 0) {
-          state.balanceCap = parseInt(configs[0].value, 10) || 5000;
-          var capNote = document.getElementById('topup-cap-note');
-          if (capNote) capNote.textContent = 'Max ' + formatCurrency(state.balanceCap);
-        }
-      })
-      .catch(function(err) {
-        console.warn('[top-up] Failed to load balance cap, using default:', err.message);
-      });
-  }
-
-  // ─── Ticket Lookup ────────────────────────────────────────────────────────
-
-  function lookupTicket(code) {
-    if (!code || code.trim().length < 6) {
-      showError('topup-landing-error', 'Please enter a valid ticket code.');
-      return;
     }
+
+    // Auto-focus code input
+    codeInput.focus();
+  }
+
+  async function lookupTicket() {
+    var codeInput = $('topup-code-input');
+    if (!codeInput) return;
+    var code = codeInput.value.trim().toUpperCase();
+    if (!code) return;
+
+    // Normalize: add TKT- prefix if missing
+    if (!code.startsWith('TKT-')) code = 'TKT-' + code;
+    codeInput.value = code;
 
     hideError('topup-landing-error');
-    showLoading();
+    showView('loading');
 
-    var normalizedCode = code.trim().toUpperCase();
-    if (!normalizedCode.startsWith('TKT-')) {
-      normalizedCode = 'TKT-' + normalizedCode;
-    }
+    try {
+      var res = await fetch(TICKET_FN + '/lookup-ticket', {
+        method: 'POST',
+        headers: ANON_H,
+        body: JSON.stringify({ code: code })
+      });
+      var data = await res.json();
 
-    fetch(EDGE_URL + '/lookup-ticket', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-      body: JSON.stringify({ code: normalizedCode }),
-    })
-    .then(function(r) {
-      if (r.status === 404) {
-        showErrorScreen();
-        return null;
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Ticket not found');
       }
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Lookup failed'); });
-      return r.json();
-    })
-    .then(function(data) {
-      if (!data || !data.success) {
-        showErrorScreen();
+
+      ticket = data.ticket;
+
+      // Must be an activity credit ticket
+      if (ticket.type !== 'activity_credit') {
+        $('topup-error').querySelector('p').textContent =
+          'This ticket is not an activity pass. Only activity credit tickets can be topped up.';
+        showView('error');
         return;
       }
 
-      state.ticket = data.ticket;
-
-      // Check ticket type — only activity credits can be topped up
-      if (state.ticket.type !== 'activity_credit') {
-        showError('topup-error', 'This ticket type cannot be topped up.');
-        showErrorScreen();
-        return;
-      }
-
-      // Check status
-      if (state.ticket.status !== 'active') {
-        showErrorScreen();
+      if (ticket.status !== 'active') {
+        $('topup-error').querySelector('p').textContent =
+          'This ticket is ' + ticket.status + ' and cannot be topped up.';
+        showView('error');
         return;
       }
 
       renderTicketInfo();
-      showForm();
-    })
-    .catch(function(err) {
-      console.error('[top-up] Lookup error:', err.message);
-      showError('topup-landing-error', err.message || 'Failed to look up ticket. Please try again.');
-      showLanding();
-    });
-  }
+      await loadBundlesAndCap();
+      showView('form');
 
-  // ─── Render Ticket Info ───────────────────────────────────────────────────
+    } catch (err) {
+      console.error('[topup] lookupTicket:', err);
+      showView('error');
+    }
+  }
 
   function renderTicketInfo() {
-    var t = state.ticket;
-    if (!t) return;
-
-    var nameEl = document.getElementById('topup-ticket-name');
-    var codeEl = document.getElementById('topup-ticket-code');
-    var metaEl = document.getElementById('topup-ticket-meta');
-    var balanceEl = document.getElementById('topup-current-balance');
-    var capNoteEl = document.getElementById('topup-cap-note');
-
-    if (nameEl) nameEl.textContent = t.ticket_type ? t.ticket_type.name : 'Activity Credit';
-    if (codeEl) codeEl.textContent = t.code;
-    if (metaEl) metaEl.textContent = 'Activity Credit — ' + escapeHtml(t.ticket_type ? t.ticket_type.name : '');
-    if (balanceEl) balanceEl.textContent = formatCurrency(t.balance);
-    if (capNoteEl) capNoteEl.textContent = 'Max ' + formatCurrency(state.balanceCap);
+    var tt = ticket.ticket_type || {};
+    var typeName = tt.name || 'Activity Pass';
+    $('topup-ticket-name').textContent = typeName;
+    $('topup-ticket-code').textContent = ticket.code;
+    $('topup-ticket-meta').textContent = 'Activity Credit';
+    $('topup-current-balance').textContent = 'D' + (ticket.balance || 0).toLocaleString();
+    $('topup-cap-note').textContent = 'Max D' + balanceCap.toLocaleString();
   }
 
-  // ─── Render Bundles ───────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 2 — BUNDLES & BALANCE CAP
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function loadBundlesAndCap() {
+    try {
+      var [bundlesRes, capRes] = await Promise.all([
+        fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?is_active=eq.true&order=sort_order.asc', {
+          headers: { apikey: SUPABASE_ANON_KEY }
+        }),
+        fetch(SUPABASE_URL + '/rest/v1/system_config?key=eq.balance_cap&select=value', {
+          headers: { apikey: SUPABASE_ANON_KEY }
+        })
+      ]);
+
+      if (bundlesRes.ok) {
+        bundles = await bundlesRes.json();
+      } else {
+        bundles = getFallbackBundles();
+      }
+
+      if (capRes.ok) {
+        var configs = await capRes.json();
+        if (configs && configs.length > 0) {
+          balanceCap = parseInt(configs[0].value, 10) || 5000;
+        }
+      }
+
+      renderBundles();
+    } catch (err) {
+      console.error('[topup] loadBundles:', err);
+      bundles = getFallbackBundles();
+      renderBundles();
+    }
+  }
+
+  function getFallbackBundles() {
+    return [
+      { id: 'fb-100', amount: 100, sort_order: 1 },
+      { id: 'fb-200', amount: 200, sort_order: 2 },
+      { id: 'fb-500', amount: 500, sort_order: 3 },
+      { id: 'fb-1000', amount: 1000, sort_order: 4 },
+      { id: 'fb-2000', amount: 2000, sort_order: 5 },
+    ];
+  }
 
   function renderBundles() {
-    var container = document.getElementById('topup-bundles');
+    var container = $('topup-bundles');
     if (!container) return;
 
-    if (state.bundles.length === 0) {
-      container.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:16px 0;">No bundles available. Use custom amount below.</p>';
-      return;
+    container.innerHTML = bundles.map(function (b, i) {
+      var selected = selectedBundleIdx === i ? ' selected' : '';
+      return '<button class="bundle-btn' + selected + '" data-idx="' + i + '">'
+        + '<div class="amt">D' + b.amount.toLocaleString() + '</div>'
+        + (b.amount >= 1000 ? '<div class="lbl-adj">Best value</div>' : '')
+        + '</button>';
+    }).join('');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 3 — FORM LOGIC
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function setupForm() {
+    /* Bundle click delegation */
+    var bundleContainer = $('topup-bundles');
+    if (bundleContainer) {
+      bundleContainer.addEventListener('click', function (e) {
+        var btn = e.target.closest('.bundle-btn');
+        if (!btn) return;
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        if (!isNaN(idx)) selectBundle(idx);
+      });
     }
 
-    var html = '';
-    state.bundles.forEach(function(bundle) {
-      var isSelected = state.selectedBundleId === bundle.id;
-      html += '<button class="bundle-btn' + (isSelected ? ' selected' : '') + '" data-bundle-id="' + bundle.id + '" data-amount="' + bundle.amount + '">' +
-        '<div class="amt">' + formatCurrency(bundle.amount) + '</div>' +
-      '</button>';
+    /* Custom amount input */
+    var customInput = $('topup-custom-amount');
+    if (customInput) {
+      customInput.addEventListener('input', function () {
+        var val = parseInt(this.value, 10) || 0;
+        if (val > 0 && selectedBundleIdx >= 0) {
+          selectedBundleIdx = -1;
+          renderBundles();
+        }
+        selectedAmount = val >= 50 ? Math.min(val, balanceCap) : 0;
+        updateSummary();
+      });
+    }
+
+    /* Payment method selection */
+    document.querySelectorAll('[data-payment]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        document.querySelectorAll('[data-payment]').forEach(function (p) {
+          p.classList.remove('selected');
+          var radio = p.querySelector('input[type="radio"]');
+          if (radio) radio.checked = false;
+        });
+        el.classList.add('selected');
+        var radio = el.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+        selectedPayment = el.getAttribute('data-payment');
+        var waveDetails = $('topup-wave-details');
+        if (waveDetails) waveDetails.classList.toggle('active', selectedPayment === 'wave');
+        updatePayButton();
+      });
     });
 
-    container.innerHTML = html;
+    /* Pay button */
+    var payBtn = $('topup-pay-btn');
+    if (payBtn) payBtn.addEventListener('click', handlePay);
   }
 
-  // ─── Amount Selection ─────────────────────────────────────────────────────
-
-  function selectBundle(id) {
-    state.selectedBundleId = id;
-    state.customAmount = 0;
-
-    // Clear custom input
-    var customInput = document.getElementById('topup-custom-amount');
+  function selectBundle(idx) {
+    selectedBundleIdx = idx;
+    selectedAmount = 0;
+    var customInput = $('topup-custom-amount');
     if (customInput) customInput.value = '';
-
+    document.querySelectorAll('.bundle-btn').forEach(function (b) { b.classList.remove('selected'); });
+    var btn = document.querySelector('.bundle-btn[data-idx="' + idx + '"]');
+    if (btn) btn.classList.add('selected');
     renderBundles();
     updateSummary();
   }
 
-  function selectCustomAmount(amount) {
-    state.selectedBundleId = null;
-    state.customAmount = Math.max(0, parseInt(amount, 10) || 0);
-
-    renderBundles();
-    updateSummary();
+  function getAmount() {
+    if (selectedBundleIdx >= 0 && selectedBundleIdx < bundles.length) {
+      return bundles[selectedBundleIdx].amount;
+    }
+    return selectedAmount;
   }
 
   function updateSummary() {
-    var amount = getTopupAmount();
-    var chargeEl = document.getElementById('topup-charge-amount');
-    var afterEl = document.getElementById('topup-balance-after');
-    var capCheckEl = document.getElementById('topup-cap-check');
-    var payBtn = document.getElementById('topup-pay-btn');
+    var amount = getAmount();
+    var currentBalance = ticket ? (ticket.balance || 0) : 0;
+    var newBalance = currentBalance + amount;
+    var valid = amount >= 50;
 
-    if (chargeEl) chargeEl.textContent = formatCurrency(amount);
+    var chargeEl = $('topup-charge-amount');
+    if (chargeEl) chargeEl.textContent = 'D' + amount.toLocaleString();
 
-    if (state.ticket && afterEl) {
-      var newBalance = (state.ticket.balance || 0) + amount;
-      afterEl.innerHTML = 'Balance after: <strong>' + formatCurrency(newBalance) + '</strong>';
+    var balanceAfter = $('topup-balance-after');
+    if (balanceAfter) {
+      balanceAfter.innerHTML = 'Balance after: <strong>D' + newBalance.toLocaleString() + '</strong>';
+    }
 
-      if (capCheckEl) {
-        if (newBalance > state.balanceCap) {
-          capCheckEl.innerHTML = 'Exceeds max balance by ' + formatCurrency(newBalance - state.balanceCap);
-          capCheckEl.style.color = '#c53030';
-          if (payBtn) payBtn.disabled = true;
-        } else {
-          capCheckEl.innerHTML = 'Within limit';
-          capCheckEl.style.color = '#2f855a';
-          if (payBtn) payBtn.disabled = amount < 50;
-        }
+    var capCheck = $('topup-cap-check');
+    if (capCheck) {
+      if (newBalance > balanceCap) {
+        capCheck.textContent = 'Exceeds max balance of D' + balanceCap.toLocaleString();
+        capCheck.style.color = '#c53030';
+        valid = false;
+      } else if (amount > 0) {
+        capCheck.textContent = 'Within limit';
+        capCheck.style.color = 'var(--accent-text)';
+      } else {
+        capCheck.textContent = '';
+      }
+    }
+
+    updatePayButton(valid);
+  }
+
+  function updatePayButton(validOverride) {
+    var btn = $('topup-pay-btn');
+    if (!btn) return;
+    var amount = getAmount();
+    var valid = amount >= 50;
+    if (validOverride !== undefined) valid = validOverride;
+    btn.disabled = !valid;
+
+    if (valid) {
+      if (selectedPayment === 'wave') {
+        btn.textContent = 'Send D' + amount.toLocaleString() + ' & Confirm';
+      } else {
+        btn.textContent = 'D' + amount.toLocaleString() + ' — Top Up Now';
       }
     } else {
-      if (payBtn) payBtn.disabled = amount < 50;
-    }
-
-    // Update Wave amount
-    var waveAmt = document.getElementById('topup-wave-details');
-    if (waveAmt && waveAmt.querySelector('.topup-wave-number')) {
-      var existing = waveAmt.querySelector('.amount-display');
-      if (existing) existing.textContent = 'Amount: ' + formatCurrency(amount);
-    }
-
-    // Disable pay button if amount is 0 or below minimum
-    if (payBtn && amount < 50) {
-      payBtn.disabled = true;
+      btn.textContent = 'Select an amount';
     }
   }
 
-  // ─── Payment ──────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 4 — PAYMENT HANDLING
+     ═══════════════════════════════════════════════════════════════════════════ */
 
-  function handlePay() {
-    var amount = getTopupAmount();
-    var payBtn = document.getElementById('topup-pay-btn');
-    hideError('topup-pay-error');
+  async function handlePay() {
+    var amount = getAmount();
+    var btn = $('topup-pay-btn');
+    var errEl = $('topup-pay-error');
+    if (!btn || !errEl) return;
+
+    errEl.style.display = 'none';
 
     if (amount < 50) {
-      showError('topup-pay-error', 'Minimum top-up is D50.');
+      errEl.textContent = 'Minimum top-up is D50.';
+      errEl.style.display = 'block';
       return;
     }
 
-    if (!state.ticket) {
-      showError('topup-pay-error', 'No ticket loaded. Please look up your ticket first.');
+    var newBalance = (ticket.balance || 0) + amount;
+    if (newBalance > balanceCap) {
+      errEl.textContent = 'This would exceed the max balance of D' + balanceCap.toLocaleString() + '.';
+      errEl.style.display = 'block';
       return;
     }
 
-    var newBalance = (state.ticket.balance || 0) + amount;
-    if (newBalance > state.balanceCap) {
-      showError('topup-pay-error', 'This top-up would exceed the maximum balance of ' + formatCurrency(state.balanceCap) + '.');
-      return;
-    }
+    btn.disabled = true;
+    btn.textContent = 'Processing\u2026';
+    orderTotal = amount;
 
-    if (payBtn) { payBtn.disabled = true; payBtn.textContent = 'Processing…'; }
-
-    if (state.selectedPayment === 'modempay') {
-      handleModemPay(amount);
-    } else {
-      handleWave(amount);
-    }
-  }
-
-  function handleModemPay(amount) {
-    var ticketCode = state.ticket.code;
-
-    // Create a minimal order for the top-up, then initiate ModemPay intent
-    fetch(EDGE_URL + '/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-      body: JSON.stringify({
-        email: state.ticket.customer_email || 'topup@walkingfish.gm',
-        customer_name: state.ticket.customer_name || '',
-        items: [{ ticket_type_id: state.ticket.ticket_type_id, quantity: 0 }],
-        purpose: 'top-up',
-        ticket_code: ticketCode,
-        topup_amount: amount,
-      }),
-    })
-    .then(function(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Order creation failed'); });
-      return r.json();
-    })
-    .then(function(orderData) {
-      if (!orderData.success) throw new Error(orderData.error || 'Order creation failed');
-
-      // Create payment intent with top-up metadata
-      return fetch(EDGE_URL + '/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-        body: JSON.stringify({
-          order_id: orderData.order_id,
-          amount: amount,
-          email: state.ticket.customer_email || 'topup@walkingfish.gm',
-          description: 'Piroake Fest top-up — ' + ticketCode,
-          purpose: 'top-up',
-          ticket_code: ticketCode,
-        }),
-      })
-      .then(function(r) {
-        if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Payment initiation failed'); });
-        return r.json();
-      })
-      .then(function(intentData) {
-        if (intentData.payment_url) {
-          // Store pending info in sessionStorage for success screen on return
-          try {
-            sessionStorage.setItem('wf_topup_pending', JSON.stringify({
-              amount: amount,
-              ticketCode: ticketCode,
-              newBalance: (state.ticket.balance || 0) + amount,
-              email: state.ticket.customer_email,
-            }));
-          } catch (e) {}
-          window.location.href = intentData.payment_url;
-        } else {
-          throw new Error('No payment URL returned');
-        }
-      });
-    })
-    .catch(function(err) {
-      showError('topup-pay-error', err.message || 'Payment failed. Please try again.');
-      if (payBtn) { payBtn.disabled = false; payBtn.textContent = 'Top Up Now'; }
-    });
-  }
-
-  function handleWave(amount) {
-    var ticketCode = state.ticket.code;
-    var email = state.ticket.customer_email || 'topup@walkingfish.gm';
-
-    // Create order + payment proof for Wave Transfer
-    fetch(EDGE_URL + '/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
-      body: JSON.stringify({
-        email: email,
-        customer_name: state.ticket.customer_name || '',
-        items: [{ ticket_type_id: state.ticket.ticket_type_id, quantity: 0 }],
-        purpose: 'top-up',
-        ticket_code: ticketCode,
-        topup_amount: amount,
-      }),
-    })
-    .then(function(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Order creation failed'); });
-      return r.json();
-    })
-    .then(function(orderData) {
-      if (!orderData.success) throw new Error(orderData.error || 'Order creation failed');
-
-      // Ask for Wave or Bank reference number
-      var ref = prompt('Enter your Wave Transfer or Bank Transfer reference number:');
-      if (!ref || !ref.trim()) {
-        throw new Error('Reference number required for verification.');
-      }
-
-      // Submit payment proof
-      var refNum = ref.trim();
-      return fetch(SUPA_URL + '/rest/v1/payment_proofs', {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_ANON,
-          'Authorization': 'Bearer ' + SUPA_ANON,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify([{
-          order_id: orderData.order_id,
-          email: email,
-          amount: amount,
-          reference_number: refNum,
-          notes: 'Self-service top-up for ticket ' + ticketCode,
-        }]),
-      })
-      .then(function() {
-        // Show success message with Wave pending info
-        var newBalance = (state.ticket.balance || 0) + amount;
-        showTopupSuccess(newBalance, 'wave', email);
-      });
-    })
-    .catch(function(err) {
-      showError('topup-pay-error', err.message || 'Failed to submit payment. Please try again.');
-      var payBtn = document.getElementById('topup-pay-btn');
-      if (payBtn) { payBtn.disabled = false; payBtn.textContent = 'Top Up Now'; }
-    });
-  }
-
-  // ─── Success View ─────────────────────────────────────────────────────────
-
-  function showTopupSuccess(newBalance, method, email) {
-    var balanceEl = document.getElementById('topup-new-balance');
-    var msgEl = document.getElementById('topup-success-msg');
-
-    if (balanceEl) balanceEl.textContent = formatCurrency(newBalance);
-    if (msgEl) {
-      if (method === 'modempay' || method === 'redirect') {
-        msgEl.textContent = 'Your credits have been added. Check your email for the receipt.';
-      } else {
-        msgEl.textContent = 'Your top-up is pending verification. We\'ll notify you once confirmed (usually within 24 hours).';
-      }
-    }
-
-    showSuccess();
-
-    // Reset state
-    state.selectedBundleId = null;
-    state.customAmount = 0;
-  }
-
-  // ─── Event Listeners ──────────────────────────────────────────────────────
-
-  function initEventListeners() {
-    // Lookup button
-    var lookupBtn = document.getElementById('topup-lookup-btn');
-    var codeInput = document.getElementById('topup-code-input');
-    if (lookupBtn) {
-      lookupBtn.addEventListener('click', function() {
-        lookupTicket(codeInput ? codeInput.value : '');
-      });
-    }
-    if (codeInput) {
-      codeInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          lookupTicket(this.value);
-        }
-      });
-    }
-
-    // Error screen back button
-    var errorBack = document.getElementById('topup-error-back-btn');
-    if (errorBack) {
-      errorBack.addEventListener('click', function() {
-        showLanding();
-      });
-    }
-
-    // Bundle selection (event delegation)
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.bundle-btn');
-      if (btn) {
-        selectBundle(btn.getAttribute('data-bundle-id'));
-      }
-    });
-
-    // Custom amount input
-    var customInput = document.getElementById('topup-custom-amount');
-    if (customInput) {
-      customInput.addEventListener('input', function() {
-        selectCustomAmount(this.value);
-      });
-    }
-
-    // Payment method selection
-    var payRadios = $$('input[name="topup-payment"]');
-    payRadios.forEach(function(radio) {
-      radio.addEventListener('change', function() {
-        state.selectedPayment = this.value;
-        $$('.pay-option').forEach(function(el) { el.classList.remove('selected'); });
-        var parent = this.closest('.pay-option');
-        if (parent) parent.classList.add('selected');
-
-        var waveDetails = document.getElementById('topup-wave-details');
-        if (waveDetails) {
-          waveDetails.classList.toggle('active', this.value === 'wave');
-          // Update amount display in wave details
-          if (this.value === 'wave') {
-            var amountDisplay = waveDetails.querySelector('.amount-display');
-            if (!amountDisplay) {
-              var p = document.createElement('p');
-              p.className = 'amount-display';
-              p.style.cssText = 'font-size:13px;color:var(--muted);margin-bottom:4px;';
-              waveDetails.insertBefore(p, waveDetails.querySelector('.topup-wave-number').nextSibling);
-            }
-            var existing = waveDetails.querySelector('.amount-display');
-            if (existing) existing.textContent = 'Amount: ' + formatCurrency(getTopupAmount());
-          }
-        }
-      });
-    });
-
-    // Pay button
-    var payBtn = document.getElementById('topup-pay-btn');
-    if (payBtn) {
-      payBtn.addEventListener('click', handlePay);
-    }
-
-    // Check for returned-from-ModemPay pending top-up in sessionStorage
     try {
-      var pending = sessionStorage.getItem('wf_topup_pending');
-      if (pending) {
-        sessionStorage.removeItem('wf_topup_pending');
-        var data = JSON.parse(pending);
-        showTopupSuccess(data.newBalance, 'modempay', data.email);
+      /* 1. Create order with purpose=top-up */
+      var orderRes = await fetch(TICKET_FN + '/create-order', {
+        method: 'POST',
+        headers: ANON_H,
+        body: JSON.stringify({
+          email: ticket.customer_email || 'guest@walkingfish.gm',
+          customer_name: ticket.customer_name || '',
+          purpose: 'top-up',
+          ticket_code: ticket.code,
+          topup_amount: amount,
+          items: []
+        })
+      });
+      var orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.success) {
+        throw new Error(orderData.error || 'Failed to create order');
       }
-    } catch (e) {}
+
+      orderId = orderData.order_id;
+
+      if (selectedPayment === 'modempay') {
+        await handleModemPay();
+      } else {
+        await handleWave();
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Top Up Now';
+    }
   }
 
-  // ─── Start ────────────────────────────────────────────────────────────────
+  /* ─── ModemPay Flow ─────────────────────────────────────────────────────── */
+
+  async function handleModemPay() {
+    var btn = $('topup-pay-btn');
+
+    /* 2. Create payment intent */
+    var intentRes = await fetch(TICKET_FN + '/create-intent', {
+      method: 'POST',
+      headers: ANON_H,
+      body: JSON.stringify({
+        order_id: orderId,
+        amount: orderTotal,
+        email: ticket.customer_email || 'guest@walkingfish.gm',
+        description: 'Top-up for ticket ' + ticket.code,
+        purpose: 'top-up',
+        ticket_code: ticket.code
+      })
+    });
+    var intentData = await intentRes.json();
+    if (!intentRes.ok || !intentData.success) {
+      throw new Error(intentData.error || 'Failed to create payment intent');
+    }
+
+    btn.textContent = 'Redirecting\u2026';
+
+    /* Hide form, show payment view */
+    $('topup-form-container').classList.remove('active');
+
+    var conf = document.createElement('div');
+    conf.id = 'topup-payment-view';
+    conf.style.cssText = 'max-width:520px;margin:0 auto;padding:40px 20px;text-align:center;';
+
+    conf.innerHTML =
+      '<div style="font-size:48px;margin-bottom:16px;">\uD83D\uDCB3</div>'
+      + '<h2 style="margin-bottom:8px;">Complete Payment</h2>'
+      + '<p style="font-size:14px;color:var(--muted);margin:8px 0 20px;">'
+      +   'Top-up of <strong>D' + orderTotal.toLocaleString() + '</strong> for ticket <strong>' + ticket.code + '</strong>'
+      + '</p>'
+      + '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">'
+      +   'In production you would be redirected to ModemPay.'
+      + '</p>'
+      + '<button class="btn btn-primary" id="topup-sim-btn" style="width:100%;">'
+      +   '<span id="topup-sim-text">Simulate Payment Complete</span>'
+      + '</button>'
+      + '<div id="topup-sim-status" style="margin-top:12px;"></div>';
+
+    $('topup-form-container').parentNode.insertBefore(conf, $('topup-form-container').nextSibling);
+
+    $('topup-sim-btn').addEventListener('click', async function () {
+      var simBtn = $('topup-sim-btn');
+      var simText = $('topup-sim-text');
+      var status = $('topup-sim-status');
+      if (!simBtn || !simText || !status) return;
+      simBtn.disabled = true;
+      simText.textContent = 'Verifying payment\u2026';
+
+      try {
+        var whRes = await fetch(TICKET_FN + '/webhook', {
+          method: 'POST',
+          headers: ANON_H,
+          body: JSON.stringify({
+            event: 'charge.succeeded',
+            intent_id: intentData.intent_id,
+            status: 'completed'
+          })
+        });
+        var whData = await whRes.json();
+
+        if (whData.success || whData.topup) {
+          status.innerHTML = '<div style="color:#2f855a;font-weight:500;">\u2705 Payment confirmed!</div>';
+          simText.textContent = 'Done!';
+          simBtn.disabled = true;
+
+          setTimeout(function () {
+            if (conf.parentNode) conf.parentNode.removeChild(conf);
+            showSuccess((ticket.balance || 0) + orderTotal);
+          }, 1500);
+        } else {
+          status.innerHTML = '<div style="color:#c53030;">' + (whData.error || 'Processing\u2026 try again.') + '</div>';
+          simText.textContent = 'Try Again';
+          simBtn.disabled = false;
+        }
+      } catch (e) {
+        status.innerHTML = '<div style="color:#c53030;">' + e.message + '</div>';
+        simText.textContent = 'Try Again';
+        simBtn.disabled = false;
+      }
+    });
+  }
+
+  /* ─── Wave Transfer Flow ────────────────────────────────────────────────── */
+
+  async function handleWave() {
+    $('topup-form-container').classList.remove('active');
+
+    var conf = document.createElement('div');
+    conf.id = 'topup-payment-view';
+    conf.style.cssText = 'max-width:520px;margin:0 auto;padding:40px 20px;text-align:center;';
+
+    conf.innerHTML =
+      '<div style="font-size:48px;margin-bottom:16px;">\uD83D\uDCCB</div>'
+      + '<h2 style="margin-bottom:8px;">Top-Up Requested</h2>'
+      + '<p style="font-size:14px;color:var(--muted);margin:8px 0 20px;">'
+      +   'Please send <strong>D' + orderTotal.toLocaleString() + '</strong> to one of the following:'
+      + '</p>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;">'
+      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
+      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Wave</div>'
+      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">+220 696 3419</div>'
+      +   '</div>'
+      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
+      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Bank</div>'
+      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">206370720110</div>'
+      +   '</div>'
+      + '</div>'
+      + '<p style="font-size:13px;color:var(--muted);">'
+      +   'Reference: <strong>' + ticket.code + '</strong><br>'
+      +   'Include your ticket code so we can match your payment.'
+      + '</p>'
+      + '<p style="font-size:13px;color:var(--muted);margin-top:16px;">'
+      +   'Credit applied after manual verification. You\u2019ll receive a confirmation email.'
+      + '</p>'
+      + '<div style="display:flex;gap:12px;margin-top:20px;">'
+      +   '<button class="btn btn-primary" id="topup-wave-done-btn" style="flex:1;">I\u2019ve Sent Payment</button>'
+      +   '<a href="/top-up" class="btn btn-secondary" style="flex:1;text-align:center;">Back to Top-Up</a>'
+      + '</div>';
+
+    $('topup-form-container').parentNode.insertBefore(conf, $('topup-form-container').nextSibling);
+
+    $('topup-wave-done-btn').addEventListener('click', function () {
+      if (conf.parentNode) conf.parentNode.removeChild(conf);
+      showSuccess((ticket.balance || 0) + orderTotal, 'pending');
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 5 — SUCCESS VIEW
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function showSuccess(newBalance, status) {
+    var paymentView = $('topup-payment-view');
+    if (paymentView) paymentView.remove();
+
+    $('topup-new-balance').textContent = 'D' + newBalance.toLocaleString();
+
+    var msg = $('topup-success-msg');
+    if (msg) {
+      if (status === 'pending') {
+        msg.textContent =
+          'Your payment is being verified. You\u2019ll receive a confirmation email once approved.';
+      } else {
+        msg.textContent =
+          'Your credits have been added. Check your email for the receipt.';
+      }
+    }
+
+    showView('success');
+
+    // Fire confetti via gift.js
+    if (typeof giftConfetti === 'function') {
+      setTimeout(function () {
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999;';
+        document.body.appendChild(box);
+        giftConfetti(box);
+        setTimeout(function () { box.remove(); }, 3000);
+      }, 400);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 6 — VIEW MANAGEMENT
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function showView(view) {
+    var landing   = $('topup-landing');
+    var loading   = $('topup-loading');
+    var error     = $('topup-error');
+    var form      = $('topup-form-container');
+    var success   = $('topup-success');
+
+    // Hide all
+    if (landing) landing.style.display = 'none';
+    if (loading) loading.style.display = 'none';
+    if (error) error.style.display = 'none';
+    if (form) form.classList.remove('active');
+    if (success) success.style.display = 'none';
+
+    // Show target
+    switch (view) {
+      case 'landing':
+        if (landing) landing.style.display = '';
+        break;
+      case 'loading':
+        if (loading) loading.style.display = '';
+        break;
+      case 'error':
+        if (error) error.style.display = '';
+        break;
+      case 'form':
+        if (form) form.classList.add('active');
+        break;
+      case 'success':
+        if (success) success.style.display = '';
+        break;
+    }
+
+    // Remove any dynamic payment views
+    var paymentView = $('topup-payment-view');
+    if (paymentView && view !== 'form') paymentView.remove();
+  }
+
+  function hideError(id) {
+    var el = $(id);
+    if (el) el.style.display = 'none';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BOOT
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
+
 })();

@@ -552,15 +552,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  code text;
+  new_code text;
   done bool;
 BEGIN
   done := false;
   WHILE NOT done LOOP
-    code := 'TKT-' || upper(substr(md5(random()::text), 1, 6));
-    done := NOT EXISTS (SELECT 1 FROM public.tickets WHERE tickets.code = code);
+    new_code := 'TKT-' || upper(substr(md5(random()::text), 1, 6));
+    done := NOT EXISTS (SELECT 1 FROM public.tickets WHERE tickets.code = new_code);
   END LOOP;
-  RETURN code;
+  RETURN new_code;
 END;
 $$;
 
