@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Top up your Piroake Fest 2026 activity credits. Add credit to your existing ticket via ModemPay or Wave Transfer.">
+<meta name="description" content="Add activity credits to your Piroake Fest 2026 ticket for on-site games, karaoke, and activities. Pay instantly with ModemPay or send via Wave Transfer.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
 <meta property="og:title" content="Top Up Credits | Piroake Fest 2026">
-<meta property="og:description" content="Add credits to your Piroake Fest ticket for on-site games and activities.">
+<meta property="og:description" content="Add credits to your Piroake Fest 2026 activity pass for on-site games, karaoke, and more. Pay with ModemPay or Wave Transfer.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.walkingfish.gm/top-up">
+<meta property="og:image" content="https://www.walkingfish.gm/bg-abstract-coral.gif">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://www.walkingfish.gm/top-up">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
@@ -17,8 +18,24 @@
   "@context": "https://schema.org",
   "@type": "WebPage",
   "name": "Top Up Credits — Piroake Fest 2026",
-  "description": "Add activity credits to your Piroake Fest ticket.",
-  "isPartOf": { "@type": "Event", "name": "Piroake Fest 2026" }
+  "description": "Add activity credits to your Piroake Fest 2026 ticket for on-site games, karaoke, and activities.",
+  "isPartOf": {
+    "@type": "Event",
+    "name": "Piroake Fest 2026",
+    "description": "Picnic. Karaoke. Rave Experience. Walking-Fish Group's flagship festival.",
+    "startDate": "2026-06-20",
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "location": {
+      "@type": "Place",
+      "name": "To be announced",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Gambia",
+        "addressCountry": "GM"
+      }
+    }
+  }
 }
 </script>
 <title>Top Up Credits | Piroake Fest 2026</title>
@@ -222,9 +239,10 @@
   <div id="topup-landing" class="topup-landing">
     <div class="landing-icon">&#9776;</div>
     <h2>Enter Your Ticket Code</h2>
-    <p>Find your ticket code in your confirmation email or on the QR card you received at the venue.</p>
+    <p>Find your ticket code in your confirmation email or on the QR card you received at the venue. Once entered, you'll be able to add more credits to your activity pass in seconds.</p>
     <div class="code-input-group">
-      <input type="text" id="topup-code-input" placeholder="TKT-XXXXXX" maxlength="12" autocomplete="off">
+      <label for="topup-code-input" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Your ticket code</label>
+      <input type="text" id="topup-code-input" placeholder="TKT-XXXXXX" maxlength="12" autocomplete="off" aria-label="Your ticket code">
       <button class="btn btn-primary" id="topup-lookup-btn">Go</button>
     </div>
     <div id="topup-landing-error" class="error-message" style="display:none;margin-top:12px;text-align:left;"></div>
@@ -263,6 +281,7 @@
 
     <!-- Bundle Selection -->
     <h3>Select Amount</h3>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">Choose a preset bundle below or enter a custom amount. The maximum balance allowed per ticket is D5,000. Credits you add can be used for on-site games, karaoke sessions, and other activities throughout the festival. You can top up at any time.</p>
     <div id="topup-bundles" class="bundle-grid">
       <div class="topup-loading" style="padding:20px;"><div class="spinner"></div></div>
     </div>
@@ -270,7 +289,8 @@
     <!-- Custom Amount -->
     <div class="custom-amount-group" id="topup-custom-group">
       <span class="prefix">D</span>
-      <input type="number" id="topup-custom-amount" placeholder="Custom amount" min="50" step="10">
+      <label for="topup-custom-amount" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Custom top-up amount in Dalasi</label>
+      <input type="number" id="topup-custom-amount" placeholder="Custom amount" min="50" step="10" aria-label="Custom top-up amount in Dalasi">
     </div>
 
     <!-- Summary -->
