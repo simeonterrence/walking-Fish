@@ -790,7 +790,11 @@ a.accent-link, .accent-text { color: var(--accent-text); }
 [data-page="blog"] nav a[href="blog.html"],
 [data-page="vendors"] nav a[href="vendors.html"],
 [data-page="partners"] nav a[href="partners.html"],
-[data-page="contact"] nav a[href="contact.html"] {
+[data-page="contact"] nav a[href="contact.html"],
+[data-page="top-up"] nav a[href="top-up.html"],
+[data-page="t"] nav a[href="t.html"],
+[data-page="tickets"] nav a[href="tickets.html"],
+[data-page="scan"] nav a[href="scan.html"] {
   background: var(--accent-dim);
   color: var(--accent);
 }

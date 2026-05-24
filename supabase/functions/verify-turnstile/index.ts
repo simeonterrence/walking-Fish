@@ -48,6 +48,33 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
           ${data.phone ? row("WhatsApp", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
           ${row("Category", data.category || "-")}
           ${row("Message", data.message || "No message provided.")}
+          ${data.details ? `
+            <tr><td colspan="2" style="padding:16px 0 8px;font-weight:bold;border-bottom:1px solid #eee;">Application Details</td></tr>
+            ${row("Intended Items", data.details.sell_intent || "-")}
+            ${row("Stall Selection", data.details.stall_preference || "-")}
+            ${row("Team Size", data.details.team_size || "-")}
+            ${data.details.team_members && data.details.team_members.length ? `
+              <tr><td style="padding:8px 0;color:#666;vertical-align:top;">Team Members</td><td style="padding:8px 0;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                  ${data.details.team_members.map((m: any, i: number) => `
+                    <tr style="border-bottom:1px solid #f5f5f5;">
+                      <td style="padding:4px 0;">
+                        <strong>${m.name || "-"}</strong> (${m.role || "-"})<br>
+                        Phone: ${m.phone || "-"}
+                        ${m.id_photo ? `<br><img src="${m.id_photo}" style="max-width:200px;max-height:150px;border-radius:4px;margin-top:4px;border:1px solid #ddd;" alt="ID Photo">` : ""}
+                      </td>
+                    </tr>
+                  `).join("")}
+                </table>
+              </td></tr>
+            ` : ""}
+            ${row("Extra Tags?", data.details.extra_tags_needed || "-")}
+            ${data.details.extra_tags_justification ? row("Tags Justification", data.details.extra_tags_justification) : ""}
+            ${row("Appliances?", data.details.bringing_appliances || "-")}
+            ${data.details.appliances_list ? row("Appliances List", data.details.appliances_list) : ""}
+            ${row("Power Req", data.details.power_requirements || "-")}
+            ${row("Readiness", data.details.readiness_level || "-")}
+          ` : ""}
         </table>
         <p style="margin-top:24px;font-size:13px;color:#999;">Review in the <a href="https://www.walkingfish.gm/admin">admin panel</a>.</p>
       `),

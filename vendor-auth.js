@@ -201,7 +201,8 @@ function submitApplication(e) {
         email: e.email,
         phone: e.phone,
         category: e.category,
-        message: e.message
+        message: e.message,
+        details: e.details
       }
     })
   }).then(function (res) {

@@ -36,6 +36,45 @@
 .tier-card li { padding: 8px 0; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--border); }
 .tier-card li:last-child { border-bottom: none; }
 .tier-card li::before { content: "\2713 "; color: var(--accent); font-weight: 700; }
+
+/* ── Multi-step vendor form ── */
+.vf-progress { display:flex; align-items:center; gap:0; margin-bottom:32px; max-width:640px; }
+.vf-progress-step { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:48px; position:relative; z-index:1; }
+.vf-step-num { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; border:2px solid var(--border); color:var(--muted); background:var(--surface); transition:all .3s; }
+.vf-step-label { font-size:11px; color:var(--muted); white-space:nowrap; }
+.vf-progress-step.active .vf-step-num, .vf-progress-step.done .vf-step-num { border-color:var(--accent); color:var(--surface); background:var(--accent); }
+.vf-progress-step.done .vf-step-num::after { content:"✓"; }
+.vf-progress-bar { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.vf-progress-fill { height:100%; width:0; background:var(--accent); transition:width .4s ease; }
+.vf-page { animation: vfSlideIn .3s ease; }
+@keyframes vfSlideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+.vf-nav-buttons { display:flex; gap:12px; margin-top:28px; padding-top:20px; border-top:1px solid var(--border); max-width:640px; }
+.vf-stall-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:540px){ .vf-stall-grid { grid-template-columns:1fr; } }
+.vf-stall-card { cursor:pointer; position:relative; }
+.vf-stall-card input { position:absolute; opacity:0; pointer-events:none; }
+.vf-stall-inner { border:2px solid var(--border); border-radius:12px; padding:24px; text-align:center; transition:border-color .2s, box-shadow .2s; }
+.vf-stall-card input:checked + .vf-stall-inner { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+.vf-stall-card:hover .vf-stall-inner { border-color:var(--accent); }
+.vf-stall-price { display:block; font-family:var(--font-display); font-size:28px; font-weight:600; margin:8px 0 12px; }
+.vf-stall-inner ul { list-style:none; text-align:left; margin-top:12px; }
+.vf-stall-inner li { padding:6px 0; font-size:13px; color:var(--muted); border-bottom:1px solid var(--border); }
+.vf-stall-inner li:last-child { border-bottom:none; }
+.vf-stall-inner li::before { content:"✓ "; color:var(--accent); font-weight:700; }
+.vf-team-member { border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:16px; background:var(--surface); }
+.vf-team-member h4 { font-size:15px; margin-bottom:14px; color:var(--fg); }
+.vf-team-member .form-group { margin-bottom:14px; }
+.vf-id-upload { display:flex; align-items:center; gap:12px; }
+.vf-id-upload label.vf-upload-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border:1px dashed var(--border); border-radius:var(--radius); cursor:pointer; font-size:13px; color:var(--muted); transition:border-color .2s, color .2s; background:var(--bg); }
+.vf-id-upload label.vf-upload-btn:hover { border-color:var(--accent); color:var(--accent); }
+.vf-id-preview { width:48px; height:48px; border-radius:6px; object-fit:cover; border:1px solid var(--border); display:none; }
+.vf-review-section { margin-bottom:20px; }
+.vf-review-section h4 { font-size:14px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.vf-review-row { display:flex; gap:8px; padding:6px 0; font-size:14px; }
+.vf-review-row .vf-rl { color:var(--muted); min-width:140px; flex-shrink:0; }
+.vf-review-row .vf-rv { color:var(--fg); word-break:break-word; }
+.vf-error { color:#DC2626; font-size:13px; margin-top:4px; display:none; }
+.form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea { border-color:#DC2626; }
 </style>
 </head>
 <body data-page="vendors">
@@ -146,44 +185,144 @@
 </div>
 </section>
 
-<section>
+<section id="apply-section">
 <div class="w">
   <p class="label">Apply</p>
-  <h2 style="margin-bottom: 16px;">Get the vendor kit.</h2>
-  <p style="margin-bottom: 32px; max-width: 48ch;">Fill this out and we&rsquo;ll send you our complete vendor kit: pricing tiers, booth options, application checklist, and everything you need to get started at Piroake Fest 2026.</p>
-  <form id="vendor-form" style="max-width: 600px;">
-    <div class="form-group">
-      <label for="business">Business Name</label>
-      <input type="text" id="business" placeholder="Your business or brand name" required>
+  <h2 style="margin-bottom: 8px;">Piroake Fest 2026 — Vendor Application</h2>
+  <p style="margin-bottom: 8px; max-width: 62ch;">This form helps us better understand your business, products, and setup requirements for Piroake Fest 2026.</p>
+  <p style="margin-bottom: 32px; max-width: 62ch; font-size: 14px; color: var(--muted);">Please provide accurate details to ensure proper planning, vendor placement, and resource allocation. Fields marked <span style="color:#DC2626;">*</span> are required.</p>
+
+  <!-- Progress bar -->
+  <div class="vf-progress" id="vf-progress">
+    <div class="vf-progress-step active" data-step="1"><span class="vf-step-num">1</span><span class="vf-step-label">Info</span></div>
+    <div class="vf-progress-bar"><div class="vf-progress-fill" id="vf-fill"></div></div>
+    <div class="vf-progress-step" data-step="2"><span class="vf-step-num">2</span><span class="vf-step-label">Stall</span></div>
+    <div class="vf-progress-bar"><div class="vf-progress-fill"></div></div>
+    <div class="vf-progress-step" data-step="3"><span class="vf-step-num">3</span><span class="vf-step-label">Team</span></div>
+    <div class="vf-progress-bar"><div class="vf-progress-fill"></div></div>
+    <div class="vf-progress-step" data-step="4"><span class="vf-step-num">4</span><span class="vf-step-label">Logistics</span></div>
+    <div class="vf-progress-bar"><div class="vf-progress-fill"></div></div>
+    <div class="vf-progress-step" data-step="5"><span class="vf-step-num">5</span><span class="vf-step-label">Review</span></div>
+  </div>
+
+  <form id="vendor-form" style="max-width: 640px;" novalidate>
+
+    <!-- ======== PAGE 1: Basic & Business Info ======== -->
+    <div class="vf-page" data-page="1">
+      <h3 style="margin-bottom:20px;">Basic &amp; Business Info</h3>
+      <div class="form-group"><label for="vf-email">Email <span style="color:#DC2626;">*</span></label><input type="email" id="vf-email" placeholder="you@example.com" required></div>
+      <div class="form-group"><label for="vf-fullname">Full Name <span style="color:#DC2626;">*</span></label><input type="text" id="vf-fullname" placeholder="Your full name" required></div>
+      <div class="form-group"><label for="vf-business">Business Name <span style="color:#DC2626;">*</span></label><input type="text" id="vf-business" placeholder="Your business or brand name" required></div>
+      <div class="form-group"><label for="vf-phone">WhatsApp Number <span style="color:#DC2626;">*</span></label><input type="tel" id="vf-phone" placeholder="+220 786 5201" required></div>
+      <div class="form-group">
+        <label for="vf-category">Business Type <span style="color:#DC2626;">*</span></label>
+        <select id="vf-category" required>
+          <option value="">Select a type</option>
+          <option value="Food">Food</option>
+          <option value="Snacks">Snacks</option>
+          <option value="Fashion & Thrift">Fashion &amp; Thrift</option>
+          <option value="Lifestyle & Creative Brand">Lifestyle &amp; Creative Brand</option>
+          <option value="Tattoo Artist">Tattoo Artist</option>
+          <option value="Henna Artist">Henna Artist</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label for="vf-about">Tell us about your business <span style="color:#DC2626;">*</span></label><textarea id="vf-about" placeholder="What do you sell? What makes your brand unique?" required></textarea></div>
+      <div class="form-group"><label for="vf-sell">What do you intend to sell at the event? <span style="color:#DC2626;">*</span></label><textarea id="vf-sell" placeholder="Be specific — menu items, products, services, etc." required style="min-height:80px;"></textarea></div>
     </div>
-    <div class="form-group">
-      <label for="contact-name">Contact Name</label>
-      <input type="text" id="contact-name" placeholder="Full name" required>
+
+    <!-- ======== PAGE 2: Stall Selection ======== -->
+    <div class="vf-page" data-page="2" style="display:none;">
+      <h3 style="margin-bottom:20px;">Stall Selection</h3>
+      <p style="margin-bottom:24px;font-size:15px;color:var(--muted);">Choose the stall that best fits your needs.</p>
+      <div class="vf-stall-grid">
+        <label class="vf-stall-card" for="stall-standard">
+          <input type="radio" name="stall" id="stall-standard" value="Standard Stall" required>
+          <div class="vf-stall-inner">
+            <strong>Standard Stall</strong>
+            <span class="vf-stall-price">D3,000</span>
+            <ul><li>10×10 booth space</li><li>Basic event listing</li><li>1 vendor pass</li><li>Social media mention</li></ul>
+          </div>
+        </label>
+        <label class="vf-stall-card" for="stall-premium">
+          <input type="radio" name="stall" id="stall-premium" value="Premium Stall">
+          <div class="vf-stall-inner">
+            <strong>Premium Stall</strong>
+            <span class="vf-stall-price">D5,000</span>
+            <ul><li>10×20 booth space</li><li>Featured listing</li><li>2 vendor passes</li><li>Prime location</li><li>Social media feature</li></ul>
+          </div>
+        </label>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="you@example.com" required>
+
+    <!-- ======== PAGE 3: Team Details ======== -->
+    <div class="vf-page" data-page="3" style="display:none;">
+      <h3 style="margin-bottom:20px;">Team Details</h3>
+      <div class="form-group"><label for="vf-teamsize">Number of people (including yourself) <span style="color:#DC2626;">*</span></label><input type="number" id="vf-teamsize" min="1" max="5" value="1" required></div>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:20px;">Enter details for each team member. Photo ID is required for entry.</p>
+      <div id="vf-team-list"></div>
     </div>
-    <div class="form-group">
-      <label for="phone">WhatsApp Number</label>
-      <input type="tel" id="phone" placeholder="e.g. +220..." required>
+
+    <!-- ======== PAGE 4: Logistics ======== -->
+    <div class="vf-page" data-page="4" style="display:none;">
+      <h3 style="margin-bottom:20px;">Logistics &amp; Readiness</h3>
+      <div class="form-group">
+        <label for="vf-extratags">Will you need extra vendor tags beyond your team? <span style="color:#DC2626;">*</span></label>
+        <select id="vf-extratags" required><option value="">Select</option><option value="Yes">Yes</option><option value="No">No</option></select>
+      </div>
+      <div class="form-group" id="vf-extratags-why-group" style="display:none;">
+        <label for="vf-extratags-why">How many and why?</label>
+        <textarea id="vf-extratags-why" placeholder="e.g. 2 extra — for delivery runners" style="min-height:60px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="vf-appliances">Are you bringing electrical appliances? <span style="color:#DC2626;">*</span></label>
+        <select id="vf-appliances" required><option value="">Select</option><option value="Yes">Yes</option><option value="No">No</option></select>
+      </div>
+      <div class="form-group" id="vf-appliances-list-group" style="display:none;">
+        <label for="vf-appliances-list">List your appliances</label>
+        <textarea id="vf-appliances-list" placeholder="e.g. blender, chest freezer, heat lamp" style="min-height:60px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="vf-power">Power requirements <span style="color:#DC2626;">*</span></label>
+        <select id="vf-power" required><option value="">Select</option><option value="None — I don't need power">None — I don't need power</option><option value="Basic — phone charging / LED lights only">Basic — phone charging / LED lights only</option><option value="Standard — small appliances (blender, speaker)">Standard — small appliances</option><option value="Heavy — large appliances (freezer, fryer, grill)">Heavy — large appliances</option></select>
+      </div>
+      <div class="form-group">
+        <label for="vf-readiness">How ready is your business for the event? <span style="color:#DC2626;">*</span></label>
+        <select id="vf-readiness" required><option value="">Select</option><option value="Ready to go — everything is set">Ready to go</option><option value="Almost there — a few things left">Almost there</option><option value="Still preparing — need more time">Still preparing</option><option value="Just exploring — not committed yet">Just exploring</option></select>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="category">Category</label>
-      <select id="category" required>
-        <option value="">Select a category</option>
-        <option>Food &amp; Beverage</option>
-        <option>Merchandise</option>
-        <option>Games &amp; Activities</option>
-        <option>Sponsor</option>
-      </select>
+
+    <!-- ======== PAGE 5: Review & Payment ======== -->
+    <div class="vf-page" data-page="5" style="display:none;">
+      <h3 style="margin-bottom:20px;">Review &amp; Submit</h3>
+      <div id="vf-review-summary" style="margin-bottom:24px;"></div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px;">
+        <h4 style="font-size:16px;margin-bottom:12px;">Payment Information</h4>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Stall fees must be paid to confirm your spot. Payment can be made via:</p>
+        <div style="display:grid;gap:12px;">
+          <div style="background:var(--accent-dim);border-radius:8px;padding:16px;">
+            <strong style="font-size:14px;">Wave Transfer</strong>
+            <p style="font-size:20px;font-family:var(--font-mono);letter-spacing:0.04em;margin-top:4px;">6963419</p>
+          </div>
+          <div style="background:var(--accent-dim);border-radius:8px;padding:16px;">
+            <strong style="font-size:14px;">Bank Account</strong>
+            <p style="font-size:20px;font-family:var(--font-mono);letter-spacing:0.04em;margin-top:4px;">206370720110</p>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-top:12px;">For questions, WhatsApp: <a href="https://wa.me/2207865201" style="color:var(--accent);font-weight:500;">+220 786 5201</a></p>
+      </div>
+
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin-bottom:16px;"></div>
     </div>
-    <div class="form-group">
-      <label for="message">Tell us about your business</label>
-      <textarea id="message" placeholder="Describe your business, products, and any special requirements&hellip;" required></textarea>
+
+    <!-- Navigation buttons -->
+    <div class="vf-nav-buttons">
+      <button type="button" class="btn" id="vf-prev" style="display:none;">← Back</button>
+      <div style="flex:1;"></div>
+      <button type="button" class="btn btn-primary" id="vf-next">Next →</button>
+      <button type="submit" class="btn btn-primary" id="vf-submit" style="display:none;">Submit Application</button>
     </div>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin-bottom: 16px;"></div>
-    <button type="submit" class="btn btn-primary">Send Me the Vendor Kit</button>
   </form>
   <p style="margin-top: 16px; font-size: 14px; color: var(--muted);">Already applied? <a href="/vendor-login" class="accent-link" style="font-weight:500;">Vendor Login &rarr;</a></p>
 </div>
@@ -225,57 +364,7 @@
 </div>
 </footer>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var form = document.querySelector('#vendor-form');
-  if (!form) return;
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
-    var business = document.getElementById('business').value.trim();
-    var contactName = document.getElementById('contact-name').value.trim();
-    var email = document.getElementById('email').value.trim();
-    var phone = document.getElementById('phone').value.trim();
-    var category = document.getElementById('category').value;
-    var message = document.getElementById('message').value.trim();
-    if (!business || !contactName || !email || !phone || !category || !message) return;
-
-    // Retrieve Turnstile token
-    var turnstileToken = '';
-    try {
-      turnstileToken = turnstile.getResponse();
-    } catch (err) {
-      var turnstileInput = document.querySelector('[name="cf-turnstile-response"]');
-      if (turnstileInput) turnstileToken = turnstileInput.value;
-    }
-
-    // FALLBACK: if Turnstile is bypassed/hidden, check if we have a verified visitor token
-    if (!turnstileToken && typeof getVerifiedVisitorToken === 'function') {
-      turnstileToken = getVerifiedVisitorToken();
-    }
-
-    if (!turnstileToken) {
-      alert("Please complete the CAPTCHA check.");
-      return;
-    }
-
-    submitApplication({
-      business: business,
-      contactName: contactName,
-      email: email,
-      phone: phone,
-      category: category,
-      message: message,
-      token: turnstileToken
-    }).then(function() {
-      giftVendorKit(form, { id: 'submitted' });
-    }).catch(function(err) {
-      console.error(err);
-      alert("Application submission failed: " + (err.message || "Please verify your CAPTCHA and try again."));
-      giftVendorKit(form, { id: null });
-    });
-  });
-});
-</script>
+<script defer src="vendor-form.js?v=1"></script>
 
 <nav class="bottom-tabs" aria-label="Main navigation">
 <div class="tab-row">

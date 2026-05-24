@@ -41,6 +41,13 @@
   .app-table { font-size: 13px; }
   .app-table th:nth-child(3), .app-table td:nth-child(3) { display: none; }
 }
+/* Ticketing */
+.order-filter-bar { display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap; }
+.order-filter-btn { padding:6px 14px;font-size:13px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);font-weight:500;background:var(--surface);color:var(--fg);transition:all .15s;min-width:auto;min-height:auto; }
+.order-filter-btn:hover { background:var(--accent-dim); }
+.order-filter-active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.ticket-section { margin-bottom:24px; }
+.ticket-section h3 { font-size:16px;margin-bottom:12px; }
 /* Photo management */
 .photo-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border); }
 .photo-tab { padding:10px 20px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; background:none; border-top:none; border-left:none; border-right:none; font-family:var(--font-body); min-width:auto; min-height:auto; }
@@ -153,6 +160,17 @@
     </div>
   </details>
 
+  <!-- Wave Transfer Payment Proofs -->
+  <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
+    <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Wave Transfer Payments</summary>
+    <div style="margin-top:16px;">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Review pending Wave Transfer payment proofs. Confirm to release tickets, or reject to cancel the order.</p>
+      <div id="proofs-container" style="overflow-x:auto;">
+        <p style="color:var(--muted);font-size:14px;">Loading payment proofs...</p>
+      </div>
+    </div>
+  </details>
+
   <!-- Manage Vendors -->
   <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
     <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Manage Vendors</summary>
@@ -163,6 +181,73 @@
       </div>
     </div>
   </details>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TICKETING MANAGEMENT -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+
+  <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
+    <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Ticketing Dashboard</summary>
+    <div style="margin-top:16px;">
+
+      <!-- 1. Inventory Overview -->
+      <div class="ticket-section">
+        <h3>Inventory Overview</h3>
+        <div id="inventory-container">
+          <p style="color:var(--muted);font-size:14px;">Loading inventory...</p>
+        </div>
+      </div>
+
+      <!-- 2. Order Management -->
+      <div class="ticket-section">
+        <h3>Orders</h3>
+        <div class="order-filter-bar">
+          <button class="order-filter-btn order-filter-active" data-status="all">All</button>
+          <button class="order-filter-btn" data-status="unpaid">Unpaid</button>
+          <button class="order-filter-btn" data-status="paid">Paid</button>
+          <button class="order-filter-btn" data-status="pending_verification">Pending Verification</button>
+          <button class="order-filter-btn" data-status="cancelled">Cancelled</button>
+        </div>
+        <div id="orders-container">
+          <p style="color:var(--muted);font-size:14px;">Loading orders...</p>
+        </div>
+      </div>
+
+      <!-- 3. Ticket Types -->
+      <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
+        <h3>Ticket Types</h3>
+        <div id="ticket-types-container">
+          <p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>
+        </div>
+      </div>
+
+      <!-- 4. Top-Up Bundles -->
+      <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
+        <h3>Top-Up Bundles</h3>
+        <div id="bundles-container">
+          <p style="color:var(--muted);font-size:14px;">Loading top-up bundles...</p>
+        </div>
+      </div>
+
+      <!-- 5. Balance Cap -->
+      <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
+        <h3>Balance Cap</h3>
+        <div id="balance-cap-container">
+          <p style="color:var(--muted);font-size:14px;">Loading setting...</p>
+        </div>
+      </div>
+
+      <!-- 6. Scanner Codes -->
+      <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
+        <h3>Staff Scanner Codes</h3>
+        <div id="scanner-codes-container">
+          <p style="color:var(--muted);font-size:14px;">Loading scanner codes...</p>
+        </div>
+      </div>
+
+    </div>
+  </details>
+
 </div>
   <!-- Photo Management -->
   <div class="w" style="padding-block:32px;border-top:1px solid var(--border);margin-top:32px;">
@@ -212,9 +297,26 @@
     <button class="gift-close" id="invite-close-btn">Done</button>
   </div>
 </div>
+
+<!-- Application details modal -->
+<div class="gift-overlay" id="app-modal">
+  <div class="gift-box" style="text-align:left; max-width: 680px; width: 95vw; overflow-y: auto; max-height: 85vh; padding: 32px; border-radius: 12px; font-family: var(--font-body);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+      <div class="gift-badge" id="modal-app-status">Pending</div>
+      <button class="gift-close" id="app-modal-close-btn" style="margin-top:0;position:static;padding:6px 12px;height:auto;font-size:13px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--fg);cursor:pointer;">Close</button>
+    </div>
+    <h2 id="modal-business-name" style="margin-bottom: 8px;">Business Name</h2>
+    <p id="modal-contact-name" style="color:var(--muted); margin-bottom: 24px; font-size:14px;">Contact Name</p>
+    
+    <div id="modal-details-content">
+      <!-- Details rendered dynamically -->
+    </div>
+  </div>
+</div>
 <script src="supabase-config.min.js?v=2"></script>
 <script src="vendor-auth.min.js?v=6"></script>
 <script src="admin-photos.min.js?v=12"></script>
+<script src="admin-tickets.js?v=1"></script>
 <script>
 (function() {
   var session = getSession();
@@ -252,18 +354,23 @@ function renderDashboard() {
     emptyState.style.display = 'none';
     tableWrapper.style.display = 'block';
 
+    window.cachedApps = apps;
     apps.forEach(function(app) {
       var tr = document.createElement('tr');
       var statusClass = 'status-' + app.status;
       var actionsHtml = '';
 
+      var viewHtml = '<button class="action-btn action-view" data-app="' + app.id + '" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);margin-right:6px;">View</button>';
       if (app.status === 'pending') {
-        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '">Approve</button>' +
+        actionsHtml = viewHtml +
+                      '<button class="action-btn action-approve" data-app="' + app.id + '">Approve</button>' +
                       '<button class="action-btn action-reject" data-app="' + app.id + '">Reject</button>';
       } else if (app.status === 'approved') {
-        actionsHtml = '<button class="action-btn action-approve" data-app="' + app.id + '" data-regenerate="1">Generate Invite</button>';
+        actionsHtml = viewHtml +
+                      '<button class="action-btn action-approve" data-app="' + app.id + '" data-regenerate="1">Invite</button>';
       } else if (app.status === 'rejected') {
-        actionsHtml = '<span style="font-size:13px;color:var(--muted);">Rejected</span>';
+        actionsHtml = viewHtml +
+                      '<span style="font-size:13px;color:var(--muted);margin-left:8px;">Rejected</span>';
       }
 
       // Use supabase_select SVG for check icon
@@ -293,6 +400,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var target = e.target;
     var appId = target.getAttribute('data-app');
     if (!appId) return;
+
+    if (target.classList.contains('action-view')) {
+      if (window.cachedApps) {
+        var app = window.cachedApps.find(function(a) { return String(a.id) === String(appId); });
+        if (app) showAppModal(app);
+      }
+      return;
+    }
 
     target.disabled = true;
     var origText = target.textContent;
@@ -362,6 +477,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   loadPhotos();
   loadVendors();
+  loadPaymentProofs();
+  // Ticketing dashboard
+  loadInventory();
+  loadOrders();
+  loadTicketTypes();
+  loadTopUpBundles();
+  loadBalanceCap();
+  loadScannerCodes();
 
   document.getElementById('logout-btn').addEventListener('click', function() {
     clearSession();
@@ -370,6 +493,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('invite-close-btn').addEventListener('click', function() {
     document.getElementById('invite-modal').classList.remove('open');
+  });
+
+  document.getElementById('app-modal-close-btn').addEventListener('click', function() {
+    document.getElementById('app-modal').classList.remove('open');
   });
 
   // Password change
@@ -492,6 +619,76 @@ document.addEventListener('click', function(e) {
     });
   }
 });
+
+function showAppModal(app) {
+  document.getElementById('modal-business-name').textContent = app.business_name;
+  document.getElementById('modal-contact-name').textContent = app.contact_name + ' (' + app.email + ' / ' + (app.phone || 'No phone') + ')';
+  
+  var statusBadge = document.getElementById('modal-app-status');
+  statusBadge.textContent = app.status.toUpperCase();
+  statusBadge.className = 'gift-badge status-badge status-' + app.status;
+  
+  var content = document.getElementById('modal-details-content');
+  var detailsHtml = '<div style="display:grid; gap: 16px; font-size:14px; line-height: 1.6;">';
+  
+  detailsHtml += '<div><strong>Category:</strong> ' + escapeHtml(app.category) + '</div>';
+  detailsHtml += '<div><strong>Business Description / Message:</strong><div style="background:var(--accent-dim); padding: 12px; border-radius: 6px; margin-top: 4px; white-space: pre-wrap;">' + escapeHtml(app.message) + '</div></div>';
+  
+  if (app.details) {
+    var details = typeof app.details === 'string' ? JSON.parse(app.details) : app.details;
+    
+    if (details.sell_intent) {
+      detailsHtml += '<div><strong>What they intend to sell:</strong><div style="background:var(--accent-dim); padding: 12px; border-radius: 6px; margin-top: 4px; white-space: pre-wrap;">' + escapeHtml(details.sell_intent) + '</div></div>';
+    }
+    if (details.stall_preference) {
+      detailsHtml += '<div><strong>Stall Preference:</strong> <span class="badge" style="background:var(--accent); color:var(--surface); padding: 2px 8px; border-radius:4px; font-size:12px;">' + escapeHtml(details.stall_preference) + '</span></div>';
+    }
+    if (details.team_size) {
+      detailsHtml += '<div><strong>Team Size:</strong> ' + escapeHtml(details.team_size) + '</div>';
+    }
+    
+    if (details.team_members && details.team_members.length) {
+      detailsHtml += '<div><strong>Team Members:</strong><div style="display:grid; gap: 12px; margin-top: 8px;">';
+      details.team_members.forEach(function(m, i) {
+        detailsHtml += '<div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px; background:var(--surface);">';
+        detailsHtml += '<div><strong>Member ' + (i+1) + ':</strong> ' + escapeHtml(m.name) + ' (' + escapeHtml(m.role) + ')</div>';
+        detailsHtml += '<div><strong>Phone:</strong> ' + escapeHtml(m.phone) + '</div>';
+        if (m.id_photo) {
+          detailsHtml += '<div style="margin-top: 8px;"><strong>Photo ID:</strong><br><img src="' + m.id_photo + '" style="max-width: 100%; max-height: 200px; border-radius: 4px; margin-top: 4px; border:1px solid var(--border);"></div>';
+        }
+        detailsHtml += '</div>';
+      });
+      detailsHtml += '</div></div>';
+    }
+    
+    if (details.extra_tags_needed) {
+      detailsHtml += '<div><strong>Extra Tags Needed?</strong> ' + escapeHtml(details.extra_tags_needed) + '</div>';
+      if (details.extra_tags_justification) {
+        detailsHtml += '<div><strong>Extra Tags Details:</strong><div style="background:var(--accent-dim); padding: 12px; border-radius: 6px; margin-top: 4px;">' + escapeHtml(details.extra_tags_justification) + '</div></div>';
+      }
+    }
+    
+    if (details.bringing_appliances) {
+      detailsHtml += '<div><strong>Bringing Appliances?</strong> ' + escapeHtml(details.bringing_appliances) + '</div>';
+      if (details.appliances_list) {
+        detailsHtml += '<div><strong>Appliances List:</strong><div style="background:var(--accent-dim); padding: 12px; border-radius: 6px; margin-top: 4px;">' + escapeHtml(details.appliances_list) + '</div></div>';
+      }
+    }
+    
+    if (details.power_requirements) {
+      detailsHtml += '<div><strong>Power Requirements:</strong> ' + escapeHtml(details.power_requirements) + '</div>';
+    }
+    
+    if (details.readiness_level) {
+      detailsHtml += '<div><strong>Payment Readiness:</strong> ' + escapeHtml(details.readiness_level) + '</div>';
+    }
+  }
+  
+  detailsHtml += '</div>';
+  content.innerHTML = detailsHtml;
+  
+  document.getElementById('app-modal').classList.add('open');
+}
 
 </script>
 

@@ -417,3 +417,9 @@ entrypoint = "./functions/verify-turnstile/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/verify-turnstile/*.html" ]
+
+[functions.ticketing]
+enabled = true
+verify_jwt = false
+import_map = "./functions/ticketing/deno.json"
+entrypoint = "./functions/ticketing/index.ts"

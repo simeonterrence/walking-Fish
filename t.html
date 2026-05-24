@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Look up your Piroake Fest 2026 ticket or pass.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
+<meta property="og:title" content="Ticket Lookup | Piroake Fest 2026">
+<meta property="og:description" content="Look up your ticket or pass for Piroake Fest 2026.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.walkingfish.gm/t">
+<link rel="canonical" href="https://www.walkingfish.gm/t">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='4' y1='8' x2='20' y2='8'/><line x1='8' y1='14' x2='24' y2='14'/><line x1='10' y1='20' x2='26' y2='20'/></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Ticket Lookup — Piroake Fest 2026",
+  "description": "Look up your ticket or pass for Piroake Fest 2026.",
+  "isPartOf": { "@type": "Event", "name": "Piroake Fest 2026" }
+}
+</script>
+<title>Ticket Lookup | Piroake Fest 2026</title>
+<link rel="stylesheet" href="style.css?v=2">
+<style>
+/* ─── Lookup Layout ─── */
+.t-lookup { max-width: 440px; margin: 40px auto; }
+
+/* ─── State: Looking up ─── */
+.t-loading {
+  text-align: center; padding: 60px 20px;
+}
+.t-loading .spinner {
+  width: 36px; height: 36px; margin: 0 auto 16px;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: t-spin .7s linear infinite;
+}
+.t-loading p { font-size: 15px; color: var(--muted); }
+
+/* ─── State: Error ─── */
+.t-error {
+  text-align: center; padding: 60px 20px;
+}
+.t-error .icon { font-size: 48px; margin-bottom: 16px; }
+.t-error h2 { margin-bottom: 8px; }
+.t-error p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+
+/* ─── Ticket Card ─── */
+.t-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px;
+  text-align: center;
+}
+.t-card .badge {
+  display: inline-block;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 14px; border-radius: 100px;
+  background: var(--accent-dim); color: var(--accent-text);
+  margin-bottom: 16px;
+}
+.t-card h2 { font-size: 20px; margin-bottom: 4px; }
+.t-card .code {
+  font-family: var(--font-mono); font-size: 22px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--accent-text);
+  margin: 12px 0;
+}
+.t-card .balance-row {
+  display: flex; justify-content: center; gap: 32px;
+  margin: 20px 0; padding: 16px; background: var(--accent-dim);
+  border-radius: var(--radius);
+}
+.t-card .balance-row .item { text-align: center; }
+.t-card .balance-row .amt { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--accent-text); }
+.t-card .balance-row .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.t-card .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.t-card .actions .btn { width: 100%; justify-content: center; }
+
+/* ─── Animation ─── */
+@keyframes t-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body data-page="t">
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+<header><nav>
+<div class="w">
+  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
+</div>
+</nav></header>
+
+<main id="main-content">
+
+<section>
+<div class="w t-lookup">
+
+  <!-- ─── Loading State ─── -->
+  <div id="t-loading" class="t-loading">
+    <div class="spinner"></div>
+    <p>Looking up your ticket…</p>
+  </div>
+
+  <!-- ─── Error State ─── -->
+  <div id="t-error" class="t-error" style="display:none;">
+    <div class="icon">&#9888;</div>
+    <h2>Ticket Not Found</h2>
+    <p>We couldn't find a ticket with this code. It may have been entered incorrectly or the ticket doesn't exist.</p>
+    <p id="t-error-msg" style="font-size:13px;color:var(--muted);"></p>
+    <a href="/" class="btn btn-secondary">Go Home</a>
+  </div>
+
+  <!-- ─── Ticket Card (shown briefly before redirect) ─── -->
+  <div id="t-card" class="t-card" style="display:none;">
+    <div class="badge" id="t-type-badge">Entry Pass</div>
+    <h2 id="t-name">Welcome</h2>
+    <div class="code" id="t-code">TKT-XXXXXX</div>
+    <p id="t-status" style="font-size:14px;color:var(--muted);"></p>
+    <div class="balance-row" id="t-balance-row" style="display:none;">
+      <div class="item">
+        <div class="amt" id="t-balance">D0</div>
+        <div class="lbl">Balance</div>
+      </div>
+    </div>
+    <div class="actions">
+      <a href="/top-up" class="btn btn-primary" id="t-topup-btn">Top Up Credits</a>
+      <span style="font-size:12px;color:var(--muted);margin-top:4px;" id="t-redirect-msg">Redirecting in a moment…</span>
+    </div>
+  </div>
+
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+  <div class="grid-4">
+    <div>
+      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
+      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
+      <a href="/walkie-talkie">Experiences</a>
+      <a href="/piroake">Piroake Fest</a>
+      <a href="/muster-point">Media</a>
+      <a href="/gallery">Gallery</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
+      <a href="/about">About Us</a>
+      <a href="/partners">Partners</a>
+      <a href="/vendors">Vendors</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
+      <a href="/blog">Blog</a>
+      <a href="/tickets">Tickets</a>
+      <a href="/top-up">Top Up</a>
+      <a href="/privacy">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
+</div>
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  var SUPA_URL = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://anigcqdquakinlzvyaur.supabase.co';
+  var SUPA_ANON = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : '';
+  var EDGE_URL = SUPA_URL + '/functions/v1/ticketing';
+
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('t');
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  function $(id) { return document.getElementById(id); }
+
+  function show(id) { var el = $(id); if (el) el.style.display = ''; }
+  function hide(id) { var el = $(id); if (el) el.style.display = 'none'; }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(String(str)));
+    return div.innerHTML;
+  }
+
+  function formatCurrency(amount) {
+    return 'D' + Number(amount).toLocaleString();
+  }
+
+  // ─── Main ─────────────────────────────────────────────────────────────────
+
+  function lookupTicket() {
+    if (!code || code.trim().length < 6) {
+      show('t-error');
+      hide('t-loading');
+      hide('t-card');
+      var msgEl = $('t-error-msg');
+      if (msgEl) msgEl.textContent = 'No ticket code provided in URL.';
+      return;
+    }
+
+    var normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode.startsWith('TKT-')) {
+      normalizedCode = 'TKT-' + normalizedCode;
+    }
+
+    fetch(EDGE_URL + '/lookup-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_ANON },
+      body: JSON.stringify({ code: normalizedCode }),
+    })
+    .then(function(r) {
+      if (r.status === 404) {
+        show('t-error');
+        hide('t-loading');
+        hide('t-card');
+        var msgEl = $('t-error-msg');
+        if (msgEl) msgEl.textContent = 'No ticket found with code ' + escapeHtml(normalizedCode);
+        return null;
+      }
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Lookup failed'); });
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data || !data.success) {
+        show('t-error');
+        hide('t-loading');
+        return;
+      }
+
+      var ticket = data.ticket;
+
+      // Populate card
+      var badge = $('t-type-badge');
+      var nameEl = $('t-name');
+      var codeEl = $('t-code');
+      var statusEl = $('t-status');
+      var balanceRow = $('t-balance-row');
+      var balanceEl = $('t-balance');
+      var topupBtn = $('t-topup-btn');
+
+      var typeName = ticket.ticket_type ? ticket.ticket_type.name : (ticket.type || 'Ticket');
+      if (badge) badge.textContent = typeName;
+      if (nameEl) nameEl.textContent = escapeHtml(ticket.customer_name || 'Welcome');
+      if (codeEl) codeEl.textContent = ticket.code;
+      if (statusEl) {
+        if (ticket.status === 'active') {
+          statusEl.textContent = 'Active';
+          statusEl.style.color = '#2f855a';
+        } else if (ticket.status === 'used') {
+          statusEl.textContent = 'Used';
+          statusEl.style.color = '#c53030';
+        } else if (ticket.status === 'exhausted') {
+          statusEl.textContent = 'Exhausted';
+          statusEl.style.color = '#c53030';
+        } else {
+          statusEl.textContent = ticket.status;
+          statusEl.style.color = 'var(--muted)';
+        }
+      }
+
+      // Show balance for activity credit tickets
+      if (ticket.type === 'activity_credit' && ticket.balance !== null && ticket.balance !== undefined) {
+        if (balanceRow) balanceRow.style.display = 'flex';
+        if (balanceEl) balanceEl.textContent = formatCurrency(ticket.balance);
+      } else {
+        if (balanceRow) balanceRow.style.display = 'none';
+      }
+
+      var isActive = ticket.status === 'active';
+
+      // Show top-up button for active activity credit tickets
+      if (topupBtn) {
+        if (ticket.type === 'activity_credit' && isActive) {
+          topupBtn.href = '/top-up?t=' + ticket.code;
+          topupBtn.style.display = 'inline-flex';
+        } else {
+          topupBtn.style.display = 'none';
+        }
+      }
+
+      hide('t-loading');
+      show('t-card');
+
+      // ─── Redirect logic ─────────────────────────────────────────────────
+      // The /t page is the QR code destination. It redirects to:
+      //   * /scan?t=CODE — if there's an active scanner session (Phase 4)
+      //   * /top-up?t=CODE — for activity credit tickets
+      //   * stays on /t — for entry/parking passes (shows info card)
+      //
+      // Check for scanner session token (set by /scan page in Phase 4)
+      var scannerSession = null;
+      try { scannerSession = sessionStorage.getItem('wf_scanner_session'); } catch (e) {}
+
+      if (scannerSession) {
+        // Scanner mode: redirect to /scan
+        var redirectMsg = $('t-redirect-msg');
+        if (redirectMsg) redirectMsg.textContent = 'Redirecting to scanner…';
+        setTimeout(function() {
+          window.location.href = '/scan?t=' + ticket.code;
+        }, 500);
+      } else if (ticket.type === 'activity_credit' && isActive) {
+        // Activity credit: show top-up option prominently
+        var redirectMsg = $('t-redirect-msg');
+        if (redirectMsg) redirectMsg.textContent = 'Top up your credits or show this to staff.';
+      } else {
+        // Entry/parking/used: just show the card
+        var redirectMsg = $('t-redirect-msg');
+        if (redirectMsg) redirectMsg.textContent = 'Show this to staff at the venue.';
+      }
+    })
+    .catch(function(err) {
+      console.error('[t] Lookup error:', err.message);
+      show('t-error');
+      hide('t-loading');
+      var msgEl = $('t-error-msg');
+      if (msgEl) msgEl.textContent = err.message || 'Failed to look up ticket.';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', lookupTicket);
+  } else {
+    lookupTicket();
+  }
+})();
+</script>
+
+</body>
+</html>

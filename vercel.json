@@ -38,6 +38,10 @@
     { "source": "/vendor-setup", "destination": "/vendor-setup.html" },
     { "source": "/vendor-login", "destination": "/vendor-login.html" },
     { "source": "/vendor-dashboard", "destination": "/vendor-dashboard.html" },
-    { "source": "/privacy", "destination": "/privacy.html" }
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/tickets", "destination": "/tickets.html" },
+    { "source": "/top-up", "destination": "/top-up.html" },
+    { "source": "/t", "destination": "/t.html" },
+    { "source": "/scan", "destination": "/scan.html" }
   ]
 }

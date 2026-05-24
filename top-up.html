@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Top up your Piroake Fest 2026 activity credits. Add credit to your existing ticket via ModemPay or Wave Transfer.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
+<meta property="og:title" content="Top Up Credits | Piroake Fest 2026">
+<meta property="og:description" content="Add credits to your Piroake Fest ticket for on-site games and activities.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.walkingfish.gm/top-up">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.walkingfish.gm/top-up">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Top Up Credits — Piroake Fest 2026",
+  "description": "Add activity credits to your Piroake Fest ticket.",
+  "isPartOf": { "@type": "Event", "name": "Piroake Fest 2026" }
+}
+</script>
+<title>Top Up Credits | Piroake Fest 2026</title>
+<link rel="stylesheet" href="style.css?v=2">
+<script defer src="gift.min.js?v=3"></script>
+<script defer src="nav.min.js?v=3"></script>
+<script defer src="supabase-config.min.js?v=2"></script>
+<script defer src="top-up.js?v=1"></script>
+<style>
+/* ─── Top-Up Layout ─── */
+.topup-layout { max-width: 520px; margin: 0 auto; }
+
+/* ─── Landing Screen (no ticket) ─── */
+.topup-landing {
+  text-align: center;
+  padding: 40px 20px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+}
+.topup-landing .landing-icon { font-size: 48px; margin-bottom: 16px; }
+.topup-landing h2 { margin-bottom: 8px; }
+.topup-landing p { font-size: 14px; color: var(--muted); margin: 0 auto 24px; max-width: 400px; }
+.topup-landing .code-input-group {
+  display: flex; gap: 8px; max-width: 340px; margin: 0 auto;
+}
+.topup-landing .code-input-group input {
+  flex: 1; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: 16px; font-weight: 600;
+  text-align: center; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--surface); color: var(--fg);
+}
+.topup-landing .code-input-group input:focus { outline: none; border-color: var(--accent); }
+.topup-landing .code-input-group button { white-space: nowrap; }
+.topup-landing .alt-link { display: inline-block; margin-top: 16px; font-size: 13px; color: var(--muted); }
+.topup-landing .alt-link:hover { color: var(--accent); }
+
+/* ─── Ticket Info Card ─── */
+.ticket-info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.ticket-info-card .info h3 { font-size: 16px; margin-bottom: 4px; }
+.ticket-info-card .info .meta { font-size: 13px; color: var(--muted); }
+.ticket-info-card .info .code { font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent-text); }
+.ticket-info-card .balance { text-align: right; }
+.ticket-info-card .balance .amt { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--accent-text); }
+.ticket-info-card .balance .lbl { font-size: 12px; color: var(--muted); }
+.ticket-info-card .balance .cap-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ─── Top-Up Form ─── */
+.topup-form-container { display: none; }
+.topup-form-container.active { display: block; }
+
+.topup-form-container h3 { font-size: 18px; margin-bottom: 16px; }
+
+.bundle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.bundle-btn {
+  padding: 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background .15s;
+  font-family: var(--font-body);
+  min-height: 44px;
+}
+.bundle-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+.bundle-btn.selected { border-color: var(--accent); background: var(--accent-dim); }
+.bundle-btn .amt { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+.bundle-btn .lbl-adj { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.custom-amount-group {
+  display: flex; gap: 8px; align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  transition: border-color .15s;
+}
+.custom-amount-group:focus-within { border-color: var(--accent); }
+.custom-amount-group .prefix { font-size: 18px; font-weight: 600; color: var(--muted); font-family: var(--font-display); }
+.custom-amount-group input {
+  flex: 1; border: none; padding: 8px 0;
+  font-family: var(--font-display); font-size: 20px; font-weight: 600;
+  background: transparent; color: var(--fg);
+  outline: none;
+}
+
+/* ─── Summary Bar ─── */
+.topup-summary {
+  background: var(--accent-dim);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.topup-summary .lbl { font-size: 13px; color: var(--muted); }
+.topup-summary .val { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--accent-text); }
+.topup-summary .detail { font-size: 12px; color: var(--muted); text-align: right; }
+
+/* ─── Payment section ─── */
+.payment-section { margin-top: 20px; }
+.payment-section .pay-options { display: grid; gap: 8px; margin: 12px 0; }
+.payment-section .pay-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.payment-section .pay-option:hover { border-color: var(--accent); }
+.payment-section .pay-option.selected { border-color: var(--accent); background: var(--accent-dim); }
+.payment-section .pay-option input[type="radio"] { accent-color: var(--accent); width: 18px; height: 18px; }
+.payment-section .pay-option-label { font-weight: 500; font-size: 14px; }
+.payment-section .pay-option-desc { font-size: 12px; color: var(--muted); }
+
+.topup-wave-details { display: none; margin: 12px 0; padding: 16px; background: var(--accent-dim); border-radius: var(--radius); }
+.topup-wave-details.active { display: block; }
+.topup-wave-number {
+  font-family: var(--font-mono); font-size: 24px; font-weight: 700;
+  text-align: center; padding: 12px; margin: 12px 0;
+  background: var(--surface); border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+}
+
+/* ─── Success View ─── */
+.topup-success { display: none; text-align: center; padding: 40px 20px; }
+.topup-success.active { display: block; }
+.topup-success .icon { font-size: 56px; margin-bottom: 16px; }
+.topup-success h2 { margin-bottom: 8px; }
+.topup-success .new-balance { font-family: var(--font-display); font-size: 36px; font-weight: 600; color: var(--accent-text); margin: 16px 0; }
+.topup-success .actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+
+/* ─── Loading / Error ─── */
+.topup-loading { text-align: center; padding: 40px; color: var(--muted); }
+.topup-error { text-align: center; padding: 40px 20px; color: #c53030; }
+
+.topup-error h3 { margin-bottom: 8px; }
+.topup-error p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+</style>
+</head>
+<body data-page="top-up">
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+<header><nav>
+<div class="w">
+  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/walkie-talkie">Experiences</a>
+    <a href="/piroake">Piroake</a>
+    <a href="/muster-point">Media</a>
+    <a href="/vendors">Vendors</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="/about">About</a>
+        <a href="/tickets">Tickets</a>
+        <a href="/top-up">Top Up</a>
+        <a href="/gallery">Gallery</a>
+        <a href="/blog">Blog</a>
+        <a href="/partners">Partners</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </details>
+    <a href="/login" class="nav-cta" aria-label="Sign in">Sign In</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
+</div>
+</nav></header>
+
+<main id="main-content">
+
+<section class="page-header">
+  <div class="w">
+    <p class="label">Piroake Fest 2026</p>
+    <h1>Top Up Credits</h1>
+    <p>Add credits to your activity pass for on-site games, karaoke, and more.</p>
+  </div>
+</section>
+
+<section>
+<div class="w topup-layout">
+
+  <!-- ─── Landing Screen (no ticket code yet) ─── -->
+  <div id="topup-landing" class="topup-landing">
+    <div class="landing-icon">&#9776;</div>
+    <h2>Enter Your Ticket Code</h2>
+    <p>Find your ticket code in your confirmation email or on the QR card you received at the venue.</p>
+    <div class="code-input-group">
+      <input type="text" id="topup-code-input" placeholder="TKT-XXXXXX" maxlength="12" autocomplete="off">
+      <button class="btn btn-primary" id="topup-lookup-btn">Go</button>
+    </div>
+    <div id="topup-landing-error" class="error-message" style="display:none;margin-top:12px;text-align:left;"></div>
+    <a href="/tickets" class="alt-link">&#8594; Sign in to view your tickets</a>
+  </div>
+
+  <!-- ─── Loading State ─── -->
+  <div id="topup-loading" class="topup-loading" style="display:none;">
+    <div class="loading-spinner"><div class="spinner"></div><p style="margin-top:12px;">Looking up your ticket…</p></div>
+  </div>
+
+  <!-- ─── Error State ─── -->
+  <div id="topup-error" class="topup-error" style="display:none;">
+    <div style="font-size:48px;margin-bottom:16px;">&#9888;</div>
+    <h3>Ticket Not Found</h3>
+    <p>We couldn't find a ticket with that code. Check your confirmation email or try again.</p>
+    <button class="btn btn-secondary" id="topup-error-back-btn">Try Again</button>
+  </div>
+
+  <!-- ─── Ticket Info + Top-Up Form ─── -->
+  <div id="topup-form-container" class="topup-form-container">
+
+    <!-- Ticket Info Card -->
+    <div id="topup-ticket-info" class="ticket-info-card">
+      <div class="info">
+        <h3 id="topup-ticket-name">Ticket</h3>
+        <div class="code" id="topup-ticket-code">TKT-XXXXXX</div>
+        <div class="meta" id="topup-ticket-meta">Activity Credit</div>
+      </div>
+      <div class="balance">
+        <div class="amt" id="topup-current-balance">D0</div>
+        <div class="lbl">Current Balance</div>
+        <div class="cap-note" id="topup-cap-note">Max D5,000</div>
+      </div>
+    </div>
+
+    <!-- Bundle Selection -->
+    <h3>Select Amount</h3>
+    <div id="topup-bundles" class="bundle-grid">
+      <div class="topup-loading" style="padding:20px;"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Custom Amount -->
+    <div class="custom-amount-group" id="topup-custom-group">
+      <span class="prefix">D</span>
+      <input type="number" id="topup-custom-amount" placeholder="Custom amount" min="50" step="10">
+    </div>
+
+    <!-- Summary -->
+    <div class="topup-summary">
+      <div>
+        <div class="lbl">Top-Up Amount</div>
+        <div class="val" id="topup-charge-amount">D0</div>
+      </div>
+      <div>
+        <div class="detail" id="topup-balance-after">Balance after: <strong>D0</strong></div>
+        <div class="detail" id="topup-cap-check" style="color:var(--accent-text);"></div>
+      </div>
+    </div>
+
+    <!-- Payment Method -->
+    <div class="payment-section">
+      <label style="font-size:13px;font-weight:500;display:block;margin-bottom:8px;color:var(--muted);">Payment method</label>
+      <div class="pay-options">
+        <label class="pay-option selected" data-payment="modempay">
+          <input type="radio" name="topup-payment" value="modempay" checked>
+          <div>
+            <div class="pay-option-label">ModemPay</div>
+            <div class="pay-option-desc">Pay online with card or mobile money</div>
+          </div>
+        </label>
+        <label class="pay-option" data-payment="wave">
+          <input type="radio" name="topup-payment" value="wave">
+          <div>
+            <div class="pay-option-label">Wave / Bank Transfer</div>
+            <div class="pay-option-desc">Send to our Wave number or bank account — credit added after verification</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="topup-wave-details" id="topup-wave-details">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:4px;">Send exact amount to one of the following:</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 12px 0;">
+          <div style="background: var(--surface); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 12px; text-align: center;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 4px;">Wave Number</div>
+            <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700;" class="topup-wave-number">+220 696 3419</div>
+          </div>
+          <div style="background: var(--surface); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 12px; text-align: center;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 4px;">Bank Account</div>
+            <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700;">206370720110</div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);">Include your ticket code as reference. Credit will be added once verified.</p>
+      </div>
+
+      <button class="btn btn-primary" id="topup-pay-btn" style="width:100%;margin-top:16px;" disabled>
+        Top Up Now
+      </button>
+      <div id="topup-pay-error" class="error-message" style="display:none;margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ─── Success View ─── -->
+  <div id="topup-success" class="topup-success">
+    <div class="icon">&#10003;</div>
+    <h2>Credits Added!</h2>
+    <p style="color:var(--muted);">Your new activity credit balance is</p>
+    <div class="new-balance" id="topup-new-balance">D0</div>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px;" id="topup-success-msg">Check your email for the receipt.</p>
+    <div class="actions">
+      <a href="/top-up" class="btn btn-primary">Top Up Again</a>
+      <a href="/tickets" class="btn btn-secondary">My Tickets</a>
+    </div>
+  </div>
+
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+  <div class="grid-4">
+    <div>
+      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
+      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
+      <a href="/walkie-talkie">Experiences</a>
+      <a href="/piroake">Piroake Fest</a>
+      <a href="/muster-point">Media</a>
+      <a href="/gallery">Gallery</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
+      <a href="/about">About Us</a>
+      <a href="/partners">Partners</a>
+      <a href="/vendors">Vendors</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
+      <a href="/blog">Blog</a>
+      <a href="/tickets">Tickets</a>
+      <a href="/top-up">Top Up</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/vendor-login">Vendor Login</a>
+      <a href="/admin-login" style="font-size:12px;opacity:0.5;">Admin</a>
+    </div>
+  </div>
+  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
+</div>
+</footer>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="/piroake">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="/vendors">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="/tickets">
+    <span><svg viewBox="0 0 24 24"><path d="M20 12V4H4v8"/><path d="M4 12v8h16v-8"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg></span>
+    Tickets
+  </a>
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.replace(/\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
+
+</body>
+</html>
