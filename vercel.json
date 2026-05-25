@@ -42,6 +42,7 @@
     { "source": "/tickets", "destination": "/tickets.html" },
     { "source": "/top-up", "destination": "/top-up.html" },
     { "source": "/t", "destination": "/t.html" },
-    { "source": "/scan", "destination": "/scan.html" }
+    { "source": "/scan", "destination": "/scan.html" },
+    { "source": "/admin-tickets", "destination": "/admin-tickets.html" }
   ]
 }

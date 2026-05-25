@@ -799,6 +799,39 @@ async function handleLookupTicket(req: Request): Promise<Response> {
   }
 }
 
+// ─── Helper: check if request is authorized (service key or valid JWT)
+// Allows requests with:
+//   - Service role key (admin/photos)
+//   - JWT with app_metadata.role = admin_role or ticketing_role
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function isTicketingRequestAuthorized(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return false;
+
+  const token = authHeader.slice(7);
+
+  // Allow service role key (backward compat for admin panel)
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (token === serviceKey) return true;
+
+  // Verify JWT properly via Supabase Auth
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return false;
+    const role = user?.app_metadata?.role;
+    return role === "admin_role" || role === "ticketing_role";
+  } catch {
+    return false;
+  }
+}
+
 // ─── Handler: /confirm-wave
 // Called from admin dashboard when confirming/rejecting a Wave Transfer payment proof.
 // Routes:
@@ -808,6 +841,13 @@ async function handleLookupTicket(req: Request): Promise<Response> {
 
 async function handleConfirmWave(req: Request): Promise<Response> {
   try {
+    if (!(await isTicketingRequestAuthorized(req))) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Service key or ticketing staff JWT required." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { proof_id, order_id, action } = await req.json();
 
     if (!proof_id || !order_id || !action) {

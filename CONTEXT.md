@@ -98,3 +98,8 @@
 - **`payment_proofs` table** — Database table storing Wave transfer payment proof submissions (screenshot URLs, reference numbers) for manual admin verification.
 - **`staff_scanner_codes` table** — Database table storing unique per-staff access codes for the QR scanner page at `/scan`. Each code is issued by an admin and can be revoked independently.
 - **`balance_transactions` table** — See On-Site Top-up section.
+
+### Roles
+- **`admin_role`** — Supabase Auth JWT role for super admins. Full access to all systems: vendor management, photo management, and ticketing. Created via Supabase Dashboard or seed migration.
+- **`vendor_role`** — Supabase Auth JWT role for approved vendors. Access limited to own vendor profile and dashboard.
+- **`ticketing_role`** — Supabase Auth JWT role for ticketing staff. Full CRUD access to ticketing tables only (orders, tickets, inventory, bundles, balance cap, scanner codes, payment proofs). No access to vendor or photo management. Uses shared `/login` page with role-based redirect to `/admin-tickets`.

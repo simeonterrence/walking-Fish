@@ -98,7 +98,7 @@ function refreshSession() {
     var jwt = decodeJWT(data.access_token);
     var role = jwt && jwt.app_metadata && jwt.app_metadata.role;
     var updatedSession = {
-      type: "admin_role" === role ? "admin" : "vendor_role" === role ? "vendor" : null,
+      type: "admin_role" === role ? "admin" : "vendor_role" === role ? "vendor" : "ticketing_role" === role ? "ticketing" : null,
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_at: jwt ? jwt.exp : null,
@@ -177,7 +177,7 @@ function authLogin(e, t) {
     var t = decodeJWT(e.access_token),
       n = t && t.app_metadata && t.app_metadata.role,
       r = {
-        type: "admin_role" === n ? "admin" : "vendor_role" === n ? "vendor" : null,
+        type: "admin_role" === n ? "admin" : "vendor_role" === n ? "vendor" : "ticketing_role" === n ? "ticketing" : null,
         access_token: e.access_token,
         refresh_token: e.refresh_token,
         expires_at: t ? t.exp : null,

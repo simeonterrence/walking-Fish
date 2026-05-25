@@ -232,27 +232,22 @@ function toggleTicketTypeActive(id, currentlyActive) {
   var btn = document.querySelector('.ticket-type-toggle-btn[data-id="' + id + '"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') {
-    svcKey = getServiceKey(true);
-  }
-  if (!svcKey) {
-    alert('Service role key required.');
-    if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
-    return;
-  }
-
-  fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + id, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ is_active: !currentlyActive })
+  // Try RPC first (works with ticketing_role JWT), fall back to service key
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/toggle_ticket_type_active', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: id, p_active: !currentlyActive })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to update.');
-    loadTicketTypes();
+    if (res.ok) { loadTicketTypes(); return; }
+    // RPC may fail if the DB hasn't been migrated — fall back to service key
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { throw new Error('Permission denied or service key required.'); }
+    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ is_active: !currentlyActive })
+    }).then(function(r) { if (!r.ok) throw new Error('Failed to update.'); loadTicketTypes(); });
   }).catch(function(err) {
     alert('Error: ' + err.message);
     if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
@@ -272,45 +267,43 @@ function addTicketType() {
   var btn = document.getElementById('add-ticket-type-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') {
-    svcKey = getServiceKey(true);
-  }
-  if (!svcKey) {
-    alert('Service role key required.');
-    if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; }
-    return;
-  }
-
-  fetch(SUPABASE_URL + '/rest/v1/ticket_types', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({
-      name: name,
-      slug: slug,
-      type: type,
-      price: price,
-      capacity: capacity,
-      sold: 0,
-      is_active: true,
-      sort_order: sortOrder
-    })
-  }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to add ticket type.');
-    // Clear form
+  function clearForm() {
     document.getElementById('new-ticket-name').value = '';
     document.getElementById('new-ticket-slug').value = '';
     document.getElementById('new-ticket-price').value = '0';
     document.getElementById('new-ticket-capacity').value = '100';
     document.getElementById('new-ticket-sort').value = '0';
-    loadTicketTypes();
+  }
+
+  // Try RPC first (works with ticketing_role JWT), fall back to service key
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/add_ticket_type', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      p_name: name, p_slug: slug, p_type: type,
+      p_price: price, p_capacity: capacity, p_sort_order: sortOrder
+    })
+  }).then(function(res) {
+    if (res.ok) { clearForm(); loadTicketTypes(); return; }
+    throw new Error('RPC failed.');
   }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; }
+    // Fall back to service key method
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; } return; }
+
+    return fetch(SUPABASE_URL + '/rest/v1/ticket_types', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ name: name, slug: slug, type: type, price: price, capacity: capacity, sold: 0, is_active: true, sort_order: sortOrder })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Failed to add ticket type.');
+      clearForm();
+      loadTicketTypes();
+    }).catch(function(e2) {
+      alert('Error: ' + e2.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; }
+    });
   });
 }
 
@@ -369,21 +362,20 @@ function toggleBundleActive(id, currentlyActive) {
   var btn = document.querySelector('.bundle-toggle-btn[data-id="' + id + '"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; } return; }
-
-  fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ is_active: !currentlyActive })
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/toggle_bundle_active', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: id, p_active: !currentlyActive })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to update.');
-    loadTopUpBundles();
+    if (res.ok) { loadTopUpBundles(); return; }
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { throw new Error('Permission denied.'); }
+    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ is_active: !currentlyActive })
+    }).then(function(r) { if (!r.ok) throw new Error('Failed to update.'); loadTopUpBundles(); });
   }).catch(function(err) {
     alert('Error: ' + err.message);
     if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
@@ -396,19 +388,19 @@ function deleteBundle(id) {
   var btn = document.querySelector('.bundle-delete-btn[data-id="' + id + '"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = 'Delete'; } return; }
-
-  fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Prefer': 'return=minimal'
-    }
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/delete_top_up_bundle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: id })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to delete.');
-    loadTopUpBundles();
+    if (res.ok) { loadTopUpBundles(); return; }
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { throw new Error('Permission denied.'); }
+    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
+    }).then(function(r) { if (!r.ok) throw new Error('Failed to delete.'); loadTopUpBundles(); });
   }).catch(function(err) {
     alert('Error: ' + err.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
@@ -424,26 +416,35 @@ function addBundle() {
   var btn = document.getElementById('add-bundle-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; } return; }
-
-  fetch(SUPABASE_URL + '/rest/v1/top_up_bundles', {
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/add_top_up_bundle', {
     method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ amount: amount, sort_order: sortOrder, is_active: true })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_amount: amount, p_sort_order: sortOrder })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to add bundle.');
-    document.getElementById('new-bundle-amount').value = '100';
-    document.getElementById('new-bundle-sort').value = '0';
-    loadTopUpBundles();
+    if (res.ok) {
+      document.getElementById('new-bundle-amount').value = '100';
+      document.getElementById('new-bundle-sort').value = '0';
+      loadTopUpBundles();
+      return;
+    }
+    throw new Error('RPC failed.');
   }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; }
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; } return; }
+    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ amount: amount, sort_order: sortOrder, is_active: true })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Failed to add bundle.');
+      document.getElementById('new-bundle-amount').value = '100';
+      document.getElementById('new-bundle-sort').value = '0';
+      loadTopUpBundles();
+    }).catch(function(e2) {
+      alert('Error: ' + e2.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; }
+    });
   });
 }
 
@@ -488,42 +489,50 @@ function saveBalanceCap() {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   if (statusEl) { statusEl.style.display = 'none'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }
-
-  // Upsert: try update first, then insert
-  fetch(SUPABASE_URL + '/rest/v1/system_config?key=eq.balance_cap', {
-    method: 'PATCH',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ value: value })
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/upsert_balance_cap', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_value: String(value) })
   }).then(function(res) {
-    if (res.ok || res.status === 404) {
+    if (res.ok) {
       if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
-    } else {
-      // If PATCH fails (no row), try INSERT
-      return fetch(SUPABASE_URL + '/rest/v1/system_config', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + svcKey,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ key: 'balance_cap', value: value, description: 'Maximum balance per activity credit ticket (in GMD)' })
-      }).then(function(res2) {
-        if (!res2.ok) throw new Error('Failed to save.');
-        if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
-      });
+      return;
     }
+    throw new Error('RPC failed.');
   }).catch(function(err) {
-    alert('Error: ' + err.message);
-  }).then(function() {
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    // Fall back to service key method
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }
+
+    // Upsert: try update first, then insert
+    fetch(SUPABASE_URL + '/rest/v1/system_config?key=eq.balance_cap', {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ value: value })
+    }).then(function(res) {
+      if (res.ok || res.status === 404) {
+        if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
+      } else {
+        return fetch(SUPABASE_URL + '/rest/v1/system_config', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ key: 'balance_cap', value: value, description: 'Maximum balance per activity credit ticket (in GMD)' })
+        }).then(function(res2) {
+          if (!res2.ok) throw new Error('Failed to save.');
+          if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
+        });
+      }
+    }).catch(function(err2) {
+      alert('Error: ' + err2.message);
+    }).then(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    });
   });
+  // Ensure button re-enables even if fetchWithAuth path has no .then after success
+  setTimeout(function() {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }, 5000);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -594,30 +603,35 @@ function issueScannerCode() {
   var btn = document.getElementById('issue-scanner-code-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Issuing...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; } return; }
-
-  fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes', {
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/issue_scanner_code', {
     method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({
-      code: code,
-      label: label || 'Staff',
-      is_active: true
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_code: code, p_label: label || 'Staff' })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to issue code.');
-    document.getElementById('new-scanner-label').value = '';
-    alert('New staff code issued: ' + code);
-    loadScannerCodes();
+    if (res.ok) {
+      document.getElementById('new-scanner-label').value = '';
+      alert('New staff code issued: ' + code);
+      loadScannerCodes();
+      return;
+    }
+    throw new Error('RPC failed.');
   }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; }
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; } return; }
+    return fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ code: code, label: label || 'Staff', is_active: true })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Failed to issue code.');
+      document.getElementById('new-scanner-label').value = '';
+      alert('New staff code issued: ' + code);
+      loadScannerCodes();
+    }).catch(function(e2) {
+      alert('Error: ' + e2.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; }
+    });
   });
 }
 
@@ -627,24 +641,28 @@ function revokeScannerCode(id) {
   var btn = document.querySelector('.revoke-code-btn[data-id="' + id + '"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Revoking...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  if (!svcKey) { alert('Service role key required.'); if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; } return; }
-
-  fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes?id=eq.' + id, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': 'Bearer ' + svcKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ is_active: false })
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/revoke_scanner_code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: id })
   }).then(function(res) {
-    if (!res.ok) throw new Error('Failed to revoke code.');
-    loadScannerCodes();
+    if (res.ok) { loadScannerCodes(); return; }
+    throw new Error('RPC failed.');
   }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; }
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; } return; }
+    return fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ is_active: false })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Failed to revoke code.');
+      loadScannerCodes();
+    }).catch(function(e2) {
+      alert('Error: ' + e2.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; }
+    });
   });
 }
 
@@ -802,6 +820,19 @@ function loadPaymentProofs() {
   });
 }
 
+// ─── Helper: get auth token for Edge Function calls ───────────────────────────
+
+function getEdgeFunctionToken() {
+  // Try JWT first (works with ticketing_role), fall back to service key
+  var session = getStoredSession();
+  if (session && session.access_token) {
+    return session.access_token;
+  }
+  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+  return svcKey || '';
+}
+
 // ─── Confirm a Wave Transfer payment ─────────────────────────────────────────
 
 function confirmWavePayment(proofId, orderId) {
@@ -810,14 +841,9 @@ function confirmWavePayment(proofId, orderId) {
   var btn = document.querySelector('.wave-confirm-btn[data-proof="' + proofId + '"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirming...'; }
 
-  // Get service key for Edge Function call
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') {
-    svcKey = getServiceKey(true);
-  }
-
-  if (!svcKey) {
-    alert('Supabase service role key is required to confirm payments. Enter it on the login page.');
+  var token = getEdgeFunctionToken();
+  if (!token) {
+    alert('Authentication required. Sign in as ticketing staff or admin.');
     if (btn) { btn.disabled = false; btn.textContent = 'Confirm'; }
     return;
   }
@@ -825,7 +851,7 @@ function confirmWavePayment(proofId, orderId) {
   fetch(SUPABASE_URL + '/functions/v1/ticketing/confirm-wave', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer ' + svcKey,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -855,13 +881,9 @@ function rejectWavePayment(proofId, orderId) {
   var btn = document.querySelector('.wave-reject-btn[data-proof="' + proofId + '"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Rejecting...'; }
 
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') {
-    svcKey = getServiceKey(true);
-  }
-
-  if (!svcKey) {
-    alert('Supabase service role key is required. Enter it on the login page.');
+  var token = getEdgeFunctionToken();
+  if (!token) {
+    alert('Authentication required. Sign in as ticketing staff or admin.');
     if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
     return;
   }
@@ -869,7 +891,7 @@ function rejectWavePayment(proofId, orderId) {
   fetch(SUPABASE_URL + '/functions/v1/ticketing/confirm-wave', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer ' + svcKey,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

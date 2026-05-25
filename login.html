@@ -171,6 +171,8 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
   authLogin(email, password).then(function(session) {
     if (session.role === 'admin_role') {
       window.location.href = '/admin';
+    } else if (session.role === 'ticketing_role') {
+      window.location.href = '/admin-tickets';
     } else if (session.role === 'vendor_role') {
       return fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(session.user.id) + '&select=id,business_name,email,category,status,created_at', {
         headers: {
