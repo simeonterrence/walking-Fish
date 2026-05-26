@@ -29,6 +29,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleDebit(req);
     case "/bulk-topup":
       return handleBulkTopup(req);
+    case "/unmark-used":
+      return handleUnmarkUsed(req);
     case "/debug-ticket":
       return handleDebugTicket(req);
     default:
@@ -1289,6 +1291,87 @@ async function handleBulkTopup(req: Request): Promise<Response> {
     console.error("[bulk-topup] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to process bulk top-up" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /unmark-used
+// Reverts a ticket's status from 'used' back to 'active'.
+// Used by scanner Bill mode for undoing mistaken voucher redemptions.
+// Only reverts tickets that are currently in 'used' status.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleUnmarkUsed(req: Request): Promise<Response> {
+  try {
+    const { ticket_id, reason, staff_code } = await req.json();
+
+    if (!ticket_id) {
+      return new Response(
+        JSON.stringify({ error: "Missing ticket_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Only revert if currently 'used' — prevents toggling already-active tickets
+    const { data: ticket, error: fetchErr } = await supabase
+      .from("tickets")
+      .select("id, code, status, metadata, updated_at")
+      .eq("id", ticket_id)
+      .single();
+
+    if (fetchErr || !ticket) {
+      console.error("[unmark-used] Ticket not found:", ticket_id);
+      return new Response(
+        JSON.stringify({ error: "Ticket not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (ticket.status !== "used") {
+      console.warn(`[unmark-used] Ticket ${ticket.code} is not 'used' (current: ${ticket.status})`);
+      return new Response(
+        JSON.stringify({ error: `Ticket is ${ticket.status}, not 'used' — cannot undo` }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Merge undo reason into existing metadata
+    const existingMeta = (ticket.metadata as Record<string, any>) || {};
+    const updatedMeta = {
+      ...existingMeta,
+      unmark_reason: reason || null,
+      unmarked_at: new Date().toISOString(),
+      unmarked_by: staff_code || null,
+    };
+
+    // Revert status to 'active' and store undo audit trail in metadata
+    const { error: updateErr } = await supabase
+      .from("tickets")
+      .update({ status: "active", metadata: updatedMeta })
+      .eq("id", ticket_id)
+      .eq("status", "used");  // Optimistic concurrency — only if still 'used'
+
+    if (updateErr) {
+      console.error("[unmark-used] Update failed:", updateErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to revert ticket status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[unmark-used] ✓ Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`);
+
+    return new Response(
+      JSON.stringify({ success: true, code: ticket.code, status: "active" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[unmark-used] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to revert ticket" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

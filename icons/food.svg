@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Fork -->
+  <path d="M12 4v14"/>
+  <path d="M8 4v6"/>
+  <path d="M12 4v6"/>
+  <path d="M16 4v6"/>
+  <path d="M8 10a4 4 0 0 0 8 0"/>
+  <!-- Knife -->
+  <path d="M21 4v14"/>
+  <path d="M21 18a2.5 2.5 0 0 1-5 0"/>
+</svg>

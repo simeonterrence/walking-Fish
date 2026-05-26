@@ -19,6 +19,13 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Content-Security-Policy", "value": "default-src 'self'; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none';" }
       ]
+    },
+    {
+      "source": "/admin-photos",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'self';" }
+      ]
     }
   ],
   "rewrites": [
@@ -43,6 +50,7 @@
     { "source": "/top-up", "destination": "/top-up.html" },
     { "source": "/t", "destination": "/t.html" },
     { "source": "/scan", "destination": "/scan.html" },
-    { "source": "/admin-tickets", "destination": "/admin-tickets.html" }
+    { "source": "/admin-tickets", "destination": "/admin-tickets.html" },
+    { "source": "/admin-photos", "destination": "/admin-photos.html" }
   ]
 }

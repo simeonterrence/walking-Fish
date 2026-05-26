@@ -73,6 +73,22 @@
   transition: border-color .2s, box-shadow .2s;
 }
 .ticket-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px oklch(0% 0 0 / 0.06); }
+
+/* ─── Ticket type icon ─── */
+.ticket-card.has-icon { gap: 12px; }
+.ticket-card-icon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim);
+  border-radius: 10px;
+  color: var(--accent);
+}
+.ticket-card-icon .ticket-type-icon {
+  width: 22px; height: 22px;
+  display: block;
+}
+
 .ticket-card-info h3 { font-size: 17px; margin-bottom: 4px; }
 .ticket-card-info .desc { font-size: 13px; color: var(--muted); }
 .ticket-card-price { font-family: var(--font-display); font-size: 22px; font-weight: 600; white-space: nowrap; color: var(--accent-text); }

@@ -8,7 +8,7 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 4,
-  "icons": ["ticket", "sparkle", "paper-plane", "package"],
-  "generated": "2026-05-15"
+  "iconCount": 6,
+  "icons": ["ticket", "sparkle", "paper-plane", "package", "food", "drinks"],
+  "generated": "2026-05-26"
 }

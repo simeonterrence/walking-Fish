@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Photo management for Walking-Fish Group site images.">
+<title>Site Photos | Walking-Fish Group Admin</title>
+<link rel="stylesheet" href="style.css?v=2">
+<style>
+.page-header { padding-block: 40px 24px; }
+.page-header h1 { font-size: 24px; }
+.photo-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border); }
+.photo-tab { padding:10px 20px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; background:none; border-top:none; border-left:none; border-right:none; font-family:var(--font-body); min-width:auto; min-height:auto; }
+.photo-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.photo-tab:hover { color:var(--fg); }
+.photo-panel { display:none; }
+.photo-panel.active { display:block; }
+
+.photo-upload-form { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:24px; }
+.photo-upload-form .full { grid-column:1/-1; }
+.photo-upload-form label { font-size:13px; font-weight:500; display:block; margin-bottom:4px; }
+.photo-upload-form input, .photo-upload-form select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-body); font-size:14px; }
+.photo-upload-form .upload-hint { font-size:12px; color:var(--muted); margin-top:4px; }
+
+.photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+
+.photo-section { margin-bottom:16px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); }
+.photo-section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%; padding:14px 16px;
+  background:var(--surface); border:none; cursor:pointer;
+  font-family:var(--font-body); font-size:14px; font-weight:600;
+  color:var(--fg); transition:background .15s;
+  min-width:auto; min-height:auto;
+}
+.photo-section-header:hover { background:var(--accent-dim); }
+.photo-section-title { display:flex; align-items:center; gap:8px; text-transform:capitalize; }
+.photo-section-title .section-icon { font-size:10px; color:var(--muted); transition:transform .2s; display:inline-block; }
+.photo-section.collapsed .section-icon { transform:rotate(90deg); }
+.photo-section-count { font-size:12px; font-weight:400; color:var(--muted); }
+.photo-section-body { padding:12px; border-top:1px solid var(--border); }
+
+.photo-grid-item {
+  position:relative; border:1px solid var(--border); border-radius:8px; overflow:hidden;
+  aspect-ratio:1; background:var(--surface);
+  transition:box-shadow .2s, transform .15s, opacity .2s;
+  cursor:grab;
+}
+.photo-grid-item:hover { box-shadow:0 2px 8px oklch(0% 0 0 / 0.08); }
+.photo-grid-item:active { cursor:grabbing; }
+.photo-grid-item.dragging { opacity:0.5; transform:scale(0.95); }
+.photo-grid-item.drag-over { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); transform:scale(1.02); }
+.photo-grid-item img { width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
+
+.photo-drag-handle {
+  position:absolute; top:4px; left:4px; z-index:2;
+  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.5); color:#fff;
+  border-radius:4px; font-size:13px; line-height:1;
+  opacity:0; transition:opacity .15s; cursor:grab;
+  user-select:none;
+}
+.photo-grid-item:hover .photo-drag-handle { opacity:1; }
+
+.photo-item-overlay {
+  position:absolute; top:4px; right:4px; z-index:2;
+  display:flex; gap:4px; opacity:0; transition:opacity .15s;
+}
+.photo-grid-item:hover .photo-item-overlay { opacity:1; }
+.photo-item-edit, .photo-item-del {
+  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+  border:none; border-radius:4px; cursor:pointer;
+  font-size:13px; min-width:auto; min-height:auto; padding:0;
+  transition:transform .15s;
+}
+.photo-item-edit { background:rgba(0,0,0,0.5); color:#fff; }
+.photo-item-edit:hover { background:var(--accent); color:#fff; transform:scale(1.1); }
+.photo-item-del { background:rgba(220,38,38,0.85); color:#fff; }
+.photo-item-del:hover { background:#DC2626; transform:scale(1.1); }
+
+.photo-item-footer {
+  position:absolute; bottom:0; left:0; right:0; z-index:1;
+  display:flex; align-items:center; gap:6px;
+  background:linear-gradient(transparent, rgba(0,0,0,0.7));
+  padding:16px 8px 6px; pointer-events:none;
+}
+.photo-pos-badge {
+  background:var(--accent); color:#fff;
+  font-size:10px; font-weight:600; padding:1px 6px; border-radius:3px;
+}
+.photo-alt-text {
+  font-size:10px; color:rgba(255,255,255,0.85);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.photo-skeleton { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
+.photo-skeleton > div {
+  aspect-ratio:1; border-radius:8px;
+  background:linear-gradient(90deg, var(--border) 25%, var(--accent-dim) 50%, var(--border) 75%);
+  background-size:200% 100%;
+  animation:skeleton-shimmer 1.5s infinite;
+}
+@keyframes skeleton-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+#photo-edit-overlay .gift-box { max-width:500px; text-align:left; }
+.edit-form { display:grid; gap:14px; margin:16px 0; }
+.edit-form label { font-size:13px; font-weight:500; display:block; margin-bottom:4px; }
+.edit-form input, .edit-form select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-body); font-size:14px; }
+.edit-preview {
+  width:100%; aspect-ratio:16/9; border-radius:6px; overflow:hidden;
+  background:var(--border); border:1px solid var(--border);
+}
+.edit-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+.edit-file-name { font-size:12px; color:var(--muted); }
+.edit-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+
+.photo-undo-toast {
+  position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px);
+  z-index:500; display:flex; align-items:center; gap:8px;
+  padding:12px 16px; border-radius:10px;
+  background:var(--fg); color:var(--surface);
+  font-size:14px; font-family:var(--font-body);
+  box-shadow:0 4px 24px oklch(0% 0 0 / 0.25);
+  opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+}
+.photo-undo-toast.open { opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+.undo-toast-btn {
+  padding:6px 14px; border:none; border-radius:6px;
+  background:var(--accent); color:#fff;
+  font-size:13px; font-weight:500; cursor:pointer;
+  font-family:var(--font-body); min-width:auto; min-height:auto;
+  transition:opacity .15s;
+}
+.undo-toast-btn:hover { opacity:0.85; }
+.undo-toast-close {
+  background:none; border:none; color:rgba(255,255,255,0.5);
+  font-size:18px; cursor:pointer; line-height:1; padding:0 2px;
+  min-width:auto; min-height:auto; transition:color .15s;
+}
+.undo-toast-close:hover { color:#fff; }
+
+.photo-action-toast {
+  position:fixed; top:80px; left:50%; transform:translateX(-50%) translateY(-10px);
+  z-index:500; padding:10px 20px; border-radius:8px;
+  font-size:14px; font-family:var(--font-body); font-weight:500;
+  box-shadow:0 4px 20px oklch(0% 0 0 / 0.15);
+  opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+}
+.photo-action-toast.open { opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+.photo-action-toast.success { background:#065F46; color:#fff; }
+.photo-action-toast.error { background:#DC2626; color:#fff; }
+
+/* Lightbox */
+.photo-lightbox {
+  position:fixed; inset:0; z-index:400;
+  display:flex; align-items:center; justify-content:center;
+  background:oklch(0% 0 0 / 0.85);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+.photo-lightbox.open { opacity:1; pointer-events:auto; }
+.photo-lightbox-img {
+  max-width:90vw; max-height:85vh; border-radius:8px;
+  box-shadow:0 8px 40px oklch(0% 0 0 / 0.5);
+  transform:scale(0.92); transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  object-fit:contain;
+}
+.photo-lightbox.open .photo-lightbox-img { transform:scale(1); }
+.photo-lightbox-close {
+  position:absolute; top:16px; right:16px; z-index:1;
+  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.4); color:#fff; border:none; border-radius:50%;
+  font-size:22px; cursor:pointer; min-width:auto; min-height:auto;
+  transition:background .15s;
+}
+.photo-lightbox-close:hover { background:rgba(220,38,38,0.7); }
+.photo-lightbox-prev, .photo-lightbox-next {
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.3); color:#fff; border:none; border-radius:50%;
+  font-size:20px; cursor:pointer; min-width:auto; min-height:auto;
+  transition:background .15s;
+}
+.photo-lightbox-prev { left:16px; }
+.photo-lightbox-next { right:16px; }
+.photo-lightbox-prev:hover, .photo-lightbox-next:hover { background:rgba(0,0,0,0.6); }
+.photo-lightbox-info {
+  position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.5); color:#fff;
+  padding:8px 16px; border-radius:8px;
+  font-size:13px; text-align:center;
+  max-width:80%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+@media (max-width:768px) {
+  .photo-undo-toast { bottom:90px; width:calc(100% - 24px); justify-content:space-between; }
+  .photo-upload-form { grid-template-columns:1fr; }
+  .photo-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
+  .photo-lightbox-prev { left:8px; }
+  .photo-lightbox-next { right:8px; }
+}
+</style>
+</head>
+<body>
+<main>
+<div class="w" style="padding-block:24px;">
+  <div class="page-header" style="text-align:left;padding-block:0 24px;">
+    <p class="label" style="color:var(--accent);">Admin Panel</p>
+    <h1>Site Photos</h1>
+    <p style="font-size:14px;color:var(--muted);margin-top:4px;">
+      Upload and manage photos for the public site.
+      <a href="/admin" style="color:var(--accent);text-decoration:underline;">Back to admin dashboard &rarr;</a>
+    </p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="photo-tabs">
+    <button class="photo-tab active" onclick="switchPhotoTab('upload')">Upload</button>
+    <button class="photo-tab" onclick="switchPhotoTab('manage')">Manage Photos</button>
+  </div>
+
+  <!-- Upload Panel -->
+  <div class="photo-panel active" id="photo-panel-upload">
+    <div class="photo-upload-form">
+      <div class="full">
+        <label for="photo-file">Photos</label>
+        <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="upload-hint">JPEG, PNG, or WebP &middot; Max 10MB each &middot; Select multiple for bulk upload</div>
+      </div>
+      <div>
+        <label for="photo-section">Section</label>
+        <select id="photo-section">
+          <option value="gallery">Gallery</option>
+          <option value="partners">Partners</option>
+          <option value="hero">Hero</option>
+          <option value="events">Events</option>
+          <option value="media">Media</option>
+          <option value="about">About</option>
+        </select>
+      </div>
+      <div>
+        <label for="photo-position">Starting Position</label>
+        <input type="number" id="photo-position" value="0" min="0" step="1">
+        <div class="upload-hint">0 = auto (append to end)</div>
+      </div>
+      <div class="full">
+        <label for="photo-alt">Alt Text</label>
+        <input type="text" id="photo-alt" placeholder="Descriptive text for accessibility (optional)" value="">
+        <div class="upload-hint">For bulk upload, this alt text is applied to all photos</div>
+      </div>
+      <div class="full">
+        <button class="btn btn-primary" id="upload-btn" onclick="uploadPhoto()">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Panel -->
+  <div class="photo-panel" id="photo-panel-manage">
+    <div id="photo-list">
+      <div class="photo-skeleton"><div></div><div></div><div></div><div></div><div></div><div></div></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- Edit modal -->
+<div class="gift-overlay" id="photo-edit-overlay">
+  <div class="gift-box" style="max-width:500px;text-align:left;">
+    <div class="gift-badge">Edit Photo</div>
+    <h2>Update Photo Details</h2>
+    <div class="edit-form">
+      <label for="edit-section">Section</label>
+      <select id="edit-section">
+        <option value="gallery">Gallery</option>
+        <option value="partners">Partners</option>
+        <option value="hero">Hero</option>
+        <option value="events">Events</option>
+        <option value="media">Media</option>
+        <option value="about">About</option>
+      </select>
+      <label for="edit-position">Position</label>
+      <input type="number" id="edit-position" value="0" min="1" step="1">
+      <label for="edit-alt">Alt Text</label>
+      <input type="text" id="edit-alt" placeholder="Alt text for accessibility">
+      <label>Preview</label>
+      <div class="edit-preview" id="edit-preview"></div>
+      <div class="edit-file-name" id="edit-file-name"></div>
+    </div>
+    <div class="edit-actions">
+      <button class="gift-close" onclick="closeEditModal()" style="margin-top:0;">Cancel</button>
+      <button class="btn btn-primary" id="edit-save-btn" onclick="saveEdit()" style="padding:8px 20px;font-size:13px;">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="photo-lightbox" id="photo-lightbox" onclick="closeLightbox()">
+  <button class="photo-lightbox-close" onclick="event.stopPropagation();closeLightbox()">&times;</button>
+  <button class="photo-lightbox-prev" onclick="event.stopPropagation();navigateLightbox(-1)">&#8249;</button>
+  <button class="photo-lightbox-next" onclick="event.stopPropagation();navigateLightbox(1)">&#8250;</button>
+  <img class="photo-lightbox-img" id="photo-lightbox-img" src="" alt="">
+  <div class="photo-lightbox-info" id="photo-lightbox-info"></div>
+</div>
+
+<script src="supabase-config.min.js?v=2"></script>
+<script src="vendor-auth.min.js?v=6"></script>
+<script src="admin-photos.min.js?v=13"></script>
+<script>
+(function() {
+  var session = getSession();
+  if (session.type !== 'admin') {
+    window.location.href = '/login';
+  }
+})();
+
+function switchPhotoTab(name) {
+  document.querySelectorAll('.photo-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.photo-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelector('.photo-tab[onclick*="' + name + '"]').classList.add('active');
+  document.getElementById('photo-panel-' + name).classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadPhotos();
+});
+</script>
+
+</body>
+</html>

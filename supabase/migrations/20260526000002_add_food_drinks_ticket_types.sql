@@ -22,4 +22,5 @@ ALTER TABLE public.tickets ADD CONSTRAINT tickets_type_check
 -- ============================================
 INSERT INTO public.ticket_types (name, slug, type, price, capacity, sold, sort_order) VALUES
   ('Food Ticket', 'food-ticket', 'food', 200, 500, 0, 8),
-  ('Drinks Ticket', 'drinks-ticket', 'drinks', 150, 500, 0, 9);
+  ('Drinks Ticket', 'drinks-ticket', 'drinks', 150, 500, 0, 9)
+ON CONFLICT (slug) DO NOTHING;

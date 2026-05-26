@@ -25,6 +25,18 @@
   const TICKET_FN = SUPABASE_URL + '/functions/v1/ticketing';
   const ANON_H = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 
+  /* ─── Ticket type icons (inline SVGs, clean preset 24px/1.5px stroke) ─── */
+  const ICON_FOOD =
+    '<svg class="ticket-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 4v14"/><path d="M8 4v6"/><path d="M12 4v6"/><path d="M16 4v6"/>'
+    + '<path d="M8 10a4 4 0 0 0 8 0"/><path d="M21 4v14"/><path d="M21 18a2.5 2.5 0 0 1-5 0"/>'
+    + '</svg>';
+
+  const ICON_DRINKS =
+    '<svg class="ticket-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M8 3h8l-2 9a2 2 0 0 1-4 0L8 3z"/><path d="M12 12v5"/><path d="M9 17h6"/>'
+    + '</svg>';
+
   /* ─── State ─────────────────────────────────────────────────────────────── */
   let cart = {};                  // { [ticketTypeId]: quantity }
   let ticketTypes = [];           // cached ticket type rows
@@ -105,7 +117,9 @@
             : t.type === 'drinks'
               ? 'Redeemable for beverages at the bar and drink stations'
               : 'General admission to Piroake Fest 2026';
-      return '<div class="ticket-card" data-tid="' + t.id + '">'
+      var iconHtml = t.type === 'food' ? ICON_FOOD : t.type === 'drinks' ? ICON_DRINKS : '';
+      return '<div class="ticket-card' + (iconHtml ? ' has-icon' : '') + '" data-tid="' + t.id + '">'
+        + (iconHtml ? '<div class="ticket-card-icon">' + iconHtml + '</div>' : '')
         + '<div class="ticket-card-info">'
         +   '<h3>' + escHtml(t.name) + '</h3>'
         +   '<div class="desc">' + desc + '</div>'

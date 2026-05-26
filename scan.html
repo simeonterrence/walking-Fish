@@ -358,11 +358,158 @@
 .payment-qr .qr-box img { width: 200px; height: 200px; image-rendering: pixelated; }
 .payment-qr .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
 
+/* ─── Bill Mode Session Log ─── */
+.bill-log-panel { margin: 0 0 16px; }
+.bill-log-panel.active { display: block !important; }
+.bill-log-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+
+/* ─── Bill Log Toast ─── */
+.bill-log-toast {
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  animation: result-in .3s ease;
+  z-index: 10;
+}
+.bill-log-toast.success {
+  background: #f0fff4;
+  border: 1px solid #9ae6b4;
+  color: #2f855a;
+}
+.bill-log-toast.error {
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  color: #c53030;
+}
+.bill-log-empty {
+  text-align: center; padding: 32px 16px;
+  border: 2px dashed var(--border); border-radius: 12px;
+  font-size: 14px; color: var(--muted);
+}
+.bill-log-summary {
+  display: flex; gap: 12px; justify-content: center;
+  padding: 10px 16px; margin-bottom: 12px;
+  background: var(--accent-dim); border-radius: var(--radius);
+  font-size: 13px;
+}
+.bill-log-list { max-height: 360px; overflow-y: auto; }
+.bill-log-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 6px;
+  background: var(--surface);
+  transition: border-color .15s;
+}
+.bill-log-item.latest { border-color: var(--accent); background: var(--accent-dim); }
+.bill-log-item-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+.bill-log-item-info { flex: 1; min-width: 0; }
+.bill-log-item-code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+.bill-log-item-customer { font-size: 11px; color: var(--muted); }
+.bill-log-item-time { text-align: right; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.bill-log-undo-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  align-self: center;
+  margin-left: 4px;
+}
+.bill-log-undo-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}.bill-log-undo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+/* ─── Bill Undo Note Input ─── */
+.bill-log-item.undoing {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.undo-note-wrapper {
+  width: 100%;
+}
+.undo-note-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.undo-note-label strong {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.undo-note-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--fg);
+  transition: border-color .15s;
+}
+.undo-note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px oklch(62% 0.16 35 / 0.12);
+}
+.undo-note-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+#bill-log-btn:hover { border-color: var(--accent); color: var(--fg); }
+#bill-log-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-text); }
+
 /* ─── Print-friendly (paper slip for cross-type) ─── */
 @media print {
   body * { visibility: hidden; }
   .print-slip, .print-slip * { visibility: visible; }
   .print-slip { position: absolute; inset: 0; padding: 40px; }
+  #bill-receipt-print, #bill-receipt-print * { visibility: visible; }
+  #bill-receipt-print {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed; inset: 0;
+    background: #fff;
+    margin: 0;
+  }
+  #bill-receipt-print .receipt-print-wrapper {
+    width: 80mm;
+    padding: 8mm 4mm;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+  #bill-receipt-print .receipt-print-wrapper table { border-collapse: collapse; }
 }
 </style>
 </head>
@@ -439,6 +586,11 @@
         <span class="mode-label">Top-Up</span>
         <span class="mode-desc">Add credits at booth</span>
       </button>
+      <button class="mode-btn" data-mode="bill">
+        <span class="mode-icon">&#128221;</span>
+        <span class="mode-label">Bill</span>
+        <span class="mode-desc">Redeem food &amp; drinks vouchers</span>
+      </button>
       <button class="mode-btn" data-mode="bulk">
         <span class="mode-icon">&#128203;</span>
         <span class="mode-label">Bulk Catch-Up</span>
@@ -456,6 +608,22 @@
       <button class="back-btn" id="scanner-back">&#8592;</button>
       <span class="mode-title" id="scanner-view-title">Gate Mode</span>
       <span class="mode-badge" id="scanner-mode-badge">Gate</span>
+      <div id="bill-header-controls" style="display:none;align-items:center;gap:8px;">
+        <div id="bill-counter-badge" style="display:none;font-size:13px;font-weight:600;color:var(--accent-text);background:var(--accent-dim);padding:4px 14px;border-radius:100px;white-space:nowrap;">
+          &#10003; <span id="bill-counter">0</span>
+        </div>
+        <button id="bill-log-btn" style="font-size:12px;font-weight:500;padding:4px 12px;border:1px solid var(--border);border-radius:100px;background:var(--surface);cursor:pointer;white-space:nowrap;font-family:var(--font-body);color:var(--muted);transition:border-color .2s,color .2s;min-height:30px;">
+          &#128196; Log
+        </button>
+      </div>
+    </div>
+
+    <!-- Bill Mode Session Log Panel -->
+    <div id="bill-log-panel" class="bill-log-panel" style="display:none;">
+      <div class="bill-log-panel-header">
+        <span style="font-size:16px;font-weight:600;">&#128196; Session Log</span>
+        <span id="bill-log-close-btn" style="font-size:20px;cursor:pointer;color:var(--muted);line-height:1;" title="Close">&times;</span>
+      </div>
     </div>
 
     <!-- Cross-Type Toggle (shown in Top-Up mode) -->
@@ -632,6 +800,13 @@
       <p style="font-size:14px;">Piroake Fest 2026 — Activity Credit</p>
     </div>
     <div id="slip-content"></div>
+  </div>
+
+  <!-- ─── BILL RECEIPT FOR PRINTING (hidden, shown only during window.print()) ─── -->
+  <div id="bill-receipt-print" style="display:none;">
+    <div class="receipt-print-wrapper">
+      <div id="bill-receipt-print-content"></div>
+    </div>
   </div>
 
 </div>
