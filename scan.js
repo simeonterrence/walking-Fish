@@ -542,16 +542,18 @@
     var results = document.getElementById('email-results');
     if (results) results.innerHTML = '<div class="scanner-loading"><div class="spinner"></div></div>';
 
-    var billFilter = state.mode === 'bill' ? '&type=in.(food,drinks)' : '';
-    supabaseGet('/rest/v1/tickets?select=' + encodeURIComponent('id,code,type,status,balance,customer_name,ticket_types(name)') + '&customer_email=eq.' + encodeURIComponent(email.value.trim()) + '&status=eq.active' + billFilter + '&order=code.asc')
-      .then(function(tickets) {
+    var mode = state.mode;
+    callEdgeFunction('/lookup-by-email', { email: email.value.trim(), mode: mode })
+      .then(function(data) {
+        if (!data.success) throw new Error(data.error || 'Lookup failed');
+        var tickets = data.tickets;
         if (!tickets || tickets.length === 0) {
           if (results) results.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:12px 0;">No active tickets found for this email.</p>';
           return;
         }
         var html = '';
         tickets.forEach(function(t) {
-          var typeName = t.ticket_types ? t.ticket_types.name : t.type;
+          var typeName = t.ticket_type ? t.ticket_type.name : t.type;
           html += '<div class="email-result-item" data-code="' + escapeHtml(t.code) + '">' +
             '<div><div class="code">' + escapeHtml(t.code) + '</div><div class="detail">' + escapeHtml(typeName) + '</div></div>' +
             (t.type === 'activity_credit' ? '<div class="bal">' + formatCurrency(t.balance) + '</div>' : '<div style="font-size:12px;color:var(--muted);">' + t.status + '</div>') +
@@ -1398,19 +1400,19 @@
           return;
         }
 
-        supabaseGet('/rest/v1/orders?select=id,status&id=eq.' + orderId + '&limit=1')
-          .then(function(orders) {
-            if (orders && orders.length > 0 && orders[0].status === 'paid') {
+        callEdgeFunction('/check-order', { order_id: orderId })
+          .then(function(data) {
+            if (data.success && data.status === 'paid') {
               clearInterval(state.pollingInterval);
               state.pollingInterval = null;
 
               if (qrStatus) qrStatus.textContent = 'Payment confirmed! Processing…';
 
-              // Fetch the updated ticket balance
-              supabaseGet('/rest/v1/tickets?select=id,balance&code=eq.' + encodeURIComponent(ticket.code) + '&limit=1')
-                .then(function(tickets) {
-                  if (tickets && tickets.length > 0) {
-                    var newBalance = tickets[0].balance;
+              // Fetch the updated ticket balance via lookup
+              callEdgeFunction('/lookup-ticket', { code: ticket.code })
+                .then(function(lookupData) {
+                  if (lookupData.success && lookupData.ticket) {
+                    var newBalance = lookupData.ticket.balance;
                     if (state.currentTicket) state.currentTicket.balance = newBalance;
                     renderScannerTicket(state.currentTicket);
                   }
@@ -1471,64 +1473,32 @@
     .then(function(orderData) {
       if (!orderData.success) throw new Error(orderData.error || 'Order creation failed');
 
-      // Mark order as paid
-      return fetch(SUPA_URL + '/rest/v1/orders', {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPA_ANON,
-          'Authorization': 'Bearer ' + SUPA_ANON,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({
-          status: 'paid',
-          payment_method: source,
-        }),
-      }).then(function() {
-        // Update balance via RPC
-        return fetch(SUPA_URL + '/rest/v1/rpc/update_ticket_balance', {
-          method: 'POST',
-          headers: {
-            'apikey': SUPA_ANON,
-            'Authorization': 'Bearer ' + SUPA_ANON,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            p_ticket_id: ticket.id,
-            p_amount_delta: amount,
-            p_txn_type: 'top_up',
-            p_source: source,
-            p_notes: notes || 'Booth top-up',
-          }),
-        });
+      // Mark order as paid via Edge Function (avoids anon key on writes)
+      return callEdgeFunction('/confirm-payment', {
+        order_id: orderData.order_id,
+        payment_method: source,
+        email: ticket.customer_email || 'booth@walkingfish.gm',
+        ticket_id: ticket.id,
+        amount_delta: amount,
+        notes: notes || 'Booth top-up',
+        purpose: 'topup',
       });
     })
-    .then(function(r) {
-      if (!r || !r.ok) return r ? r.json().then(function(e) { throw new Error(e.message || 'Balance update failed'); }) : null;
-      return r.json().then(function(data) {
-        var newBalance = data !== null && data !== undefined ? data : (ticket.balance || 0) + amount;
-        // Update local state
-        if (state.currentTicket) state.currentTicket.balance = newBalance;
-        renderScannerTicket(state.currentTicket);
+    .then(function(data) {
+      if (!data || !data.success) throw new Error((data && data.error) || 'Payment confirmation failed');
 
-        // Reset form
-        var form = document.getElementById('booth-topup-form');
-        if (form) form.classList.remove('active');
-        state.selectedBundleIdx = -1;
-        state.customAmount = 0;
+      var newBalance = (data.new_balance !== null && data.new_balance !== undefined) ? data.new_balance : (ticket.balance || 0) + amount;
+      // Update local state
+      if (state.currentTicket) state.currentTicket.balance = newBalance;
+      renderScannerTicket(state.currentTicket);
 
-        showResult('success', '&#10003; Top-up of <strong>' + formatCurrency(amount) + '</strong> complete. New balance: ' + formatCurrency(newBalance));
+      // Reset form
+      var form = document.getElementById('booth-topup-form');
+      if (form) form.classList.remove('active');
+      state.selectedBundleIdx = -1;
+      state.customAmount = 0;
 
-        // Send receipt via Edge Function
-        callEdgeFunction('/webhook', {
-          trigger: 'receipt',
-          email: ticket.customer_email,
-          subject: 'Top-Up Confirmed — Walking-Fish',
-          ticket_code: ticket.code,
-          amount: amount,
-          new_balance: newBalance,
-        }).catch(function() {});
-      });
+      showResult('success', '&#10003; Top-up of <strong>' + formatCurrency(amount) + '</strong> complete. New balance: ' + formatCurrency(newBalance));
     })
     .catch(function(err) {
       showResult('error', err.message || 'Top-up failed. Please try again.');
@@ -1620,17 +1590,13 @@
     .then(function(orderData) {
       if (!orderData.success) throw new Error(orderData.error || 'Order creation failed');
 
-      // Mark order as paid directly (staff collected payment)
-      return fetch(SUPA_URL + '/rest/v1/orders', {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPA_ANON,
-          'Authorization': 'Bearer ' + SUPA_ANON,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({ status: 'paid', payment_method: 'cash' }),
-      }).then(function() {
+      // Mark order as paid via Edge Function (avoids anon key on writes)
+      return callEdgeFunction('/confirm-payment', {
+        order_id: orderData.order_id,
+        payment_method: 'cash',
+        email: email,
+      }).then(function(data) {
+        if (!data.success) throw new Error(data.error || 'Payment confirmation failed');
         return orderData;
       });
     })

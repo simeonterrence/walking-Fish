@@ -21,6 +21,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleCreateOrder(req);
     case "/lookup-ticket":
       return handleLookupTicket(req);
+    case "/lookup-by-email":
+      return handleLookupByEmail(req);
     case "/confirm-wave":
       return handleConfirmWave(req);
     case "/staff-auth":
@@ -31,6 +33,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleDebit(req);
     case "/bulk-topup":
       return handleBulkTopup(req);
+    case "/confirm-payment":
+      return handleConfirmPayment(req);
     case "/unmark-used":
       return handleUnmarkUsed(req);
     case "/debug-ticket":
@@ -87,6 +91,55 @@ async function sendEmail(payload: { to: string; subject: string; html: string })
   } catch (err: any) {
     console.error(`[Email] Send failed: ${err.message}`);
   }
+}
+
+// ─── Rate Limiter (in-memory, per-IP) ───────────────────────────────────────
+// Used to prevent brute-force attacks on the /staff-auth endpoint.
+// In-memory is sufficient for basic protection in a serverless Edge Function;
+// limits reset on cold start but still prevent sustained brute-force.
+
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_ATTEMPTS = 5;    // 5 attempts per window
+
+const rateLimitStore = new Map<string, { attempts: number; windowStart: number }>();
+
+// Periodically purge expired entries to prevent unbounded Map growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitStore) {
+    if (now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}, 300_000);
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp;
+  return "unknown";
+}
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetMs: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    // New window
+    rateLimitStore.set(ip, { attempts: 1, windowStart: now });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_ATTEMPTS - 1, resetMs: RATE_LIMIT_WINDOW_MS };
+  }
+
+  if (entry.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const resetMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
+    return { allowed: false, remaining: 0, resetMs };
+  }
+
+  entry.attempts++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_ATTEMPTS - entry.attempts, resetMs: RATE_LIMIT_WINDOW_MS - (now - entry.windowStart) };
 }
 
 // ─── Helper: generate QR code as base64 data URI ─────────────────────────────
@@ -414,6 +467,97 @@ async function handleWebhook(req: Request): Promise<Response> {
       );
     }
 
+    const supabase = getSupabaseClient();
+
+    // ─── Handle manual_paid trigger (from scanner's createNewTicket) ───────
+    // This must be checked BEFORE the ModemPay intent lookup below, since
+    // manual_paid requests don't have a modempay_intent_id.
+    if (payload.trigger === "manual_paid") {
+      const { order_id, email, customer_name, payment_method } = payload;
+
+      if (!order_id) {
+        return new Response(
+          JSON.stringify({ error: "Missing order_id" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Fetch the order and its items from metadata
+      const { data: order, error: orderErr } = await supabase
+        .from("orders")
+        .select("id, email, status, metadata, total")
+        .eq("id", order_id)
+        .single();
+
+      if (orderErr || !order) {
+        console.error(`[Webhook] Order ${order_id} not found for manual_paid`);
+        return new Response(
+          JSON.stringify({ error: "Order not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (order.status !== "paid" && order.status !== "unpaid") {
+        console.log(`[Webhook] Order ${order_id} is ${order.status} — cannot process manual_paid`);
+        return new Response(
+          JSON.stringify({ status: "already_processed" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // If order was marked paid by createNewTicket, create the tickets
+      if (order.status === "paid") {
+        const orderMetadata = order.metadata as Record<string, any> || {};
+        const items: OrderItem[] = orderMetadata.items || [];
+        const custName = customer_name || orderMetadata.customer_name || undefined;
+
+        const tickets = await createTicketsForOrder(supabase, order.id, email, items, custName);
+
+        // Send confirmation email
+        if (tickets.length > 0) {
+          const ticketList = tickets
+            .map((t) => `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`)
+            .join("");
+
+          await sendEmail({
+            to: email,
+            subject: "Your tickets are ready! — Walking-Fish",
+            html: emailShell(`
+              <h2 style="margin:0 0 8px;">Ticket Created at Venue</h2>
+              <p style="color:#666;margin:0 0 24px;">
+                Your ticket was created at the Piroake Fest booth. Payment collected on-site.
+              </p>
+              <h3 style="margin:0 0 12px;">Your Tickets</h3>
+              <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
+              <p style="margin-top:20px;">
+                <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+              </p>
+              <p style="margin-top:12px;font-size:12px;color:#999;">
+                Show your ticket QR at the gate. Need help? Visit the info desk.
+              </p>
+            `),
+          });
+        }
+
+        // Return first ticket code for the frontend to show
+        const firstCode = tickets.length > 0 ? tickets[0].code : null;
+
+        console.log(`[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`);
+
+        return new Response(
+          JSON.stringify({ success: true, tickets_created: tickets.length, ticket_code: firstCode }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Order is unpaid — return early
+      return new Response(
+        JSON.stringify({ success: false, status: "unpaid" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── ModemPay webhook processing ──────────────────────────────────────
     // ModemPay webhook format:
     //   { "event": "charge.succeeded", "payload": { "payment_intent_id": "...", ... } }
     // The main data can be at payload.payload or at the top level.
@@ -452,8 +596,6 @@ async function handleWebhook(req: Request): Promise<Response> {
         processed_at: new Date().toISOString(),
       }).catch(() => {});
     }
-
-    const supabase = getSupabaseClient();
 
     // Find the order by ModemPay intent ID
     // The intent ID was stored in order.metadata during create-intent
@@ -657,92 +799,6 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       return new Response(
         JSON.stringify({ success: true, status: "cancelled" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Handle manual_paid trigger from scanner's createNewTicket
-    if (payload.trigger === "manual_paid") {
-      const { order_id, email, customer_name, payment_method } = payload;
-
-      if (!order_id) {
-        return new Response(
-          JSON.stringify({ error: "Missing order_id" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Fetch the order and its items from metadata
-      const { data: order, error: orderErr } = await supabase
-        .from("orders")
-        .select("id, email, status, metadata, total")
-        .eq("id", order_id)
-        .single();
-
-      if (orderErr || !order) {
-        console.error(`[Webhook] Order ${order_id} not found for manual_paid`);
-        return new Response(
-          JSON.stringify({ error: "Order not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (order.status !== "paid" && order.status !== "unpaid") {
-        console.log(`[Webhook] Order ${order_id} is ${order.status} — cannot process manual_paid`);
-        return new Response(
-          JSON.stringify({ status: "already_processed" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // If order was marked paid by createNewTicket, create the tickets
-      if (order.status === "paid") {
-        const orderMetadata = order.metadata as Record<string, any> || {};
-        const items: OrderItem[] = orderMetadata.items || [];
-        const custName = customer_name || orderMetadata.customer_name || undefined;
-
-        const tickets = await createTicketsForOrder(supabase, order.id, email, items, custName);
-
-        // Send confirmation email
-        if (tickets.length > 0) {
-          const ticketList = tickets
-            .map((t) => `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`)
-            .join("");
-
-          await sendEmail({
-            to: email,
-            subject: "Your tickets are ready! — Walking-Fish",
-            html: emailShell(`
-              <h2 style="margin:0 0 8px;">Ticket Created at Venue</h2>
-              <p style="color:#666;margin:0 0 24px;">
-                Your ticket was created at the Piroake Fest booth. Payment collected on-site.
-              </p>
-              <h3 style="margin:0 0 12px;">Your Tickets</h3>
-              <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
-              <p style="margin-top:20px;">
-                <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-              </p>
-              <p style="margin-top:12px;font-size:12px;color:#999;">
-                Show your ticket QR at the gate. Need help? Visit the info desk.
-              </p>
-            `),
-          });
-        }
-
-        // Return first ticket code for the frontend to show
-        const firstCode = tickets.length > 0 ? tickets[0].code : null;
-
-        console.log(`[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`);
-
-        return new Response(
-          JSON.stringify({ success: true, tickets_created: tickets.length, ticket_code: firstCode }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Order is unpaid — return early
-      return new Response(
-        JSON.stringify({ success: false, status: "unpaid" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -1036,6 +1092,80 @@ async function isTicketingRequestAuthorized(req: Request): Promise<boolean> {
   }
 }
 
+// ─── Handler: /lookup-by-email
+// Searches for active tickets by customer email.
+// Uses service role key to bypass RLS restrictions.
+// Called from /scan page for email-based ticket lookup.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleLookupByEmail(req: Request): Promise<Response> {
+  try {
+    const { email, mode } = await req.json();
+
+    if (!email || !email.includes("@")) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email address" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Build query — optionally filter by type for bill mode (food/drinks only)
+    let query = supabase
+      .from("tickets")
+      .select(`
+        id,
+        code,
+        type,
+        status,
+        balance,
+        customer_name,
+        ticket_types!inner(name)
+      `)
+      .eq("customer_email", email.trim().toLowerCase())
+      .eq("status", "active")
+      .order("code", { ascending: true });
+
+    // In bill mode, only show food and drinks vouchers
+    if (mode === "bill") {
+      query = query.in("type", ["food", "drinks"]);
+    }
+
+    const { data: tickets, error } = await query;
+
+    if (error) {
+      console.error("[lookup-by-email] Error:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to look up tickets" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tickets: (tickets || []).map((t: any) => ({
+          id: t.id,
+          code: t.code,
+          type: t.type,
+          status: t.status,
+          balance: t.balance,
+          customer_name: t.customer_name,
+          ticket_type: { name: (t.ticket_types as any)?.name },
+        })),
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[lookup-by-email] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to look up tickets by email" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
 // ─── Handler: /confirm-wave
 // Called from admin dashboard when confirming/rejecting a Wave Transfer payment proof.
 // Routes:
@@ -1203,6 +1333,133 @@ async function handleConfirmWave(req: Request): Promise<Response> {
   }
 }
 
+// ─── Handler: /confirm-payment
+// Marks an order as paid and optionally updates ticket balance (for top-ups).
+// Used by the scanner to avoid direct REST API writes with the anon key.
+// Called from scan.js for booth cash/wave top-ups and new ticket creation.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleConfirmPayment(req: Request): Promise<Response> {
+  try {
+    const {
+      order_id,
+      payment_method,
+      email,
+      customer_name,
+      ticket_id,
+      amount_delta,
+      notes,
+      purpose,
+    } = await req.json();
+
+    if (!order_id) {
+      return new Response(
+        JSON.stringify({ error: "Missing order_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Fetch the order
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .select("id, status, email, total, metadata")
+      .eq("id", order_id)
+      .single();
+
+    if (orderErr || !order) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (order.status !== "unpaid" && order.status !== "pending_verification") {
+      return new Response(
+        JSON.stringify({ error: `Order is already ${order.status}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mark order as paid
+    const payMethod = payment_method || "cash";
+    const { error: updateErr } = await supabase
+      .from("orders")
+      .update({ status: "paid", payment_method: payMethod })
+      .eq("id", order_id);
+
+    if (updateErr) {
+      console.error("[confirm-payment] Order update failed:", updateErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to update order" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let newBalance: number | null = null;
+
+    // If this is a top-up, update the ticket balance
+    if ((purpose === "topup" || purpose === "top-up") && ticket_id && amount_delta) {
+      const { data: balance, error: balanceErr } = await supabase
+        .rpc("update_ticket_balance", {
+          p_ticket_id: ticket_id,
+          p_amount_delta: amount_delta,
+          p_txn_type: "top_up",
+          p_source: payMethod === "modempay" ? "modempay" : payMethod,
+          p_notes: notes || `Booth top-up via ${payMethod}`,
+        });
+
+      if (balanceErr) {
+        console.error("[confirm-payment] Balance update failed:", balanceErr);
+        // Don't fail — the order is already marked paid
+      } else {
+        newBalance = balance;
+      }
+
+      // Send receipt email
+      const customerEmail = email || order.email;
+      if (customerEmail) {
+        await sendEmail({
+          to: customerEmail,
+          subject: "Top-Up Confirmed — Walking-Fish",
+          html: emailShell(`
+            <h2 style="margin:0 0 8px;">Top-Up Successful</h2>
+            <p style="color:#666;margin:0 0 24px;">
+              Your top-up of <strong>D${amount_delta}</strong> has been processed.
+            </p>
+            ${newBalance !== null ? `<p style="color:#666;margin:0 0 24px;">New balance: <strong>D${newBalance}</strong></p>` : ""}
+            <p style="margin-top:20px;">
+              <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+            </p>
+          `),
+        });
+      }
+    }
+
+    console.log(
+      `[confirm-payment] ✓ Order ${order_id} paid via ${payMethod}` +
+      `${newBalance !== null ? `, balance updated to D${newBalance}` : ""}`
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        order_id,
+        status: "paid",
+        new_balance: newBalance,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[confirm-payment] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to confirm payment" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
 // ─── Handler: /staff-auth
 // Validates a staff passcode against staff_scanner_codes table.
 // Called from /scan page on login.
@@ -1210,6 +1467,29 @@ async function handleConfirmWave(req: Request): Promise<Response> {
 
 async function handleStaffAuth(req: Request): Promise<Response> {
   try {
+    // ── Rate limit check ──────────────────────────────────────────────────
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(clientIp);
+
+    if (!rateCheck.allowed) {
+      console.warn(`[staff-auth] Rate limit exceeded for IP ${clientIp}`);
+      return new Response(
+        JSON.stringify({
+          error: "Too many attempts. Please wait before trying again.",
+          retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
     const { code } = await req.json();
 
     if (!code) {
@@ -1238,7 +1518,11 @@ async function handleStaffAuth(req: Request): Promise<Response> {
     if (!record || !record.is_active) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid or inactive staff code" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": String(rateCheck.remaining),
+        } }
       );
     }
 
@@ -1257,7 +1541,13 @@ async function handleStaffAuth(req: Request): Promise<Response> {
         code: record.code,
         name: record.label || "Staff",
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": String(rateCheck.remaining),
+        },
+      }
     );
   } catch (err: any) {
     console.error("[staff-auth] Error:", err.message);
