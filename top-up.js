@@ -33,6 +33,8 @@
 
   /* ─── Init ──────────────────────────────────────────────────────────────── */
   function init() {
+    // Check for return from ModemPay before anything else
+    if (checkPaymentReturn()) return;
     setupLookup();
     setupForm();
     showView('landing');
@@ -395,71 +397,16 @@
       throw new Error(intentData.error || 'Failed to create payment intent');
     }
 
-    btn.textContent = 'Redirecting\u2026';
+    /* 3. Save pending order to detect return from ModemPay */
+    sessionStorage.setItem('wf_pending_topup', JSON.stringify({
+      order_id: orderId,
+      ticket_code: ticket.code,
+      amount: orderTotal,
+      current_balance: ticket.balance || 0
+    }));
 
-    /* Hide form, show payment view */
-    $('topup-form-container').classList.remove('active');
-
-    var conf = document.createElement('div');
-    conf.id = 'topup-payment-view';
-    conf.style.cssText = 'max-width:520px;margin:0 auto;padding:40px 20px;text-align:center;';
-
-    conf.innerHTML =
-      '<div style="font-size:48px;margin-bottom:16px;">\uD83D\uDCB3</div>'
-      + '<h2 style="margin-bottom:8px;">Complete Payment</h2>'
-      + '<p style="font-size:14px;color:var(--muted);margin:8px 0 20px;">'
-      +   'Top-up of <strong>D' + orderTotal.toLocaleString() + '</strong> for ticket <strong>' + ticket.code + '</strong>'
-      + '</p>'
-      + '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">'
-      +   'In production you would be redirected to ModemPay.'
-      + '</p>'
-      + '<button class="btn btn-primary" id="topup-sim-btn" style="width:100%;">'
-      +   '<span id="topup-sim-text">Simulate Payment Complete</span>'
-      + '</button>'
-      + '<div id="topup-sim-status" style="margin-top:12px;"></div>';
-
-    $('topup-form-container').parentNode.insertBefore(conf, $('topup-form-container').nextSibling);
-
-    $('topup-sim-btn').addEventListener('click', async function () {
-      var simBtn = $('topup-sim-btn');
-      var simText = $('topup-sim-text');
-      var status = $('topup-sim-status');
-      if (!simBtn || !simText || !status) return;
-      simBtn.disabled = true;
-      simText.textContent = 'Verifying payment\u2026';
-
-      try {
-        var whRes = await fetch(TICKET_FN + '/webhook', {
-          method: 'POST',
-          headers: ANON_H,
-          body: JSON.stringify({
-            event: 'charge.succeeded',
-            intent_id: intentData.intent_id,
-            status: 'completed'
-          })
-        });
-        var whData = await whRes.json();
-
-        if (whData.success || whData.topup) {
-          status.innerHTML = '<div style="color:#2f855a;font-weight:500;">\u2705 Payment confirmed!</div>';
-          simText.textContent = 'Done!';
-          simBtn.disabled = true;
-
-          setTimeout(function () {
-            if (conf.parentNode) conf.parentNode.removeChild(conf);
-            showSuccess((ticket.balance || 0) + orderTotal);
-          }, 1500);
-        } else {
-          status.innerHTML = '<div style="color:#c53030;">' + (whData.error || 'Processing\u2026 try again.') + '</div>';
-          simText.textContent = 'Try Again';
-          simBtn.disabled = false;
-        }
-      } catch (e) {
-        status.innerHTML = '<div style="color:#c53030;">' + e.message + '</div>';
-        simText.textContent = 'Try Again';
-        simBtn.disabled = false;
-      }
-    });
+    /* 4. Redirect to ModemPay hosted payment page */
+    window.location.href = intentData.payment_url;
   }
 
   /* ─── Wave Transfer Flow ────────────────────────────────────────────────── */
@@ -587,6 +534,85 @@
   function hideError(id) {
     var el = $(id);
     if (el) el.style.display = 'none';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 7 — MODEMPAY RETURN HANDLING
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function checkPaymentReturn() {
+    var params = new URLSearchParams(window.location.search);
+    var payment = params.get('payment');
+
+    if (payment === 'success') {
+      var pendingRaw = sessionStorage.getItem('wf_pending_topup');
+      if (pendingRaw) {
+        try {
+          var pending = JSON.parse(pendingRaw);
+          sessionStorage.removeItem('wf_pending_topup');
+          handleTopupReturn(pending);
+        } catch (e) {
+          window.history.replaceState({}, document.title, '/top-up');
+        }
+      } else {
+        window.history.replaceState({}, document.title, '/top-up');
+      }
+      return true;
+    }
+
+    if (payment === 'cancelled') {
+      sessionStorage.removeItem('wf_pending_topup');
+      showView('landing');
+      window.history.replaceState({}, document.title, '/top-up');
+      return true;
+    }
+
+    return false;
+  }
+
+  async function handleTopupReturn(pending) {
+    /* Show loading state in the form area */
+    showView('loading');
+    $('topup-loading').querySelector('p').textContent = 'Verifying payment\u2026';
+
+    /* Poll for order confirmation */
+    var maxAttempts = 30;
+    for (var i = 0; i < maxAttempts; i++) {
+      try {
+        var res = await fetch(TICKET_FN + '/check-order', {
+          method: 'POST',
+          headers: ANON_H,
+          body: JSON.stringify({ order_id: pending.order_id })
+        });
+        var data = await res.json();
+
+        if (data.success && data.status === 'paid') {
+          var newBalance = (pending.current_balance || 0) + pending.amount;
+          window.history.replaceState({}, document.title, '/top-up');
+          showSuccess(newBalance);
+          return;
+        }
+      } catch (e) {
+        // Keep polling
+      }
+      await new Promise(function (r) { setTimeout(r, 1000); });
+    }
+
+    /* Timeout — show persistent banner instead of clean landing */
+    window.history.replaceState({}, document.title, '/top-up');
+    showView('landing');
+    // Show a persistent banner above the code input
+    var banner = document.createElement('div');
+    banner.id = 'topup-process-banner';
+    banner.style.cssText = 'background:var(--accent-dim);border:1px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;';
+    banner.innerHTML = '<div style="font-size:28px;margin-bottom:8px;">\uD83D\uDCE7</div>'
+      + '<p style="font-size:14px;font-weight:500;margin:0 0 4px;">Payment Received — Still Processing</p>'
+      + '<p style="font-size:13px;color:var(--muted);margin:0 0 12px;">Your top-up of <strong>D' + pending.amount.toLocaleString() + '</strong> was successful but we\u2019re still applying the credits. This usually takes just a moment.</p>'
+      + '<button class="btn btn-primary" style="font-size:13px;padding:8px 20px;" onclick="location.reload()">Check Now</button>';
+    var landing = $('topup-landing');
+    if (landing) {
+      landing.insertBefore(banner, landing.firstChild);
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════

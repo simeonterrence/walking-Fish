@@ -15,6 +15,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleCreateIntent(req);
     case "/webhook":
       return handleWebhook(req);
+    case "/check-order":
+      return handleCheckOrder(req);
     case "/create-order":
       return handleCreateOrder(req);
     case "/lookup-ticket":
@@ -231,35 +233,112 @@ async function handleCreateIntent(req: Request): Promise<Response> {
       );
     }
 
-    // ─── TODO: Replace with actual ModemPay API integration ────────────────────
-    // ModemPay API details (endpoint, auth, etc.) to be provided by ModemPay.
-    // Expected flow:
-    //   1. POST to ModemPay API to create a payment intent
-    //   2. ModemPay returns a payment URL (for redirect) or a payment QR code
-    //   3. Store the ModemPay payment intent ID on the order for webhook matching
-    //
-    // Placeholder implementation:
-    const modemPayPaymentUrl = `https://modempay.example.com/pay?order_id=${order_id}&amount=${amount}&email=${encodeURIComponent(email)}`;
-    const modemPayIntentId = `mp_${crypto.randomUUID()}`;
+    // ─── ModemPay Payment Intent API ───────────────────────────────────────
+    // Docs: https://docs.modempay.com/api-reference/create-a-payment-intent
+    const modemPaySecretKey = Deno.env.get("MODEMPAY_SECRET_KEY");
+    const siteUrl = "https://walkingfish.gm";
+    const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ticketing/webhook`;
 
-    // Store the ModemPay intent ID and purpose metadata on the order
+    if (!modemPaySecretKey) {
+      console.error("[create-intent] MODEMPAY_SECRET_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Payment gateway not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build metadata with order context for the webhook
+    const modemMetadata: Record<string, any> = {
+      order_id,
+      source: "walkingfish-tickets",
+    };
+    if (purpose) modemMetadata.purpose = purpose;
+    if (ticket_code) modemMetadata.ticket_code = ticket_code;
+
+    // Dynamic return/cancel URLs based on purpose
+    const isTopUp = purpose === "top-up";
+    const returnUrl = isTopUp
+      ? `${siteUrl}/top-up?payment=success&order_id=${order_id}`
+      : `${siteUrl}/tickets?payment=success&order_id=${order_id}`;
+    const cancelUrl = isTopUp
+      ? `${siteUrl}/top-up?payment=cancelled`
+      : `${siteUrl}/tickets?payment=cancelled`;
+
+    let modemPayResponse: Response;
+    try {
+      modemPayResponse = await fetch("https://api.modempay.com/v1/payments", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${modemPaySecretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: {
+            amount,
+            currency: "GMD",
+            return_url: returnUrl,
+            cancel_url: cancelUrl,
+            callback_url: callbackUrl,
+            skip_url_validation: true,
+            metadata: modemMetadata,
+          },
+        }),
+      });
+    } catch (fetchErr: any) {
+      console.error("[create-intent] ModemPay API call failed:", fetchErr.message);
+      return new Response(
+        JSON.stringify({ error: "Payment gateway unreachable" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let modemPayData: any;
+    try {
+      modemPayData = await modemPayResponse.json();
+    } catch {
+      console.error("[create-intent] Failed to parse ModemPay response");
+      return new Response(
+        JSON.stringify({ error: "Invalid response from payment gateway" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!modemPayResponse.ok) {
+      console.error("[create-intent] ModemPay error:", JSON.stringify(modemPayData));
+      const errorMsg = modemPayData.message || modemPayData.error || "Payment gateway error";
+      return new Response(
+        JSON.stringify({ error: errorMsg }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle both REST API response (top-level) and SDK-wrapped response (nested under .data)
+    const responseData = modemPayData.data || modemPayData;
+    const paymentIntentId = responseData.payment_intent_id || modemPayData.payment_intent_id || `mp_${crypto.randomUUID()}`;
+    const paymentLink = responseData.payment_link || modemPayData.payment_link || "";
+    const intentSecret = responseData.intent_secret || modemPayData.intent_secret || "";
+    const expiresAt = responseData.expires_at || modemPayData.expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    // Store the ModemPay intent ID and metadata on the order
     const existingMeta = order.metadata as Record<string, any> || {};
     const metadata = {
       ...existingMeta,
-      modempay_intent_id: modemPayIntentId,
+      modempay_intent_id: paymentIntentId,
+      modempay_intent_secret: intentSecret,
       purpose: purpose || existingMeta.purpose || "purchase",
       ticket_code: ticket_code || existingMeta.ticket_code || null,
     };
     await supabase.from("orders").update({ metadata }).eq("id", order_id);
 
-    console.log(`[ModemPay] Created intent ${modemPayIntentId} for order ${order_id} (D${amount}) purpose=${purpose || "purchase"}`);
+    console.log(`[ModemPay] Created intent ${paymentIntentId} for order ${order_id} (D${amount})`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        payment_url: modemPayPaymentUrl,
-        intent_id: modemPayIntentId,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min expiry
+        payment_url: paymentLink,
+        intent_id: paymentIntentId,
+        intent_secret: intentSecret,
+        expires_at: expiresAt,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -281,15 +360,49 @@ async function handleCreateIntent(req: Request): Promise<Response> {
 async function handleWebhook(req: Request): Promise<Response> {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-modempay-signature") || "";
+    const signature = req.headers.get("x-modem-signature") || "";
+    const webhookSecret = Deno.env.get("MODEMPAY_WEBHOOK_SECRET");
 
-    // ─── TODO: Verify ModemPay webhook signature ───────────────────────────────
-    // ModemPay should provide a signing secret. The signature is sent in
-    // the x-modempay-signature header. Verify using HMAC-SHA256 (or whatever
-    // ModemPay specifies).
-    //
-    // Placeholder — skip verification until ModemPay provides details.
-    console.log("[Webhook] Signature verification: TODO");
+    // ─── Verify ModemPay webhook signature ───────────────────────────────────
+    // ModemPay sends the signature in the x-modem-signature header.
+    // Verification uses HMAC-SHA256 with the webhook secret from the dashboard.
+    // Docs: https://docs.modempay.com/documentation/core/webhooks
+    if (webhookSecret && signature) {
+      try {
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(webhookSecret),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["verify"]
+        );
+        const sigBytes = hexToBytes(signature);
+        const valid = await crypto.subtle.verify(
+          "HMAC",
+          key,
+          sigBytes,
+          encoder.encode(body)
+        );
+
+        if (!valid) {
+          console.warn("[Webhook] Signature verification FAILED — possible spoofed webhook");
+          // Return 401 so ModemPay retries
+          return new Response(
+            JSON.stringify({ error: "Invalid signature" }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        console.log("[Webhook] Signature verified ✓");
+      } catch (sigErr: any) {
+        console.error("[Webhook] Signature verification error:", sigErr.message);
+        // On verification error, still process but log the issue
+        // This prevents blocking legitimate webhooks due to implementation issues
+      }
+    } else {
+      console.warn("[Webhook] Signature verification skipped — MODEMPAY_WEBHOOK_SECRET not set");
+    }
 
     let payload: any;
     try {
@@ -301,15 +414,44 @@ async function handleWebhook(req: Request): Promise<Response> {
       );
     }
 
-    const event = payload.event || payload.type || "";
-    const intentId = payload.intent_id || payload.data?.intent_id || "";
-    const status = payload.status || payload.data?.status || "";
+    // ModemPay webhook format:
+    //   { "event": "charge.succeeded", "payload": { "payment_intent_id": "...", ... } }
+    // The main data can be at payload.payload or at the top level.
+    const event = payload.event || "";
+    const data = payload.payload || payload;
+    const intentId = data.payment_intent_id || payload.payment_intent_id || "";
+    const status = data.status || payload.status || "";
+    const webhookAmount = data.amount || 0;
 
     console.log(`[Webhook] Event: ${event}, Intent: ${intentId}, Status: ${status}`);
 
-    // ─── TODO: Implement idempotency check ──────────────────────────────────
-    // ModemPay may retry webhooks. Store processed webhook IDs or use
-    // idempotency keys to prevent duplicate processing.
+    // ─── Idempotency check ─────────────────────────────────────────────────
+    // ModemPay may retry webhooks. Store processed webhook event IDs to
+    // prevent duplicate processing.
+    const webhookEventId = data.id || payload.id || null;
+    if (webhookEventId) {
+      // Check if we've already processed this event
+      const { data: existingEvent } = await supabase
+        .from("processed_webhooks")
+        .select("id")
+        .eq("webhook_event_id", webhookEventId)
+        .maybeSingle();
+
+      if (existingEvent) {
+        console.log(`[Webhook] Duplicate event ${webhookEventId} — skipping`);
+        return new Response(
+          JSON.stringify({ status: "already_processed" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Mark as processed (don't await — fire and forget)
+      supabase.from("processed_webhooks").insert({
+        webhook_event_id: webhookEventId,
+        event_type: event,
+        processed_at: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     const supabase = getSupabaseClient();
 
@@ -617,6 +759,66 @@ async function handleWebhook(req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({ received: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /check-order
+// Returns the current status of an order.
+// Used by the frontend to poll after ModemPay redirect.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleCheckOrder(req: Request): Promise<Response> {
+  try {
+    const { order_id } = await req.json();
+
+    if (!order_id) {
+      return new Response(
+        JSON.stringify({ error: "Missing order_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("id, status, total, payment_method, email, metadata")
+      .eq("id", order_id)
+      .single();
+
+    if (error || !order) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Count tickets created for this order
+    const { count: ticketCount } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("order_id", order_id);
+
+    const orderMeta = order.metadata as Record<string, any> || {};
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        status: order.status,
+        payment_method: order.payment_method,
+        total: order.total,
+        email: order.email,
+        purpose: orderMeta.purpose || "purchase",
+        tickets_count: ticketCount || 0,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[check-order] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to check order status" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 }

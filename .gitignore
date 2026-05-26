@@ -18,6 +18,7 @@ Thumbs.db
 .env.local
 .env.*.local
 keys
+keys~
 
 # Assets - source files not served
 *.pptx

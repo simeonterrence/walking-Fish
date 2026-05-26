@@ -377,8 +377,15 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+[edge_runtime.secrets]
+MODEMPAY_SECRET_KEY = "env(MODEMPAY_SECRET_KEY)"
+MODEMPAY_PUBLIC_KEY = "env(MODEMPAY_PUBLIC_KEY)"
+MODEMPAY_WEBHOOK_SECRET = "env(MODEMPAY_WEBHOOK_SECRET)"
+
+# Note: For production, set these secrets in the Supabase Dashboard:
+#   supabase secrets set MODEMPAY_SECRET_KEY=sk_live_...
+#   supabase secrets set MODEMPAY_PUBLIC_KEY=pk_live_...
+#   supabase secrets set MODEMPAY_WEBHOOK_SECRET=<from ModemPay dashboard>
 
 [analytics]
 enabled = true

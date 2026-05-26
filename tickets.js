@@ -54,6 +54,7 @@
     setupCheckout();
     setupDashboard();
     checkLoginHash();
+    checkPaymentReturn();
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -336,70 +337,16 @@
       throw new Error(intentData.error || 'Failed to create payment intent');
     }
 
-    btn.textContent = 'Redirecting\u2026';
+    /* 3. Save pending order to detect return from ModemPay */
+    sessionStorage.setItem('wf_pending_order', JSON.stringify({
+      order_id: orderId,
+      email: email,
+      customer_name: name || '',
+      amount: orderTotal
+    }));
 
-    /* hide checkout, show payment simulator */
-    $('checkout-section').classList.remove('active');
-    var conf = $('confirmation-view');
-    conf.classList.add('active');
-    conf.innerHTML =
-      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\uD83D\uDCB3</div>'
-      + '<h2 style="text-align:center;margin-bottom:8px;">Complete Payment</h2>'
-      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 20px;">'
-      +   'Your order of <strong>D' + orderTotal.toLocaleString() + '</strong> is ready.<br>'
-      +   '<span style="font-size:13px;">In production you would be redirected to ModemPay.</span>'
-      + '</p>'
-      + '<button class="btn btn-primary" id="sim-btn" style="width:100%;">'
-      +   '<span id="sim-text">Simulate Payment Complete</span>'
-      + '</button>'
-      + '<div id="sim-status" style="margin-top:12px;"></div>';
-
-    $('sim-btn').addEventListener('click', async function () {
-      var simBtn  = $('sim-btn');
-      var simText = $('sim-text');
-      var status  = $('sim-status');
-      simBtn.disabled = true;
-      simText.textContent = 'Verifying payment\u2026';
-
-      try {
-        var whRes = await fetch(TICKET_FN + '/webhook', {
-          method: 'POST',
-          headers: ANON_H,
-          body: JSON.stringify({
-            event: 'charge.succeeded',
-            intent_id: intentData.intent_id,
-            status: 'completed'
-          })
-        });
-        var whData = await whRes.json();
-
-        if (whData.success && whData.tickets_created > 0) {
-          status.innerHTML = '<div class="success-message">\u2705 Payment confirmed! '
-            + whData.tickets_created + ' ticket(s) created.</div>';
-          simText.textContent = 'Done!';
-          simBtn.disabled = true;
-
-          /* append ticket link */
-          var link = document.createElement('div');
-          link.style.cssText = 'margin-top:16px;padding:16px;background:var(--accent-dim);border-radius:var(--radius);text-align:center;';
-          link.innerHTML = '<p style="font-size:14px;margin-bottom:8px;">Check your email for ticket details and QR codes.</p>'
-            + '<a href="/tickets" class="btn btn-primary" style="display:inline-flex;">View My Tickets</a>';
-          conf.appendChild(link);
-        } else {
-          status.innerHTML = '<div class="error-message">'
-            + (whData.error || 'Payment processing\u2026 check your tickets in a moment.') + '</div>';
-          simText.textContent = 'Try Again';
-          simBtn.disabled = false;
-        }
-      } catch (e) {
-        status.innerHTML = '<div class="error-message">' + e.message + '</div>';
-        simText.textContent = 'Try Again';
-        simBtn.disabled = false;
-      }
-    });
-
-    btn.disabled = false;
-    btn.textContent = 'Proceed to Checkout';
+    /* 4. Redirect to ModemPay hosted payment page */
+    window.location.href = intentData.payment_url;
   }
 
   /* ─── Wave Transfer Flow ─────────────────────────────────────────────────── */
@@ -773,6 +720,119 @@
         + '<span class="transaction-source" style="font-size:12px;color:var(--muted);"></span>'
         + '</div>';
     }).join('');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECTION 6 — MODEMPAY RETURN HANDLING
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function checkPaymentReturn() {
+    var params = new URLSearchParams(window.location.search);
+    var payment = params.get('payment');
+    var orderIdFromUrl = params.get('order_id');
+
+    if (payment === 'success') {
+      var pendingRaw = sessionStorage.getItem('wf_pending_order');
+      if (pendingRaw) {
+        try {
+          var pending = JSON.parse(pendingRaw);
+          sessionStorage.removeItem('wf_pending_order');
+          showPaymentSuccess(pending.order_id, pending.email, pending.amount);
+          return;
+        } catch (e) {
+          // Invalid session data — fall through to order_id from URL
+        }
+      }
+      // Fallback: use order_id from URL directly (handles page refresh after sessionStorage cleared)
+      if (orderIdFromUrl) {
+        showPaymentSuccess(orderIdFromUrl, null, null);
+        return;
+      }
+      // No order_id at all — clean up silently
+      window.history.replaceState({}, document.title, '/tickets');
+    } else if (payment === 'cancelled') {
+      sessionStorage.removeItem('wf_pending_order');
+      showPaymentCancelled();
+    }
+  }
+
+  function showPaymentView(html) {
+    $('checkout-section').classList.remove('active');
+    var conf = $('confirmation-view');
+    conf.classList.add('active');
+    conf.innerHTML = html;
+  }
+
+  async function showPaymentSuccess(orderId, email, amount) {
+    showPaymentView(
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\u231B</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Verifying Payment</h2>'
+      + '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">Checking your order status\u2026</p>'
+      + '<div style="text-align:center;"><div class="spinner" style="display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>'
+    );
+
+    /* Poll for order to be marked as paid (webhook may still be processing) */
+    var maxAttempts = 30;
+    for (var i = 0; i < maxAttempts; i++) {
+      try {
+        var res = await fetch(TICKET_FN + '/check-order', {
+          method: 'POST',
+          headers: ANON_H,
+          body: JSON.stringify({ order_id: orderId })
+        });
+        var data = await res.json();
+
+        if (data.success && data.status === 'paid') {
+          var ticketWord = data.tickets_count === 1 ? 'ticket' : 'tickets';
+          showPaymentView(
+            '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\u2705</div>'
+            + '<h2 style="text-align:center;margin-bottom:8px;">Payment Confirmed!</h2>'
+            + '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">'
+            +   'Your payment of <strong>D' + (amount || data.total).toLocaleString() + '</strong> was successful.'
+            + '</p>'
+            + '<p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:20px;">'
+            +   'Check your email for ' + ticketWord + ' and QR codes.'
+            + '</p>'
+            + '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">'
+            +   '<a href="/tickets" class="btn btn-primary">View My Tickets</a>'
+            +   '<a href="/top-up" class="btn btn-secondary">Top Up Credits</a>'
+            + '</div>'
+          );
+          return;
+        }
+      } catch (e) {
+        // Ignore transient errors, keep polling
+      }
+      await new Promise(function (r) { setTimeout(r, 1000); });
+    }
+
+    /* Timeout — webhook may be delayed. Show manual refresh option. */
+    showPaymentView(
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\uD83D\uDCE7</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Payment Received</h2>'
+      + '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">'
+      +   'Your payment was successful but we\u2019re still processing. Tickets will arrive by email shortly.'
+      + '</p>'
+      + '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">'
+      +   '<button class="btn btn-primary" onclick="location.reload()">Check Again</button>'
+      +   '<a href="/tickets" class="btn btn-secondary">Go to Tickets</a>'
+      + '</div>'
+    );
+  }
+
+  function showPaymentCancelled() {
+    showPaymentView(
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\u274C</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Payment Cancelled</h2>'
+      + '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">'
+      +   'Your payment was cancelled. No charges were made.'
+      + '</p>'
+      + '<button class="btn btn-primary" id="cancel-retry-btn" style="width:100%;">Try Again</button>'
+    );
+    $('cancel-retry-btn').addEventListener('click', function () {
+      $('confirmation-view').classList.remove('active');
+      $('checkout-section').classList.add('active');
+    });
   }
 
   /* ─── Helpers ────────────────────────────────────────────────────────────── */
