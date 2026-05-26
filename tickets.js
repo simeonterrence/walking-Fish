@@ -59,6 +59,7 @@
 
       var entries  = ticketTypes.filter(function (t) { return t.type === 'entry' || t.type === 'parking'; });
       var credits  = ticketTypes.filter(function (t) { return t.type === 'activity_credit'; });
+      var vouchers = ticketTypes.filter(function (t) { return t.type === 'food' || t.type === 'drinks'; });
       var html = '';
 
       if (entries.length) {
@@ -68,6 +69,10 @@
       if (credits.length) {
         html += '<h2 style="font-size:20px;margin:32px 0 16px;">Games Passes</h2>';
         html += renderCards(credits);
+      }
+      if (vouchers.length) {
+        html += '<h2 style="font-size:20px;margin:32px 0 16px;">Food & Drinks</h2>';
+        html += renderCards(vouchers);
       }
 
       el.innerHTML = html;
@@ -95,7 +100,11 @@
         ? t.price.toLocaleString() + ' credits for on-site games, karaoke & activities'
         : t.type === 'parking'
           ? 'On-site parking pass'
-          : 'General admission to Piroake Fest 2026';
+          : t.type === 'food'
+            ? 'Redeemable at any food stall at Piroake Fest 2026'
+            : t.type === 'drinks'
+              ? 'Redeemable for beverages at the bar and drink stations'
+              : 'General admission to Piroake Fest 2026';
       return '<div class="ticket-card" data-tid="' + t.id + '">'
         + '<div class="ticket-card-info">'
         +   '<h3>' + escHtml(t.name) + '</h3>'
