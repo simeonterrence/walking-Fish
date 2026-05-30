@@ -74,12 +74,7 @@
       <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
     </div>
 
-    <details style="margin-bottom:16px;font-size:13px;">
-      <summary style="cursor:pointer;color:var(--muted);">Admin service key (optional)</summary>
-      <div style="margin-top:8px;">
-        <input type="password" id="service-key" placeholder="Supabase service role key for admin actions" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:13px;">
-      </div>
-    </details>
+
 
     <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Sign In</button>
     <p class="error" id="login-error">Invalid email or password. Try again.</p>
@@ -174,12 +169,6 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
   var password = document.getElementById('password').value;
   var errorEl = document.getElementById('login-error');
   errorEl.style.display = 'none';
-
-  var serviceKey = document.getElementById('service-key').value.trim();
-  if (serviceKey) {
-    sessionStorage.setItem('wf_service_key', serviceKey);
-    localStorage.setItem('wf_service_key', serviceKey);
-  }
 
   authLogin(email, password).then(function(session) {
     if (session.role === 'admin_role') {
