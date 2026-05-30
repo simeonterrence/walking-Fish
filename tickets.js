@@ -35,6 +35,12 @@
     + '<path d="M8 3h8l-2 9a2 2 0 0 1-4 0L8 3z"/><path d="M12 12v5"/><path d="M9 17h6"/>'
     + '</svg>';
 
+  const ICON_KIDS =
+    '<svg class="ticket-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 2l1.5 5.5L19 9l-5.5 2L12 17l-1.5-6L5 9l5.5-1.5z"/>'
+    + '<path d="M11 22l1-4 1 4"/>'
+    + '</svg>';
+
   /* ─── State ─────────────────────────────────────────────────────────────── */
   let cart = {};                  // { [ticketTypeId]: quantity }
   let ticketTypes = [];           // cached ticket type rows
@@ -70,14 +76,19 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       ticketTypes = await res.json();
 
-      var entries  = ticketTypes.filter(function (t) { return t.type === 'entry' || t.type === 'parking'; });
-      var credits  = ticketTypes.filter(function (t) { return t.type === 'activity_credit'; });
-      var vouchers = ticketTypes.filter(function (t) { return t.type === 'food' || t.type === 'drinks'; });
+      var entries   = ticketTypes.filter(function (t) { return t.type === 'entry' || t.type === 'parking'; });
+      var credits   = ticketTypes.filter(function (t) { return t.type === 'activity_credit'; });
+      var vouchers  = ticketTypes.filter(function (t) { return t.type === 'food' || t.type === 'drinks'; });
+      var kidsZones = ticketTypes.filter(function (t) { return t.type === 'kids_zone'; });
       var html = '';
 
       if (entries.length) {
         html += '<h2 style="font-size:20px;margin-bottom:16px;">Entry Passes</h2>';
         html += renderCards(entries);
+      }
+      if (kidsZones.length) {
+        html += '<h2 style="font-size:20px;margin:32px 0 16px;">Kids Zone</h2>';
+        html += renderCards(kidsZones);
       }
       if (credits.length) {
         html += '<h2 style="font-size:20px;margin:32px 0 16px;">Games Passes</h2>';
@@ -117,8 +128,10 @@
             ? 'Redeemable at any food stall at Piroake Fest 2026'
             : t.type === 'drinks'
               ? 'Redeemable for beverages at the bar and drink stations'
-              : 'General admission to Piroake Fest 2026';
-      var iconHtml = t.type === 'food' ? ICON_FOOD : t.type === 'drinks' ? ICON_DRINKS : '';
+              : t.type === 'kids_zone'
+                ? 'Dedicated Kids Center & Playground · Open 12:00pm–7:00pm · Ages 3–10 years'
+                : 'General admission to Piroake Fest 2026';
+      var iconHtml = t.type === 'food' ? ICON_FOOD : t.type === 'drinks' ? ICON_DRINKS : t.type === 'kids_zone' ? ICON_KIDS : '';
       return '<div class="ticket-card' + (iconHtml ? ' has-icon' : '') + '" data-tid="' + t.id + '">'
         + (iconHtml ? '<div class="ticket-card-icon">' + iconHtml + '</div>' : '')
         + '<div class="ticket-card-info">'

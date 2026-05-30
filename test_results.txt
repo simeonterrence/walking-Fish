@@ -1,0 +1,69 @@
+[1m[96m======================================================================[0m
+[1m[96m         PIROAKE FEST 2026: TICKETING SYSTEM INTEGRATION TESTS       [0m
+[1m[96m======================================================================[0m
+
+[1m[94m--- Phase 1: Ticket Types & Config ---[0m
+  [*] Fetch active ticket types from REST API... (9 types found)
+[92m✓[0m
+  [*] Fetch top-up bundles... [92m✓[0m
+  [*] Fetch balance cap from system_config... [92m✓[0m
+
+[1m[94m--- Phase 2: Order Creation & Payment ---[0m
+  [*] Create order via Edge Function /create-order... [92m✓[0m
+  [*] Verify order exists in database with status=unpaid... [92m✓[0m
+  [*] Create ModemPay intent via /create-intent... [92m✓[0m
+  [*] Simulate ModemPay webhook: charge.succeeded... [92m✓[0m
+  [*] Verify order is now paid... [92m✓[0m
+  [*] Verify tickets were created for the order... [92m✓[0m
+
+[1m[94m--- Phase 3: Ticket Lookup ---[0m
+  [*] Lookup ticket by code via /lookup-ticket... [92m✓[0m
+  [*] Lookup invalid ticket code returns 404... [92m✓[0m
+
+[1m[94m--- Phase 4: Gate Entry ---[0m
+  [*] Mark entry ticket as used via /mark-used... [92m✓[0m
+  [*] Verify ticket status changed to used... [92m✓[0m
+  [*] Marking same ticket again fails (duplicate)... [92m✓[0m
+
+[1m[94m--- Phase 5: Activity Credit Purchase (Cross-Type) ---[0m
+  [*] Create order for activity credit... [92m✓[0m
+  [*] Simulate ModemPay webhook for activity credit order... [92m✓[0m
+  [*] Verify activity credit ticket has initial balance... [92m✓[0m
+
+[1m[94m--- Phase 6: Activity Debit ---[0m
+  [*] Debit D50 from activity credit via /debit... [92m✓[0m
+  [*] Debit D600 from D450 balance — insufficient funds... [92m✓[0m
+  [*] Verify balance transaction record was created... [92m✓[0m
+
+[1m[94m--- Phase 7: Top-Up ---[0m
+  [*] Create top-up order via /create-order with purpose=top-up... [92m✓[0m
+  [*] Process top-up via ModemPay webhook... [92m✓[0m
+  [*] Verify balance increased after top-up (450 + 200 = 650)... [92m✓[0m
+
+[1m[94m--- Phase 8: Balance Cap Enforcement ---[0m
+  [*] Top-up to exceed balance cap should fail... [92m✓[0m
+  [*] Verify balance unchanged after cap enforcement... [92m✓[0m
+
+[1m[94m--- Phase 9: Staff Scanner Auth ---[0m
+  [*] Create staff scanner code for testing... [92m✓[0m
+  [*] Authenticate with valid staff code via /staff-auth... [92m✓[0m
+  [*] Authenticate with invalid staff code returns 401... [92m✓[0m
+
+[1m[94m--- Phase 10: Bulk Catch-Up Top-Up ---[0m
+  [*] Process bulk top-up via /bulk-topup... [92m✓[0m
+  [*] Verify bulk top-up increased balance (650 + 100 = 750)... [92m✓[0m
+  [*] Bulk top-up with invalid ticket code reports error... [91m✗[0m
+    [91mHTTPSConnectionPool(host='anigcqdquakinlzvyaur.supabase.co', port=443): Read timed out. (read timeout=10)[0m
+
+[1m[94m--- Phase 11: Duplicate Webhook Handling ---[0m
+  [*] Re-send same charge.succeeded webhook (duplicate)... [92m✓[0m
+  [*] Verify no duplicate tickets were created... [92m✓[0m
+
+[1m[94m--- Phase 12: Cleanup ---[0m
+  [*] Clean up test scanner code... [92m✓[0m
+  [*] Clean up test orders, tickets, and transactions... [91m✗[0m
+    [91mHTTPSConnectionPool(host='anigcqdquakinlzvyaur.supabase.co', port=443): Max retries exceeded with url: /rest/v1/orders?id=eq.cbed17d5-960d-425b-84a1-aa759c8df5f0 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x7f5f63808320>, 'Connection to anigcqdquakinlzvyaur.supabase.co timed out. (connect timeout=10)'))[0m
+
+[1m[96m======================================================================[0m
+[1mRESULTS:     [92m33 passed[0m, [91m2 failed[0m
+[1m[96m======================================================================[0m

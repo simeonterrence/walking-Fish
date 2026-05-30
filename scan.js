@@ -1051,9 +1051,9 @@
   // ─── Gate Mode ────────────────────────────────────────────────────────────
 
   function showGateActions(ticket, container) {
-    if (ticket.type !== 'entry' && ticket.type !== 'parking' && ticket.type !== 'food' && ticket.type !== 'drinks') {
+    if (ticket.type !== 'entry' && ticket.type !== 'parking' && ticket.type !== 'food' && ticket.type !== 'drinks' && ticket.type !== 'kids_zone') {
       container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:14px;">' +
-        'This is not an entry, parking, food, or drinks pass. Switch to Debit or Top-Up mode.' +
+        'This is not an entry, parking, food, drinks, or kids zone pass. Switch to Debit or Top-Up mode.' +
         '</div>';
       return;
     }

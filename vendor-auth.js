@@ -113,7 +113,7 @@ function refreshSession() {
 function fetchWithAuth(url, options) {
   options = options || {};
   options.headers = options.headers || {};
-  
+
   var session = getStoredSession();
   if (session && session.expires_at) {
     var now = Math.floor(Date.now() / 1000);
@@ -569,4 +569,71 @@ function adminDeleteVendor(e) {
   }).then(function (e) {
     return !e.ok && Promise.reject(new Error("Failed to delete vendor user."));
   }) : Promise.reject(new Error("Service key required. Enter it on the login page."));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAGIC LINK CALLBACK HANDLER
+   Parses Supabase Auth session from URL hash (magic link redirect) and
+   redirects to the appropriate dashboard based on user role.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function handleMagicLinkCallback() {
+  var hash = window.location.hash;
+  if (!hash || hash.indexOf('access_token') === -1) return false;
+
+  var h = hash.charAt(0) === '#' ? hash.substring(1) : hash;
+  var params = new URLSearchParams(h);
+  var accessToken = params.get('access_token');
+  var refreshToken = params.get('refresh_token');
+
+  if (!accessToken) return false;
+
+  try {
+    var payload = JSON.parse(atob(accessToken.split('.')[1]));
+    var role = payload && payload.app_metadata && payload.app_metadata.role;
+    var session = {
+      type: role === 'admin_role' ? 'admin' : role === 'vendor_role' ? 'vendor' : role === 'ticketing_role' ? 'ticketing' : null,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: payload ? payload.exp : null,
+      user: { id: payload.sub, email: payload.email },
+      role: role
+    };
+
+    setStoredSession(session);
+
+    /* Clean the hash from the URL */
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    /* Redirect based on role */
+    if (role === 'admin_role') {
+      window.location.href = '/admin';
+    } else if (role === 'vendor_role') {
+      /* Fetch vendor profile to set session data */
+      fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(payload.sub) + '&select=id,business_name,email,category,status,created_at', {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        }
+      }).then(function(r) { return r.json(); }).then(function(profiles) {
+        var profile = profiles && profiles.length > 0 ? profiles[0] : null;
+        var s = getStoredSession();
+        s.data = profile || {};
+        setStoredSession(s);
+        window.location.href = '/vendor-dashboard';
+      }).catch(function() {
+        window.location.href = '/vendor-dashboard';
+      });
+    } else if (role === 'ticketing_role') {
+      window.location.href = '/admin-tickets';
+    } else {
+      window.location.href = '/';
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[vendor-auth] magic link parse error:', e);
+    return false;
+  }
 }

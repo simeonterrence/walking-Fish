@@ -1,5 +1,5 @@
 {
-  "name": "walking-fish-ceremony-icons",
+  "name": "walking-fish-icons",
   "preset": "clean",
   "grid": 24,
   "strokeWidth": 1.5,
@@ -8,7 +8,7 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 6,
-  "icons": ["ticket", "sparkle", "paper-plane", "package", "food", "drinks"],
+  "iconCount": 12,
+  "icons": ["ticket", "sparkle", "paper-plane", "package", "food", "drinks", "menu", "close", "star", "check", "arrow-right", "arrow-left"],
   "generated": "2026-05-26"
 }

@@ -135,7 +135,7 @@ function toggleOrderTickets(orderId) {
   row.style.display = 'table-row';
   var detail = row.querySelector('.order-tickets-detail');
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?order_id=eq.' + orderId + '&select=code,type,status,balance,customer_name,ticket_types!inner(name,slug,price)')
+  fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?order_id=eq.' + orderId + '&select=id,code,type,status,balance,customer_name,customer_email,ticket_types!inner(name,slug,price)')
     .then(function(res) {
       if (!res.ok) throw new Error('Failed to load tickets.');
       return res.json();
@@ -152,14 +152,21 @@ function toggleOrderTickets(orderId) {
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Name</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Status</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Balance</th>' +
+        '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Actions</th>' +
         '</tr></thead><tbody>';
       tickets.forEach(function(t) {
         var statusClass = 'status-' + (t.status === 'active' ? 'approved' : t.status === 'used' ? 'pending' : 'rejected');
+        var isRevocable = t.status === 'active' || t.status === 'used';
         h += '<tr><td style="padding:6px 8px;font-family:var(--font-mono);font-size:12px;">' + escapeHtml(t.code) + '</td>' +
           '<td style="padding:6px 8px;">' + escapeHtml(t.ticket_types.name) + '</td>' +
           '<td style="padding:6px 8px;font-size:13px;">' + escapeHtml(t.customer_name || '-') + '</td>' +
           '<td style="padding:6px 8px;"><span class="status-badge ' + statusClass + '">' + t.status + '</span></td>' +
-          '<td style="padding:6px 8px;font-weight:600;">' + (t.type === 'activity_credit' ? 'D' + t.balance : '-') + '</td></tr>';
+          '<td style="padding:6px 8px;font-weight:600;">' + (t.type === 'activity_credit' ? 'D' + t.balance : '-') + '</td>' +
+          '<td style="padding:6px 8px;white-space:nowrap;">' +
+            '<button class="action-btn ticket-edit-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-status="' + t.status + '" data-name="' + escapeHtml(t.customer_name || '') + '" data-email="' + escapeHtml(t.customer_email || '') + '" data-balance="' + t.balance + '" data-type="' + t.type + '" data-order="' + orderId + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
+            (isRevocable ? '<button class="action-btn ticket-revoke-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-order="' + orderId + '" style="background:#92400E;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Revoke</button>' : '') +
+            '<button class="action-btn ticket-delete-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Delete</button>' +
+          '</td></tr>';
       });
       h += '</tbody></table></div>';
       detail.innerHTML = h;
@@ -167,6 +174,143 @@ function toggleOrderTickets(orderId) {
     .catch(function(err) {
       detail.innerHTML = '<p style="padding:16px;color:#DC2626;font-size:13px;">' + escapeHtml(err.message) + '</p>';
     });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2b. TICKET MANAGEMENT: EDIT, REVOKE, DELETE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function showTicketEditModal(ticketData) {
+  // Remove any existing edit modal
+  var existing = document.getElementById('ticket-edit-modal');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'ticket-edit-modal';
+  overlay.className = 'gift-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;';
+
+  overlay.innerHTML = '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
+    '<div class="gift-badge" style="margin-bottom:12px;">Edit Ticket</div>' +
+    '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' +
+      'Ticket <code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(ticketData.code) + '</code>' +
+    '</p>' +
+    '<form id="ticket-edit-form">' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Name</label>' +
+        '<input type="text" id="edit-ticket-name" value="' + escapeHtml(ticketData.name || '') + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Email</label>' +
+        '<input type="email" id="edit-ticket-email" value="' + escapeHtml(ticketData.email || '') + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Status</label>' +
+        '<select id="edit-ticket-status" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+          '<option value="active"' + (ticketData.status === 'active' ? ' selected' : '') + '>Active</option>' +
+          '<option value="used"' + (ticketData.status === 'used' ? ' selected' : '') + '>Used</option>' +
+          '<option value="exhausted"' + (ticketData.status === 'exhausted' ? ' selected' : '') + '>Exhausted</option>' +
+          '<option value="revoked"' + (ticketData.status === 'revoked' ? ' selected' : '') + '>Revoked</option>' +
+        '</select>' +
+      '</div>' +
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Balance (D) <span style="color:var(--muted);font-weight:400;">— only for activity credit tickets</span></label>' +
+        '<input type="number" id="edit-ticket-balance" value="' + ticketData.balance + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+        '<button type="button" id="ticket-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
+        '<button type="button" id="ticket-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-ticket-id="' + ticketData.id + '" data-order-id="' + (ticketData.orderId || '') + '">Save Changes</button>' +
+      '</div>' +
+    '</form>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  // Focus first input
+  setTimeout(function() { document.getElementById('edit-ticket-name').focus(); }, 100);
+
+  return overlay;
+}
+
+function saveTicketEdit(ticketId, data) {
+  var payload = {};
+  if (data.name !== undefined) payload.customer_name = data.name;
+  if (data.email !== undefined) payload.customer_email = data.email;
+  if (data.status !== undefined) payload.status = data.status;
+  if (data.balance !== undefined) payload.balance = parseInt(data.balance);
+
+  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(res) {
+    if (res.ok || res.status === 204) return true;
+    if (res.status === 401 || res.status === 403) {
+      // JWT RLS may not cover all fields — fall back to service key
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Permission denied. Service key required.');
+      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      }).then(function(r) {
+        if (r.ok || r.status === 204) return true;
+        throw new Error('Failed to update ticket.');
+      });
+    }
+    throw new Error('Failed to update ticket.');
+  });
+}
+
+function revokeTicket(ticketId, ticketCode) {
+  if (!confirm('Revoke ticket ' + ticketCode + '? The ticket will no longer be valid for entry or top-ups.')) return;
+
+  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ status: 'revoked' })
+  }).then(function(res) {
+    if (res.ok || res.status === 204) return true;
+    if (res.status === 401 || res.status === 403) {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Permission denied. Service key required.');
+      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'revoked' })
+      }).then(function(r) {
+        if (r.ok || r.status === 204) return true;
+        throw new Error('Failed to revoke ticket.');
+      });
+    }
+    throw new Error('Failed to revoke ticket.');
+  });
+}
+
+function deleteTicket(ticketId, ticketCode) {
+  if (!confirm('Permanently delete ticket ' + ticketCode + '? This action cannot be undone. All balance transaction history will also be deleted.')) return;
+
+  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
+  }).then(function(res) {
+    if (res.ok || res.status === 204) return true;
+    if (res.status === 401 || res.status === 403) {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Permission denied. Service key required.');
+      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
+      }).then(function(r) {
+        if (r.ok || r.status === 204) return true;
+        throw new Error('Failed to delete ticket.');
+      });
+    }
+    throw new Error('Failed to delete ticket.');
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -211,7 +355,7 @@ function loadTicketTypes() {
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Slug</label><input type="text" id="new-ticket-slug" placeholder="e.g. vip-entry" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Type</label>' +
         '<select id="new-ticket-type" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-        '<option value="entry">Entry</option><option value="activity_credit">Activity Credit</option><option value="parking">Parking</option><option value="food">Food</option><option value="drinks">Drinks</option></select></div>' +
+                '<option value="entry">Entry</option><option value="kids_zone">Kids Zone</option><option value="activity_credit">Activity Credit</option><option value="parking">Parking</option><option value="food">Food</option><option value="drinks">Drinks</option></select></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label><input type="number" id="new-ticket-price" value="0" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label><input type="number" id="new-ticket-capacity" value="100" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label><input type="number" id="new-ticket-sort" value="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
@@ -732,6 +876,114 @@ document.addEventListener('click', function(e) {
   // Save balance cap
   if (e.target.id === 'save-balance-cap-btn') {
     saveBalanceCap();
+  }
+
+  // ─────────── Ticket Management ───────────
+
+  // Edit ticket — open modal
+  if (e.target.classList.contains('ticket-edit-btn')) {
+    var btn = e.target;
+    showTicketEditModal({
+      id: btn.getAttribute('data-id'),
+      code: btn.getAttribute('data-code'),
+      status: btn.getAttribute('data-status'),
+      name: btn.getAttribute('data-name'),
+      email: btn.getAttribute('data-email'),
+      balance: btn.getAttribute('data-balance'),
+      type: btn.getAttribute('data-type'),
+      orderId: btn.getAttribute('data-order')
+    });
+  }
+
+  // Save ticket edit (submit button inside modal)
+  if (e.target.id === 'ticket-edit-save-btn') {
+    e.preventDefault();
+    var form = document.getElementById('ticket-edit-form');
+    if (!form) return;
+    var modal = document.getElementById('ticket-edit-modal');
+    var saveBtn = document.getElementById('ticket-edit-save-btn');
+    var ticketId = saveBtn ? saveBtn.getAttribute('data-ticket-id') : null;
+    var orderId = saveBtn ? saveBtn.getAttribute('data-order-id') : null;
+    if (!ticketId) return;
+
+    var data = {
+      name: document.getElementById('edit-ticket-name').value.trim(),
+      email: document.getElementById('edit-ticket-email').value.trim(),
+      status: document.getElementById('edit-ticket-status').value,
+      balance: parseInt(document.getElementById('edit-ticket-balance').value) || 0
+    };
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    saveTicketEdit(ticketId, data).then(function(success) {
+      if (success) {
+        if (modal) modal.remove();
+        alert('Ticket updated successfully.');
+        // Refresh the order tickets view
+        if (orderId) toggleOrderTickets(orderId);
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    });
+  }
+
+  // Cancel edit modal
+  if (e.target.id === 'ticket-edit-cancel-btn') {
+    var modal = document.getElementById('ticket-edit-modal');
+    if (modal) modal.remove();
+  }
+
+  // Dismiss edit modal by clicking overlay background
+  if (e.target.id === 'ticket-edit-modal') {
+    e.target.remove();
+  }
+
+  // Revoke ticket
+  if (e.target.classList.contains('ticket-revoke-btn')) {
+    var btn = e.target;
+    var ticketId = btn.getAttribute('data-id');
+    var ticketCode = btn.getAttribute('data-code');
+    var orderId = btn.getAttribute('data-order');
+
+    if (!ticketId) return;
+    btn.disabled = true;
+    btn.textContent = 'Revoking...';
+
+    revokeTicket(ticketId, ticketCode).then(function(success) {
+      if (success === true) {
+        alert('Ticket ' + ticketCode + ' revoked.');
+        if (orderId) toggleOrderTickets(orderId);
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; }
+    });
+  }
+
+  // Delete ticket
+  if (e.target.classList.contains('ticket-delete-btn')) {
+    var btn = e.target;
+    var ticketId = btn.getAttribute('data-id');
+    var ticketCode = btn.getAttribute('data-code');
+    // Find the order ID from the closest order row's data-order
+    var orderRow = btn.closest('[id^="order-tickets-"]');
+    var orderId = orderRow ? orderRow.id.replace('order-tickets-', '') : null;
+
+    if (!ticketId) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    deleteTicket(ticketId, ticketCode).then(function(success) {
+      if (success === true) {
+        alert('Ticket ' + ticketCode + ' deleted.');
+        if (orderId) toggleOrderTickets(orderId);
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+    });
   }
 });
 
