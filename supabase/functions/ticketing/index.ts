@@ -107,47 +107,63 @@ async function sendEmail(payload: { to: string; subject: string; html: string })
   }
 }
 
-// ─── Helper: send magic link via admin.generateLink() + Resend ─────────────
-// Uses the admin API to generate a magic link, then sends it via Resend.
-// This bypasses Supabase Auth's SMTP configuration (which may not be set up).
+// ─── Helper: send magic link via Supabase Auth Admin REST API + Resend ────
+// Calls the Auth admin generate_link API directly (bypassing supabase-js which
+// may not have admin.generateLink() in older versions). The link is then sent
+// via Resend's email API. This works independently of Supabase Auth's SMTP config.
+// Docs: https://supabase.com/docs/reference/api/auth-admin-generatelink
 
 async function sendMagicLinkEmail(email: string) {
-  const supabase = getSupabaseClient();
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const siteUrl = "https://walkingfish.gm";
 
-  async function tryGenerate(type: "magiclink" | "signup"): Promise<string | null> {
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type,
-      email,
-      options: {
-        redirectTo: `${siteUrl}/tickets`,
-      },
-    });
+  async function tryGenerateLink(type: "magiclink" | "signup"): Promise<string | null> {
+    try {
+      const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${serviceKey}`,
+          "apikey": serviceKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          email,
+          options: {
+            redirect_to: `${siteUrl}/tickets`,
+          },
+        }),
+      });
 
-    if (error) {
-      console.warn(`[MagicLink] ${type} failed for ${email}: ${error.message}`);
+      const body = await res.json();
+
+      if (!res.ok) {
+        console.warn(`[MagicLink] ${type} API error for ${email}: ${res.status} ${JSON.stringify(body)}`);
+        return null;
+      }
+
+      return body?.data?.properties?.action_link || body?.action_link || null;
+    } catch (err: any) {
+      console.warn(`[MagicLink] ${type} fetch error for ${email}: ${err.message}`);
       return null;
     }
-
-    return data?.properties?.action_link || null;
   }
 
   try {
     // Try magiclink first (works for existing users)
-    let magicLink = await tryGenerate("magiclink");
+    let magicLink = await tryGenerateLink("magiclink");
 
     // If user doesn't exist, fall back to signup (creates the user + returns a link)
     if (!magicLink) {
       console.log(`[MagicLink] User ${email} not found, creating via signup link...`);
-      magicLink = await tryGenerate("signup");
+      magicLink = await tryGenerateLink("signup");
     }
 
     if (!magicLink) {
       console.error(`[MagicLink] Failed to generate any link for ${email}`);
       return;
     }
-
-    const actionLink = magicLink;
 
     await sendEmail({
       to: email,
