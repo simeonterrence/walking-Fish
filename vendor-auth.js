@@ -628,7 +628,12 @@ function handleMagicLinkCallback() {
     } else if (role === 'ticketing_role') {
       window.location.href = '/admin-tickets';
     } else {
-      window.location.href = '/';
+      /* Unknown role — likely a ticket customer. Save session for tickets.js and redirect to ticket dashboard */
+      sessionStorage.setItem('wf_ticket_session', JSON.stringify({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      }));
+      window.location.href = '/tickets';
     }
 
     return true;

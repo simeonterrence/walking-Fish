@@ -115,7 +115,7 @@ async function sendEmail(payload: { to: string; subject: string; html: string })
 async function sendMagicLinkEmail(email: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const siteUrl = "https://walkingfish.gm";
+  const siteUrl = "https://www.walkingfish.gm";
 
   async function tryGenerateLink(type: "magiclink" | "signup"): Promise<string | null> {
     try {
@@ -391,7 +391,7 @@ async function handleCreateIntent(req: Request): Promise<Response> {
     // ─── ModemPay Payment Intent API ───────────────────────────────────────
     // Docs: https://docs.modempay.com/api-reference/create-a-payment-intent
     const modemPaySecretKey = Deno.env.get("MODEMPAY_SECRET_KEY");
-    const siteUrl = "https://walkingfish.gm";
+    const siteUrl = "https://www.walkingfish.gm";
     const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ticketing/webhook`;
 
     if (!modemPaySecretKey) {

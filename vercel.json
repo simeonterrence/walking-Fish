@@ -47,6 +47,7 @@
     { "source": "/vendor-dashboard", "destination": "/vendor-dashboard.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/tickets", "destination": "/tickets.html" },
+    { "source": "/tickets/order-status", "destination": "/tickets.html" },
     { "source": "/top-up", "destination": "/top-up.html" },
     { "source": "/t", "destination": "/t.html" },
     { "source": "/scan", "destination": "/scan.html" },
