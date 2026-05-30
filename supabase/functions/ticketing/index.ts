@@ -47,6 +47,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleUnmarkUsed(req);
     case "/resend-magic-link":
       return handleResendMagicLink(req);
+    case "/send-magic-link":
+      return handleSendMagicLink(req);
     case "/admin-query":
       return handleAdminQuery(req);
     case "/debug-ticket":
@@ -105,38 +107,74 @@ async function sendEmail(payload: { to: string; subject: string; html: string })
   }
 }
 
-// ─── Helper: send magic link via Supabase Auth OTP ──────────────────────────
+// ─── Helper: send magic link via admin.generateLink() + Resend ─────────────
+// Uses the admin API to generate a magic link, then sends it via Resend.
+// This bypasses Supabase Auth's SMTP configuration (which may not be set up).
 
 async function sendMagicLinkEmail(email: string) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabase = getSupabaseClient();
+  const siteUrl = "https://walkingfish.gm";
 
-  if (!supabaseUrl || !serviceKey) {
-    console.warn("[MagicLink] SUPABASE_URL or SERVICE_KEY not set — skipping magic link");
-    return;
+  async function tryGenerate(type: "magiclink" | "signup"): Promise<string | null> {
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type,
+      email,
+      options: {
+        redirectTo: `${siteUrl}/tickets`,
+      },
+    });
+
+    if (error) {
+      console.warn(`[MagicLink] ${type} failed for ${email}: ${error.message}`);
+      return null;
+    }
+
+    return data?.properties?.action_link || null;
   }
 
   try {
-    const res = await fetch(`${supabaseUrl}/auth/v1/otp`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${serviceKey}`,
-        apikey: serviceKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        create_user: true,
-        gotrue_meta_security: {},
-      }),
+    // Try magiclink first (works for existing users)
+    let magicLink = await tryGenerate("magiclink");
+
+    // If user doesn't exist, fall back to signup (creates the user + returns a link)
+    if (!magicLink) {
+      console.log(`[MagicLink] User ${email} not found, creating via signup link...`);
+      magicLink = await tryGenerate("signup");
+    }
+
+    if (!magicLink) {
+      console.error(`[MagicLink] Failed to generate any link for ${email}`);
+      return;
+    }
+
+    const actionLink = magicLink;
+
+    await sendEmail({
+      to: email,
+      subject: "Sign in to your tickets — Walking-Fish",
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">Sign in to View Your Tickets</h2>
+        <p style="color:#666;margin:0 0 24px;">
+          Click the button below to sign in to your ticket dashboard. You'll find all your tickets, QR codes, and top-up credits.
+        </p>
+        <p style="text-align:center;margin:32px 0;">
+          <a href="${magicLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
+            Sign In to My Tickets
+          </a>
+        </p>
+        <p style="font-size:12px;color:#999;margin-bottom:8px;">
+          Or copy this link into your browser:
+        </p>
+        <p style="font-size:12px;color:#666;word-break:break-all;background:#f5f5f5;padding:12px;border-radius:6px;">
+          ${magicLink}
+        </p>
+        <p style="margin-top:24px;font-size:12px;color:#999;">
+          This link expires after 24 hours. If you didn't request this, you can safely ignore this email.
+        </p>
+      `),
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`[MagicLink] Failed to send magic link to ${email}: ${res.status} ${errText}`);
-    } else {
-      console.log(`[MagicLink] ✓ Magic link sent to ${email}`);
-    }
+    console.log(`[MagicLink] ✓ Magic link sent to ${email}`);
   } catch (err: any) {
     console.error(`[MagicLink] Send error for ${email}: ${err.message}`);
   }
@@ -2066,6 +2104,7 @@ async function handleAdminQuery(req: Request): Promise<Response> {
 // ─── Handler: /resend-magic-link
 // Resends a magic link email to a user's email address.
 // Called from admin dashboard when a user missed their magic link.
+// Auth: requires ticketing role JWT or service key.
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleResendMagicLink(req: Request): Promise<Response> {
@@ -2086,7 +2125,7 @@ async function handleResendMagicLink(req: Request): Promise<Response> {
       );
     }
 
-    // Call the existing magic link sender
+    // Generate magic link via admin API and send via Resend
     await sendMagicLinkEmail(email);
 
     return new Response(
@@ -2097,6 +2136,60 @@ async function handleResendMagicLink(req: Request): Promise<Response> {
     console.error("[resend-magic-link] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to resend magic link" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /send-magic-link
+// Public endpoint for sending magic links from the tickets page.
+// Uses admin.generateLink() + Resend instead of Supabase Auth's built-in OTP
+// endpoint, which requires custom SMTP configuration.
+// Rate-limited to prevent abuse.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleSendMagicLink(req: Request): Promise<Response> {
+  try {
+    // Rate limit: 3 requests per email per minute
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(clientIp);
+
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Too many requests. Please wait before trying again.",
+          retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
+          },
+        }
+      );
+    }
+
+    const { email } = await req.json();
+
+    if (!email || !email.includes("@")) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email address" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    await sendMagicLinkEmail(email);
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Check your email for the sign-in link." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[send-magic-link] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to send magic link. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

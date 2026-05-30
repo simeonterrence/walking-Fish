@@ -447,23 +447,23 @@
     msg.textContent = '';
 
     try {
-      var res = await fetch(SUPABASE_URL + '/auth/v1/otp', {
+      var res = await fetch(TICKET_FN + '/send-magic-link', {
         method: 'POST',
         headers: ANON_H,
         body: JSON.stringify({
-          email: email,
-          create_user: true
+          email: email
         })
       });
 
-      if (res.ok) {
+      var d;
+      try { d = await res.json(); } catch (_) { d = {}; }
+
+      if (res.ok && d.success) {
         btn.textContent = 'Check your email';
-        msg.innerHTML = 'We sent you a magic link! Click it to sign in.';
+        msg.innerHTML = 'We sent you a sign-in link! Click it to view your tickets.';
         msg.style.color = '';
       } else {
-        var d;
-        try { d = await res.json(); } catch (_) { d = {}; }
-        throw new Error(d.msg || d.error || 'Failed to send magic link');
+        throw new Error(d.error || 'Failed to send magic link');
       }
     } catch (err) {
       msg.textContent = err.message;
