@@ -9,12 +9,42 @@ function loadInventory() {
   var container = document.getElementById('inventory-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading inventory...</p>';
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*')
-    .then(function(res) {
+  function doFetchWithTimeout(token) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*', { headers: headers, signal: controller.signal }).then(function(res) {
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('Failed to load inventory.');
       return res.json();
-    })
-    .then(function(types) {
+    });
+  }
+
+  var session = getStoredSession();
+  var token = session && session.access_token ? session.access_token : null;
+
+  var promise;
+  if (token) {
+    promise = doFetchWithTimeout(token).catch(function() {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Failed to load inventory. Service key required.');
+      return doFetchWithTimeout(svcKey);
+    });
+  } else {
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) {
+      promise = Promise.reject(new Error('Authentication required.'));
+    } else {
+      promise = doFetchWithTimeout(svcKey);
+    }
+  }
+
+  promise.then(function(types) {
       if (!types || types.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
@@ -82,12 +112,44 @@ function loadOrders() {
     url += '&status=eq.' + currentOrderFilter;
   }
 
-  fetchWithAuth(url)
-    .then(function(res) {
+  function doFetchWithTimeout(token) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, { headers: headers, signal: controller.signal }).then(function(res) {
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('Failed to load orders.');
       return res.json();
-    })
-    .then(function(orders) {
+    });
+  }
+
+  var session = getStoredSession();
+  var token = session && session.access_token ? session.access_token : null;
+
+  var promise;
+  if (token) {
+    // Try with JWT first
+    promise = doFetchWithTimeout(token).catch(function() {
+      // JWT failed — try with service key
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Failed to load orders. Service key required.');
+      return doFetchWithTimeout(svcKey);
+    });
+  } else {
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) {
+      promise = Promise.reject(new Error('Authentication required.'));
+    } else {
+      promise = doFetchWithTimeout(svcKey);
+    }
+  }
+
+  promise.then(function(orders) {
       if (!orders || orders.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No orders found' +
           (currentOrderFilter !== 'all' ? ' with this status' : '') + '.</p>';
@@ -178,12 +240,42 @@ function loadTicketTypes() {
   var container = document.getElementById('ticket-types-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>';
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*')
-    .then(function(res) {
+  function doFetchWithTimeout(token) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*', { headers: headers, signal: controller.signal }).then(function(res) {
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('Failed to load ticket types.');
       return res.json();
-    })
-    .then(function(types) {
+    });
+  }
+
+  var session = getStoredSession();
+  var token = session && session.access_token ? session.access_token : null;
+
+  var promise;
+  if (token) {
+    promise = doFetchWithTimeout(token).catch(function() {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Failed to load ticket types. Service key required.');
+      return doFetchWithTimeout(svcKey);
+    });
+  } else {
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) {
+      promise = Promise.reject(new Error('Authentication required.'));
+    } else {
+      promise = doFetchWithTimeout(svcKey);
+    }
+  }
+
+  promise.then(function(types) {
       if (!types || types.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
