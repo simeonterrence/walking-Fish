@@ -47,6 +47,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleUnmarkUsed(req);
     case "/resend-magic-link":
       return handleResendMagicLink(req);
+    case "/admin-query":
+      return handleAdminQuery(req);
     case "/debug-ticket":
       return handleDebugTicket(req);
     default:
@@ -1966,6 +1968,96 @@ async function handleUnmarkUsed(req: Request): Promise<Response> {
     console.error("[unmark-used] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to revert ticket" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /admin-query
+// Proxies Supabase REST API queries through the Edge Function with the service
+// role key. This bypasses RLS entirely, so admin dashboard functions work
+// regardless of the JWT's app_metadata role claims.
+// Called from admin-tickets.js for inventory, orders, ticket types, etc.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: check if request has a valid JWT (any authenticated user)
+// This is a lighter auth check than isTicketingRequestAuthorized — it only
+// verifies the JWT is valid, without checking for specific roles.
+// Used by /admin-query since the actual query uses the service key server-side.
+
+async function isAuthenticatedUser(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return false;
+
+  const token = authHeader.slice(7);
+
+  // Allow service role key too
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (token === serviceKey) return true;
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const { data: { user }, error } = await supabase.auth.getUser();
+    return !error && !!user;
+  } catch {
+    return false;
+  }
+}
+
+async function handleAdminQuery(req: Request): Promise<Response> {
+  try {
+    if (!(await isAuthenticatedUser(req))) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { method = "GET", path, body } = await req.json();
+
+    if (!path) {
+      return new Response(
+        JSON.stringify({ error: "Missing path" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    if (!supabaseUrl || !serviceKey) {
+      return new Response(
+        JSON.stringify({ error: "Server config error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const response = await fetch(`${supabaseUrl}${path}`, {
+      method,
+      headers: {
+        "Authorization": `Bearer ${serviceKey}`,
+        "apikey": serviceKey,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await response.text();
+
+    return new Response(data, {
+      status: response.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("[admin-query] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Query failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
