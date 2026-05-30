@@ -563,7 +563,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     // The main data can be at payload.payload or at the top level.
     const event = payload.event || "";
     const data = payload.payload || payload;
-    const intentId = data.payment_intent_id || payload.payment_intent_id || "";
+    const intentId = data.payment_intent_id || payload.payment_intent_id || data.intent_id || payload.intent_id || "";
     const status = data.status || payload.status || "";
     const webhookAmount = data.amount || 0;
 
@@ -572,9 +572,9 @@ async function handleWebhook(req: Request): Promise<Response> {
     // Guard: if intentId is blank the query would match nothing (or worse, everything).
     // This happens in test/sim mode where ModemPay never sends a real payment_intent_id.
     if (!intentId) {
-      console.error("[Webhook] Missing payment_intent_id in payload — cannot match order.", JSON.stringify({ event, data_keys: Object.keys(data) }));
+      console.error("[Webhook] Missing payment_intent_id / intent_id in payload — cannot match order.", JSON.stringify({ event, data_keys: Object.keys(data) }));
       return new Response(
-        JSON.stringify({ error: "Missing payment_intent_id in webhook payload" }),
+        JSON.stringify({ error: "Missing payment_intent_id or intent_id in webhook payload" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
