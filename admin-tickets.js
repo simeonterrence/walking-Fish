@@ -1,6 +1,15 @@
 // Admin ticket management: ticketing system admin features
 // Loaded on admin.html alongside admin-photos.js and vendor-auth.js
 
+// ─── Helper: escape HTML entities to prevent XSS ─────────────────────────────
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(String(str)));
+  return div.innerHTML;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    1. INVENTORY OVERVIEW
    ═══════════════════════════════════════════════════════════════════════════ */
