@@ -9,42 +9,7 @@ function loadInventory() {
   var container = document.getElementById('inventory-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading inventory...</p>';
 
-  function doFetchWithTimeout(token) {
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
-    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*', { headers: headers, signal: controller.signal }).then(function(res) {
-      clearTimeout(timeoutId);
-      if (!res.ok) throw new Error('Failed to load inventory.');
-      return res.json();
-    });
-  }
-
-  var session = getStoredSession();
-  var token = session && session.access_token ? session.access_token : null;
-
-  var promise;
-  if (token) {
-    promise = doFetchWithTimeout(token).catch(function() {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Failed to load inventory. Service key required.');
-      return doFetchWithTimeout(svcKey);
-    });
-  } else {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) {
-      promise = Promise.reject(new Error('Authentication required.'));
-    } else {
-      promise = doFetchWithTimeout(svcKey);
-    }
-  }
-
-  promise.then(function(types) {
+  adminQuery('/rest/v1/ticket_types?order=sort_order.asc&select=*').then(function(types) {
       if (!types || types.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
@@ -107,49 +72,12 @@ function loadOrders() {
   var container = document.getElementById('orders-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading orders...</p>';
 
-  var url = SUPABASE_URL + '/rest/v1/orders?order=created_at.desc&select=*';
+  var path = '/rest/v1/orders?order=created_at.desc&select=*';
   if (currentOrderFilter !== 'all') {
-    url += '&status=eq.' + currentOrderFilter;
+    path += '&status=eq.' + currentOrderFilter;
   }
 
-  function doFetchWithTimeout(token) {
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
-    return fetch(url, { headers: headers, signal: controller.signal }).then(function(res) {
-      clearTimeout(timeoutId);
-      if (!res.ok) throw new Error('Failed to load orders.');
-      return res.json();
-    });
-  }
-
-  var session = getStoredSession();
-  var token = session && session.access_token ? session.access_token : null;
-
-  var promise;
-  if (token) {
-    // Try with JWT first
-    promise = doFetchWithTimeout(token).catch(function() {
-      // JWT failed — try with service key
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Failed to load orders. Service key required.');
-      return doFetchWithTimeout(svcKey);
-    });
-  } else {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) {
-      promise = Promise.reject(new Error('Authentication required.'));
-    } else {
-      promise = doFetchWithTimeout(svcKey);
-    }
-  }
-
-  promise.then(function(orders) {
+  adminQuery(path).then(function(orders) {
       if (!orders || orders.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No orders found' +
           (currentOrderFilter !== 'all' ? ' with this status' : '') + '.</p>';
@@ -240,42 +168,7 @@ function loadTicketTypes() {
   var container = document.getElementById('ticket-types-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>';
 
-  function doFetchWithTimeout(token) {
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
-    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?order=sort_order.asc&select=*', { headers: headers, signal: controller.signal }).then(function(res) {
-      clearTimeout(timeoutId);
-      if (!res.ok) throw new Error('Failed to load ticket types.');
-      return res.json();
-    });
-  }
-
-  var session = getStoredSession();
-  var token = session && session.access_token ? session.access_token : null;
-
-  var promise;
-  if (token) {
-    promise = doFetchWithTimeout(token).catch(function() {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Failed to load ticket types. Service key required.');
-      return doFetchWithTimeout(svcKey);
-    });
-  } else {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) {
-      promise = Promise.reject(new Error('Authentication required.'));
-    } else {
-      promise = doFetchWithTimeout(svcKey);
-    }
-  }
-
-  promise.then(function(types) {
+  adminQuery('/rest/v1/ticket_types?order=sort_order.asc&select=*').then(function(types) {
       if (!types || types.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
@@ -410,12 +303,9 @@ function loadTopUpBundles() {
   var container = document.getElementById('bundles-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading top-up bundles...</p>';
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/top_up_bundles?order=sort_order.asc&select=*')
-    .then(function(res) {
-      if (!res.ok) throw new Error('Failed to load bundles.');
-      return res.json();
-    })
+  adminQuery('/rest/v1/top_up_bundles?order=sort_order.asc&select=*')
     .then(function(bundles) {
+      if (!bundles) throw new Error('Failed to load bundles.');
       if (!bundles || bundles.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No top-up bundles configured.</p>';
         return;
@@ -638,12 +528,9 @@ function loadScannerCodes() {
   var container = document.getElementById('scanner-codes-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading scanner codes...</p>';
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/staff_scanner_codes?order=created_at.desc&select=*')
-    .then(function(res) {
-      if (!res.ok) throw new Error('Failed to load scanner codes.');
-      return res.json();
-    })
+  adminQuery('/rest/v1/staff_scanner_codes?order=created_at.desc&select=*')
     .then(function(codes) {
+      if (!codes) throw new Error('Failed to load scanner codes.');
       if (!codes || codes.length === 0) {
         container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No scanner codes issued yet.</p>' +
           '<div style="text-align:center;margin-top:12px;"><button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue New Code</button></div>';
@@ -849,44 +736,7 @@ function loadPaymentProofs() {
   var container = document.getElementById('proofs-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading payment proofs...</p>';
 
-  var url = SUPABASE_URL + '/rest/v1/payment_proofs?order=created_at.desc&select=id,order_id,email,amount,reference_number,screenshot_url,status,notes,created_at';
-
-  // Try JWT-based fetch first (works with ticketing_role/admin_role), fall back to service key for join query
-  function doFetch(token) {
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
-    return fetch(url, { headers: headers }).then(function(res) {
-      if (!res.ok) throw new Error('Failed to load payment proofs.');
-      return res.json();
-    });
-  }
-
-  var session = getStoredSession();
-  var token = session && session.access_token ? session.access_token : null;
-
-  var promise;
-  if (token) {
-    // Try with JWT first
-    promise = doFetch(token).catch(function() {
-      // JWT failed — try with service key
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Failed to load payment proofs. Service key required.');
-      return doFetch(svcKey);
-    });
-  } else {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) {
-      promise = Promise.reject(new Error('Authentication required.'));
-    } else {
-      promise = doFetch(svcKey);
-    }
-  }
-
-  promise.then(function(proofs) {
+  adminQuery('/rest/v1/payment_proofs?order=created_at.desc&select=id,order_id,email,amount,reference_number,screenshot_url,status,notes,created_at').then(function(proofs) {
     if (!proofs || proofs.length === 0) {
       container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No payment proofs yet.</p>';
       return;
@@ -969,6 +819,30 @@ function loadPaymentProofs() {
     container.innerHTML = html;
   }).catch(function(err) {
     container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load payment proofs: ' + escapeHtml(err.message) + '</p>';
+  });
+}
+
+// ─── Helper: proxy Supabase REST queries through Edge Function (bypasses RLS) ──
+
+function adminQuery(path) {
+  var token = getEdgeFunctionToken();
+  if (!token) {
+    return Promise.reject(new Error('Authentication required.'));
+  }
+  return fetch(SUPABASE_URL + '/functions/v1/ticketing/admin-query', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ path: path })
+  }).then(function(res) {
+    if (!res.ok) {
+      return res.json().then(function(err) {
+        throw new Error(err.error || 'Query failed');
+      });
+    }
+    return res.json();
   });
 }
 
