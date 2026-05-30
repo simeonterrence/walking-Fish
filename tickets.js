@@ -55,6 +55,16 @@
     setupDashboard();
     checkLoginHash();
     checkPaymentReturn();
+    detectiOS();
+  }
+
+  /* ─── iOS detection (Safari deep links to Wave don't work on iPhone) ───── */
+  function detectiOS() {
+    var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (iOS) {
+      var note = document.getElementById('ios-modempay-note');
+      if (note) note.style.display = 'block';
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -496,10 +506,19 @@
         userEmail = payload.email;
         window.history.replaceState({}, document.title, '/tickets');
 
-        /* if dashboard tab is visible, load it */
-        if ($('dashboard-view').classList.contains('active')) {
-          loadDashboard();
+        /* Switch to dashboard tab and load tickets */
+        document.querySelectorAll('[data-tab]').forEach(function (t) {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        var dashTab = document.querySelector('[data-tab="dashboard"]');
+        if (dashTab) {
+          dashTab.classList.add('active');
+          dashTab.setAttribute('aria-selected', 'true');
         }
+        $('shop-view').style.display = 'none';
+        $('dashboard-view').classList.add('active');
+        loadDashboard();
         return;
       } catch (e) {
         console.error('[tickets] parse token:', e);

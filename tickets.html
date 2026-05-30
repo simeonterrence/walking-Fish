@@ -46,7 +46,7 @@
 <link rel="stylesheet" href="style.css?v=2">
 <script defer src="gift.min.js?v=3"></script>
 <script defer src="nav.min.js?v=3"></script>
-<script defer src="supabase-config.min.js?v=2"></script>
+<script defer src="supabase-config.min.js?v=3"></script>
 <script defer src="tickets.js?v=1"></script>
 <style>
 /* ─── Ticket Shop Layout ─── */
@@ -347,6 +347,9 @@
               <div>
                 <div class="payment-option-label">ModemPay</div>
                 <div class="payment-option-desc">Pay online with card or mobile money</div>
+                <div class="ios-note" id="ios-modempay-note" style="display:none;font-size:12px;color:#c53030;margin-top:6px;">
+                  ⚠️ <strong>iPhone users:</strong> If the Wave app doesn't open after redirect, select <strong>Wave Transfer</strong> below to pay directly.
+                </div>
               </div>
             </label>
             <label class="payment-option" id="pay-wave" data-payment="wave">

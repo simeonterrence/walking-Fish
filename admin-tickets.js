@@ -728,13 +728,44 @@ function loadPaymentProofs() {
   var container = document.getElementById('proofs-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading payment proofs...</p>';
 
-  // Fetch proofs with their order data
-  fetchWithAuth(
-    SUPABASE_URL + '/rest/v1/payment_proofs?order=created_at.desc&select=id,order_id,email,amount,reference_number,screenshot_url,status,notes,created_at,orders!inner(id,email,total,status,customer_name)'
-  ).then(function(res) {
-    if (!res.ok) throw new Error('Failed to load payment proofs.');
-    return res.json();
-  }).then(function(proofs) {
+  var url = SUPABASE_URL + '/rest/v1/payment_proofs?order=created_at.desc&select=id,order_id,email,amount,reference_number,screenshot_url,status,notes,created_at';
+
+  // Try JWT-based fetch first (works with ticketing_role/admin_role), fall back to service key for join query
+  function doFetch(token) {
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, { headers: headers }).then(function(res) {
+      if (!res.ok) throw new Error('Failed to load payment proofs.');
+      return res.json();
+    });
+  }
+
+  var session = getStoredSession();
+  var token = session && session.access_token ? session.access_token : null;
+
+  var promise;
+  if (token) {
+    // Try with JWT first
+    promise = doFetch(token).catch(function() {
+      // JWT failed — try with service key
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Failed to load payment proofs. Service key required.');
+      return doFetch(svcKey);
+    });
+  } else {
+    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+    if (!svcKey) {
+      promise = Promise.reject(new Error('Authentication required.'));
+    } else {
+      promise = doFetch(svcKey);
+    }
+  }
+
+  promise.then(function(proofs) {
     if (!proofs || proofs.length === 0) {
       container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No payment proofs yet.</p>';
       return;
