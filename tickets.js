@@ -436,12 +436,12 @@
     msg.textContent = '';
 
     try {
-      var res = await fetch(SUPABASE_URL + '/auth/v1/magic_link', {
+      var res = await fetch(SUPABASE_URL + '/auth/v1/otp', {
         method: 'POST',
         headers: ANON_H,
         body: JSON.stringify({
           email: email,
-          redirect_to: window.location.origin + '/tickets'
+          create_user: true
         })
       });
 

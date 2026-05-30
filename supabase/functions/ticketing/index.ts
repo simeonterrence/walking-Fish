@@ -569,6 +569,16 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     console.log(`[Webhook] Event: ${event}, Intent: ${intentId}, Status: ${status}`);
 
+    // Guard: if intentId is blank the query would match nothing (or worse, everything).
+    // This happens in test/sim mode where ModemPay never sends a real payment_intent_id.
+    if (!intentId) {
+      console.error("[Webhook] Missing payment_intent_id in payload — cannot match order.", JSON.stringify({ event, data_keys: Object.keys(data) }));
+      return new Response(
+        JSON.stringify({ error: "Missing payment_intent_id in webhook payload" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ─── Idempotency check ─────────────────────────────────────────────────
     // ModemPay may retry webhooks. Store processed webhook event IDs to
     // prevent duplicate processing.
