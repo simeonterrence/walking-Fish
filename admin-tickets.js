@@ -441,11 +441,7 @@ function loadBalanceCap() {
   var container = document.getElementById('balance-cap-container');
   container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading setting...</p>';
 
-  fetch(SUPABASE_URL + '/rest/v1/system_config?key=eq.balance_cap&select=*')
-    .then(function(res) {
-      if (!res.ok) throw new Error('Failed to load setting.');
-      return res.json();
-    })
+  adminQuery('/rest/v1/system_config?key=eq.balance_cap&select=value')
     .then(function(configs) {
       var cap = '5000';
       if (configs && configs.length > 0) {
