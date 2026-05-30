@@ -412,7 +412,7 @@ function loadTicketTypes() {
           '<td style="white-space:nowrap;">' +
             '<button class="action-btn ticket-type-edit-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" data-slug="' + escapeHtml(t.slug) + '" data-type="' + t.type + '" data-price="' + t.price + '" data-capacity="' + t.capacity + '" data-sort="' + t.sort_order + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
             '<button class="action-btn ticket-type-toggle-btn" data-id="' + t.id + '" data-active="' + t.is_active + '" style="background:#065F46;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' + (t.is_active ? '' : 'opacity:0.5;') + '">' + (t.is_active ? 'Deactivate' : 'Activate') + '</button>' +
-            (t.sold === 0 ? '<button class="action-btn ticket-type-delete-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Delete</button>' : '') +
+            '<button class="action-btn ticket-type-delete-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' + (t.sold > 0 ? 'opacity:0.4;cursor:not-allowed;' : '') + '" title="' + (t.sold > 0 ? 'Cannot delete: ' + t.sold + ' ticket(s) sold' : 'Delete this ticket type') + '">Delete</button>' +
           '</td>' +
           '</tr>';
       });
