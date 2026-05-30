@@ -421,30 +421,53 @@ async function handleCreateIntent(req: Request): Promise<Response> {
 async function handleWebhook(req: Request): Promise<Response> {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-modem-signature") || "";
+    const signature = req.headers.get("x-modem-signature") || req.headers.get("x-modempay-signature") || "";
     const webhookSecret = Deno.env.get("MODEMPAY_WEBHOOK_SECRET");
 
     // ─── Verify ModemPay webhook signature ───────────────────────────────────
-    // ModemPay sends the signature in the x-modem-signature header.
+    // ModemPay sends the signature in the x-modem-signature or x-modempay-signature header.
     // Verification uses HMAC-SHA512 with the webhook secret from the dashboard.
     // Docs: https://docs.modempay.com/documentation/core/webhooks
     if (webhookSecret && signature) {
       try {
         const encoder = new TextEncoder();
-        const key = await crypto.subtle.importKey(
+        const sigBytes = hexToBytes(signature);
+
+        // Try verifying with the raw webhookSecret first
+        const keyRaw = await crypto.subtle.importKey(
           "raw",
           encoder.encode(webhookSecret),
           { name: "HMAC", hash: "SHA-512" },
           false,
           ["verify"]
         );
-        const sigBytes = hexToBytes(signature);
-        const valid = await crypto.subtle.verify(
+        let valid = await crypto.subtle.verify(
           "HMAC",
-          key,
+          keyRaw,
           sigBytes,
           encoder.encode(body)
         );
+
+        // If validation fails and secret has "wh" prefix, try stripped secret
+        if (!valid && webhookSecret.startsWith("wh")) {
+          const strippedSecret = webhookSecret.substring(2);
+          const keyStripped = await crypto.subtle.importKey(
+            "raw",
+            encoder.encode(strippedSecret),
+            { name: "HMAC", hash: "SHA-512" },
+            false,
+            ["verify"]
+          );
+          valid = await crypto.subtle.verify(
+            "HMAC",
+            keyStripped,
+            sigBytes,
+            encoder.encode(body)
+          );
+          if (valid) {
+            console.log("[Webhook] Signature verified using stripped webhook secret ✓");
+          }
+        }
 
         if (!valid) {
           console.warn("[Webhook] Signature verification FAILED — possible spoofed webhook");
@@ -462,7 +485,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         // This prevents blocking legitimate webhooks due to implementation issues
       }
     } else {
-      console.warn("[Webhook] Signature verification skipped — MODEMPAY_WEBHOOK_SECRET not set");
+      console.warn(`[Webhook] Signature verification skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "signature header missing"}`);
     }
 
     let payload: any;
