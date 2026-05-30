@@ -108,7 +108,10 @@ function loadOrders() {
           '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
           '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
           '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
-          '<td><button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);">View Tickets</button></td>' +
+          '<td>' +
+            '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;">View Tickets</button>' +
+            (o.status === 'paid' ? '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" style="background:#065F46;color:white;">Send Login Link</button>' : '') +
+          '</td>' +
           '</tr>';
         // Hidden ticket row — expanded on click
         html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
@@ -699,6 +702,32 @@ document.addEventListener('click', function(e) {
   // Revoke scanner code
   if (e.target.classList.contains('revoke-code-btn')) {
     revokeScannerCode(e.target.getAttribute('data-id'));
+  }
+
+  // Resend magic link
+  if (e.target.classList.contains('resend-magic-link-btn')) {
+    var email = e.target.getAttribute('data-email');
+    if (email && confirm('Send a magic link to ' + email + '?')) {
+      e.target.disabled = true;
+      e.target.textContent = 'Sending...';
+      var token = getEdgeFunctionToken();
+      fetch(SUPABASE_URL + '/functions/v1/ticketing/resend-magic-link', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) {
+          alert('Magic link sent to ' + email);
+        } else {
+          alert('Failed: ' + (d.error || 'Unknown error'));
+        }
+      }).catch(function(err) {
+        alert('Error: ' + err.message);
+      }).then(function() {
+        e.target.disabled = false;
+        e.target.textContent = 'Send Login Link';
+      });
+    }
   }
 
   // Issue scanner code

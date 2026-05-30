@@ -45,6 +45,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleConfirmPayment(req);
     case "/unmark-used":
       return handleUnmarkUsed(req);
+    case "/resend-magic-link":
+      return handleResendMagicLink(req);
     case "/debug-ticket":
       return handleDebugTicket(req);
     default:
@@ -98,6 +100,43 @@ async function sendEmail(payload: { to: string; subject: string; html: string })
     }
   } catch (err: any) {
     console.error(`[Email] Send failed: ${err.message}`);
+  }
+}
+
+// ─── Helper: send magic link via Supabase Auth OTP ──────────────────────────
+
+async function sendMagicLinkEmail(email: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  if (!supabaseUrl || !serviceKey) {
+    console.warn("[MagicLink] SUPABASE_URL or SERVICE_KEY not set — skipping magic link");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/otp`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        create_user: true,
+        gotrue_meta_security: {},
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[MagicLink] Failed to send magic link to ${email}: ${res.status} ${errText}`);
+    } else {
+      console.log(`[MagicLink] ✓ Magic link sent to ${email}`);
+    }
+  } catch (err: any) {
+    console.error(`[MagicLink] Send error for ${email}: ${err.message}`);
   }
 }
 
@@ -568,6 +607,9 @@ async function handleWebhook(req: Request): Promise<Response> {
               </p>
             `),
           });
+
+          // Send magic link so user can auto-login to their dashboard
+          sendMagicLinkEmail(email);
         }
 
         // Return first ticket code for the frontend to show
@@ -824,6 +866,9 @@ async function handleWebhook(req: Request): Promise<Response> {
             </p>
           `),
         });
+
+        // Send magic link so user can auto-login to their dashboard
+        sendMagicLinkEmail(customerEmail);
       }
 
       console.log(`[Webhook] ✓ Order ${order.id} paid, ${tickets.length} tickets created`);
@@ -1346,6 +1391,9 @@ async function handleConfirmWave(req: Request): Promise<Response> {
             </p>
           `),
         });
+
+        // Send magic link so user can auto-login to their dashboard
+        sendMagicLinkEmail(order.email);
       }
 
       console.log(`[confirm-wave] ✓ Order ${order_id} paid via Wave, ${tickets.length} tickets created`);
@@ -1918,6 +1966,45 @@ async function handleUnmarkUsed(req: Request): Promise<Response> {
     console.error("[unmark-used] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to revert ticket" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Handler: /resend-magic-link
+// Resends a magic link email to a user's email address.
+// Called from admin dashboard when a user missed their magic link.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleResendMagicLink(req: Request): Promise<Response> {
+  try {
+    if (!(await isTicketingRequestAuthorized(req))) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Service key or ticketing staff JWT required." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { email } = await req.json();
+
+    if (!email || !email.includes("@")) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email address" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Call the existing magic link sender
+    await sendMagicLinkEmail(email);
+
+    return new Response(
+      JSON.stringify({ success: true, message: `Magic link sent to ${email}` }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("[resend-magic-link] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to resend magic link" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
