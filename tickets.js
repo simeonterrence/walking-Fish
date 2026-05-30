@@ -601,7 +601,7 @@
         }
       } catch (_) {}
 
-      var qrContent = t.qr_url || ('https://walkingfish.gm/t?t=' + t.code);
+      var qrContent = t.qr_url || ('https://www.walkingfish.gm/t?t=' + t.code);
 
       html +=
         '<div class="ticket-dashboard-card">'

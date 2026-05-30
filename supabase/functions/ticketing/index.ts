@@ -302,7 +302,7 @@ async function createTicketsForOrder(
         continue;
       }
 
-      const qrContent = `https://walkingfish.gm/t?t=${code}`;
+      const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
       const qrDataUri = await generateQRDataUri(qrContent);
 
       const initialBalance = ticketType.type === "activity_credit" ? ticketType.price : 0;
@@ -655,7 +655,7 @@ async function handleWebhook(req: Request): Promise<Response> {
               <h3 style="margin:0 0 12px;">Your Tickets</h3>
               <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
               <p style="margin-top:20px;">
-                <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+                <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
               </p>
               <p style="margin-top:12px;font-size:12px;color:#999;">
                 Show your ticket QR at the gate. Need help? Visit the info desk.
@@ -846,7 +846,7 @@ async function handleWebhook(req: Request): Promise<Response> {
               New balance: <strong>D${newBalance > 0 ? newBalance : (ticket.balance || 0) + topupAmount}</strong>
             </p>
             <p style="margin-top:20px;">
-              <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
             </p>
             <p style="margin-top:12px;font-size:12px;color:#999;">
               Need help? Visit the info desk at Piroake Fest 2026.
@@ -914,7 +914,7 @@ async function handleWebhook(req: Request): Promise<Response> {
             <h3 style="margin:0 0 12px;">Your Tickets</h3>
             <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
             <p style="margin-top:20px;">
-              <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
             </p>
             <p style="margin-top:12px;font-size:12px;color:#999;">
               Tap the link above or scan the QR code at the venue. Need help? Visit the info desk.
@@ -1418,7 +1418,7 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
             </p>
             ${newBalance !== null ? `<p style="color:#666;margin:0 0 24px;">New balance: <strong>D${newBalance}</strong></p>` : ""}
             <p style="margin-top:20px;">
-              <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
             </p>
           `),
         });
@@ -1737,7 +1737,7 @@ async function handleBulkTopup(req: Request): Promise<Response> {
                 New balance: <strong>D${newBalance}</strong>
               </p>
               <p style="margin-top:20px;">
-                <a href="https://walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+                <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
               </p>
               <p style="margin-top:12px;font-size:12px;color:#999;">
                 Processed at the booth. Need help? Visit the info desk.
@@ -2112,7 +2112,7 @@ async function handleDebugTicket(req: Request): Promise<Response> {
         balance: 0,
         customer_email: email || 'debug@test.com',
         customer_name: 'Debug User',
-        qr_url: `https://walkingfish.gm/t?t=${code}`,
+        qr_url: `https://www.walkingfish.gm/t?t=${code}`,
       })
       .select()
       .single();
