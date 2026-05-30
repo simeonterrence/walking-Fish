@@ -7,6 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
 // ─── Request routing ─────────────────────────────────────────────────────────
 
 async function routeRequest(req: Request, pathname: string): Promise<Response> {
@@ -418,7 +426,7 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ─── Verify ModemPay webhook signature ───────────────────────────────────
     // ModemPay sends the signature in the x-modem-signature header.
-    // Verification uses HMAC-SHA256 with the webhook secret from the dashboard.
+    // Verification uses HMAC-SHA512 with the webhook secret from the dashboard.
     // Docs: https://docs.modempay.com/documentation/core/webhooks
     if (webhookSecret && signature) {
       try {
@@ -426,7 +434,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         const key = await crypto.subtle.importKey(
           "raw",
           encoder.encode(webhookSecret),
-          { name: "HMAC", hash: "SHA-256" },
+          { name: "HMAC", hash: "SHA-512" },
           false,
           ["verify"]
         );
@@ -563,14 +571,27 @@ async function handleWebhook(req: Request): Promise<Response> {
     // The main data can be at payload.payload or at the top level.
     const event = payload.event || "";
     const data = payload.payload || payload;
-    const intentId = data.payment_intent_id || payload.payment_intent_id || data.intent_id || payload.intent_id || "";
     const status = data.status || payload.status || "";
     const webhookAmount = data.amount || 0;
 
-    console.log(`[Webhook] Event: ${event}, Intent: ${intentId}, Status: ${status}`);
+    console.log(`[Webhook] Received event: ${event}, Status: ${status}`);
+
+    // Early exit for unhandled events (e.g. payment_intent.created)
+    const isSuccess = event === "charge.succeeded" || status === "completed";
+    const isFailure = event === "charge.cancelled" || event === "charge.failed" || status === "failed" || status === "cancelled";
+
+    if (!isSuccess && !isFailure) {
+      console.log(`[Webhook] Acknowledging receipt of unhandled event/status: ${event || status}`);
+      return new Response(
+        JSON.stringify({ received: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const intentId = data.payment_intent_id || payload.payment_intent_id || data.intent_id || payload.intent_id || "";
+    console.log(`[Webhook] Processing event: ${event}, Intent: ${intentId}, Status: ${status}`);
 
     // Guard: if intentId is blank the query would match nothing (or worse, everything).
-    // This happens in test/sim mode where ModemPay never sends a real payment_intent_id.
     if (!intentId) {
       console.error("[Webhook] Missing payment_intent_id / intent_id in payload — cannot match order.", JSON.stringify({ event, data_keys: Object.keys(data) }));
       return new Response(
