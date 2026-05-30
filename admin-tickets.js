@@ -409,8 +409,10 @@ function loadTicketTypes() {
           '<td>' + t.capacity + '</td>' +
           '<td>' + t.sold + '</td>' +
           '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
-          '<td>' +
-            '<button class="action-btn ticket-type-toggle-btn" data-id="' + t.id + '" data-active="' + t.is_active + '" style="background:#065F46;color:white;' + (t.is_active ? '' : 'opacity:0.5;') + '">' + (t.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+          '<td style="white-space:nowrap;">' +
+            '<button class="action-btn ticket-type-edit-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" data-slug="' + escapeHtml(t.slug) + '" data-type="' + t.type + '" data-price="' + t.price + '" data-capacity="' + t.capacity + '" data-sort="' + t.sort_order + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
+            '<button class="action-btn ticket-type-toggle-btn" data-id="' + t.id + '" data-active="' + t.is_active + '" style="background:#065F46;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' + (t.is_active ? '' : 'opacity:0.5;') + '">' + (t.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+            (t.sold === 0 ? '<button class="action-btn ticket-type-delete-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Delete</button>' : '') +
           '</td>' +
           '</tr>';
       });
@@ -460,6 +462,120 @@ function toggleTicketTypeActive(id, currentlyActive) {
   }).catch(function(err) {
     alert('Error: ' + err.message);
     if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
+  });
+}
+
+function showTicketTypeEditModal(typeData) {
+  // Remove any existing edit modal
+  var existing = document.getElementById('ticket-type-edit-modal');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'ticket-type-edit-modal';
+  overlay.className = 'gift-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;';
+
+  overlay.innerHTML = '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
+    '<div class="gift-badge" style="margin-bottom:12px;">Edit Ticket Type</div>' +
+    '<form id="ticket-type-edit-form">' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Name</label>' +
+        '<input type="text" id="edit-type-name" value="' + escapeHtml(typeData.name) + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Slug</label>' +
+        '<input type="text" id="edit-type-slug" value="' + escapeHtml(typeData.slug) + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Type</label>' +
+        '<select id="edit-type-select" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+          '<option value="entry"' + (typeData.type === 'entry' ? ' selected' : '') + '>Entry</option>' +
+          '<option value="kids_zone"' + (typeData.type === 'kids_zone' ? ' selected' : '') + '>Kids Zone</option>' +
+          '<option value="activity_credit"' + (typeData.type === 'activity_credit' ? ' selected' : '') + '>Activity Credit</option>' +
+          '<option value="parking"' + (typeData.type === 'parking' ? ' selected' : '') + '>Parking</option>' +
+          '<option value="food"' + (typeData.type === 'food' ? ' selected' : '') + '>Food</option>' +
+          '<option value="drinks"' + (typeData.type === 'drinks' ? ' selected' : '') + '>Drinks</option>' +
+        '</select>' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label>' +
+        '<input type="number" id="edit-type-price" value="' + typeData.price + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label>' +
+        '<input type="number" id="edit-type-capacity" value="' + typeData.capacity + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label>' +
+        '<input type="number" id="edit-type-sort" value="' + typeData.sort + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+        '<button type="button" id="ticket-type-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
+        '<button type="button" id="ticket-type-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-type-id="' + typeData.id + '">Save Changes</button>' +
+      '</div>' +
+    '</form>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+  setTimeout(function() { document.getElementById('edit-type-name').focus(); }, 100);
+  return overlay;
+}
+
+function saveTicketTypeEdit(typeId, data) {
+  var payload = {};
+  if (data.name !== undefined) payload.name = data.name;
+  if (data.slug !== undefined) payload.slug = data.slug;
+  if (data.type !== undefined) payload.type = data.type;
+  if (data.price !== undefined) payload.price = parseInt(data.price);
+  if (data.capacity !== undefined) payload.capacity = parseInt(data.capacity);
+  if (data.sort !== undefined) payload.sort_order = parseInt(data.sort);
+
+  return fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(res) {
+    if (res.ok || res.status === 204) return true;
+    if (res.status === 401 || res.status === 403) {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Permission denied. Service key required.');
+      return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      }).then(function(r) {
+        if (r.ok || r.status === 204) return true;
+        throw new Error('Failed to update ticket type.');
+      });
+    }
+    throw new Error('Failed to update ticket type.');
+  });
+}
+
+function deleteTicketType(typeId, typeName) {
+  if (!confirm('Delete "' + typeName + '"? This cannot be undone. If tickets have already been sold for this type, the delete will fail — deactivate it instead.')) return;
+
+  return fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
+  }).then(function(res) {
+    if (res.ok || res.status === 204) return true;
+    if (res.status === 401 || res.status === 403) {
+      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
+      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
+      if (!svcKey) throw new Error('Permission denied. Service key required.');
+      return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
+      }).then(function(r) {
+        if (r.ok || r.status === 204) return true;
+        if (r.status === 409) throw new Error('Cannot delete: tickets exist for this type. Deactivate it instead.');
+        throw new Error('Failed to delete ticket type.');
+      });
+    }
+    if (res.status === 409) throw new Error('Cannot delete: tickets exist for this type. Deactivate it instead.');
+    throw new Error('Failed to delete ticket type.');
   });
 }
 
@@ -883,6 +999,85 @@ document.addEventListener('click', function(e) {
   // Ticket type toggle
   if (e.target.classList.contains('ticket-type-toggle-btn')) {
     toggleTicketTypeActive(e.target.getAttribute('data-id'), e.target.getAttribute('data-active') === 'true');
+  }
+
+  // Ticket type edit — open modal
+  if (e.target.classList.contains('ticket-type-edit-btn')) {
+    var btn = e.target;
+    showTicketTypeEditModal({
+      id: btn.getAttribute('data-id'),
+      name: btn.getAttribute('data-name'),
+      slug: btn.getAttribute('data-slug'),
+      type: btn.getAttribute('data-type'),
+      price: btn.getAttribute('data-price'),
+      capacity: btn.getAttribute('data-capacity'),
+      sort: btn.getAttribute('data-sort')
+    });
+  }
+
+  // Save ticket type edit
+  if (e.target.id === 'ticket-type-edit-save-btn') {
+    var saveBtn = e.target;
+    var typeId = saveBtn.getAttribute('data-type-id');
+    if (!typeId) return;
+
+    var data = {
+      name: document.getElementById('edit-type-name').value.trim(),
+      slug: document.getElementById('edit-type-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      type: document.getElementById('edit-type-select').value,
+      price: document.getElementById('edit-type-price').value,
+      capacity: document.getElementById('edit-type-capacity').value,
+      sort: document.getElementById('edit-type-sort').value
+    };
+
+    if (!data.name || !data.slug) { alert('Name and slug are required.'); return; }
+
+    var modal = document.getElementById('ticket-type-edit-modal');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    saveTicketTypeEdit(typeId, data).then(function(success) {
+      if (success) {
+        if (modal) modal.remove();
+        loadTicketTypes();
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+    });
+  }
+
+  // Cancel ticket type edit modal
+  if (e.target.id === 'ticket-type-edit-cancel-btn') {
+    var modal = document.getElementById('ticket-type-edit-modal');
+    if (modal) modal.remove();
+  }
+
+  // Dismiss edit modal by clicking overlay
+  if (e.target.id === 'ticket-type-edit-modal') {
+    e.target.remove();
+  }
+
+  // Delete ticket type
+  if (e.target.classList.contains('ticket-type-delete-btn')) {
+    var btn = e.target;
+    var typeId = btn.getAttribute('data-id');
+    var typeName = btn.getAttribute('data-name');
+    if (!typeId) return;
+
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    deleteTicketType(typeId, typeName).then(function(success) {
+      if (success === true) {
+        loadTicketTypes();
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    });
   }
 
   // Bundle toggle
