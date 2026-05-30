@@ -1234,10 +1234,9 @@ async function isTicketingRequestAuthorized(req: Request): Promise<boolean> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return false;
     const role = user?.app_metadata?.role;
     return role === "admin_role" || role === "ticketing_role";
@@ -1884,10 +1883,9 @@ async function isAuthenticatedUser(req: Request): Promise<boolean> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     return !error && !!user;
   } catch {
     return false;
