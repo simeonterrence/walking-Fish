@@ -346,7 +346,11 @@
     }));
 
     /* 4. Redirect to ModemPay hosted payment page */
-    window.location.href = intentData.payment_url;
+    var payUrl = intentData.payment_url || '';
+    if (!payUrl || !payUrl.startsWith('http')) {
+      throw new Error('Payment gateway did not return a valid checkout URL. Please try again or use Wave Transfer.');
+    }
+    window.location.href = payUrl;
   }
 
   /* ─── Wave Transfer Flow ─────────────────────────────────────────────────── */
@@ -385,29 +389,26 @@
     var conf = $('confirmation-view');
     conf.classList.add('active');
     conf.innerHTML =
-      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\uD83D\uDCCB</div>'
-      + '<h2 style="text-align:center;margin-bottom:8px;">Order Placed \u2014 Payment Pending</h2>'
-      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 20px;">'
-      +   'Please send <strong>D' + orderTotal.toLocaleString() + '</strong> to one of the following:'
+      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">⏳</div>'
+      + '<h2 style="text-align:center;margin-bottom:8px;">Awaiting Payment Verification</h2>'
+      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 24px;max-width:400px;margin-inline:auto;">'
+      +   'Your order has been reserved. <strong>No tickets have been issued yet.</strong> Please follow the steps below to complete your payment:'
       + '</p>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;">'
-      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
-      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Wave</div>'
-      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">+220 696 3419</div>'
-      +   '</div>'
-      +   '<div style="background:var(--accent-dim);border-radius:var(--radius);padding:16px;text-align:center;">'
-      +     '<div style="font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;">Bank</div>'
-      +     '<div style="font-family:var(--font-mono);font-size:20px;font-weight:700;margin-top:4px;">206370720110</div>'
-      +   '</div>'
+      + '<div style="background:var(--accent-dim);border:1px dashed var(--accent);border-radius:12px;padding:20px;margin:20px 0;text-align:left;">'
+      +   '<h4 style="margin:0 0 12px;color:var(--accent);font-size:14px;text-transform:uppercase;letter-spacing:0.05em;">How to Complete Your Purchase:</h4>'
+      +   '<ol style="margin:0;padding-left:20px;line-height:1.6;font-size:13px;color:var(--foreground);">'
+      +     '<li style="margin-bottom:8px;">Send exactly <strong>D' + orderTotal.toLocaleString() + '</strong> using Wave to <strong>+220 696 3419</strong> or via Bank Transfer to <strong>206370720110</strong>.</li>'
+      +     '<li style="margin-bottom:8px;">Our team will verify the transaction reference you provided: <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-weight:600;">' + escHtml(ref) + '</code>.</li>'
+      +     '<li>Once verified, your tickets and QR codes will be generated, sent to <strong>' + escHtml(email) + '</strong>, and added to your dashboard.</li>'
+      +   '</ol>'
       + '</div>'
-      + '<p style="font-size:13px;color:var(--muted);text-align:center;">'
-      +   'Reference: <strong>' + escHtml(ref) + '</strong><br>'
-      +   'Credit will be applied after verification.'
-      + '</p>'
       + '<p style="font-size:13px;color:var(--muted);text-align:center;margin-top:16px;">'
-      +   '<a href="/tickets" style="color:var(--accent);font-weight:500;">Check your tickets</a> after payment.'
+      +   'Verification usually takes 1 to 3 hours. Thank you for your patience!'
       + '</p>'
-      + '<button class="btn btn-secondary" id="confirmation-back-btn" style="width:100%;margin-top:16px;">Buy More Tickets</button>';
+      + '<div style="display:flex;gap:12px;margin-top:24px;">'
+      +   '<a href="/tickets" class="btn btn-primary" style="flex:1;text-align:center;">Go to Dashboard</a>'
+      +   '<button class="btn btn-secondary" id="confirmation-back-btn" style="flex:1;">Buy More Tickets</button>'
+      + '</div>';
 
     conf.querySelector('#confirmation-back-btn').addEventListener('click', resetShop);
   }

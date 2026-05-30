@@ -406,7 +406,11 @@
     }));
 
     /* 4. Redirect to ModemPay hosted payment page */
-    window.location.href = intentData.payment_url;
+    var payUrl = intentData.payment_url || '';
+    if (!payUrl || !payUrl.startsWith('http')) {
+      throw new Error('Payment gateway did not return a valid checkout URL. Please try again or use Wave Transfer.');
+    }
+    window.location.href = payUrl;
   }
 
   /* ─── Wave Transfer Flow ────────────────────────────────────────────────── */
