@@ -1,879 +1,1857 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Staff scanner — Piroake Fest 2026 ticket verification, gate entry, activity debit, and booth top-up.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
-<meta property="og:title" content="Staff Scanner | Piroake Fest 2026">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://www.walkingfish.gm/scan">
-<link rel="canonical" href="https://www.walkingfish.gm/scan">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='26' height='26' rx='4'/><line x1='8' y1='8' x2='12' y2='8'/><line x1='8' y1='8' x2='8' y2='12'/></svg>">
-<title>Staff Scanner | Piroake Fest 2026</title>
-<link rel="stylesheet" href="style.css?v=2">
-<script defer src="gift.min.js?v=3"></script>
-<script defer src="nav.min.js?v=3"></script>
-<script defer src="supabase-config.min.js?v=3"></script>
-<script defer src="scan.js?v=1"></script>
-<style>
-/* ─── Scanner Root ─── */
-.scanner-root { max-width: 560px; margin: 0 auto; }
-.scanner-root h2 { font-size: 22px; margin-bottom: 4px; }
-.scanner-root .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <meta
+            name="description"
+            content="Staff scanner — Piroake Fest 2026 ticket verification, gate entry, activity debit, and booth top-up."
+        />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';"
+        />
+        <meta property="og:title" content="Staff Scanner | Piroake Fest 2026" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.walkingfish.gm/scan" />
+        <link rel="canonical" href="https://www.walkingfish.gm/scan" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='26' height='26' rx='4'/><line x1='8' y1='8' x2='12' y2='8'/><line x1='8' y1='8' x2='8' y2='12'/></svg>"
+        />
+        <title>Staff Scanner | Piroake Fest 2026</title>
+        <link rel="stylesheet" href="style.css?v=2" />
+        <script defer src="gift.min.js?v=3"></script>
+        <script defer src="nav.min.js?v=3"></script>
+        <script defer src="supabase-config.min.js?v=3"></script>
+        <script defer src="scan.js?v=1"></script>
+        <style>
+            /* ─── Scanner Root ─── */
+            .scanner-root {
+                max-width: 560px;
+                margin: 0 auto;
+            }
+            .scanner-root h2 {
+                font-size: 22px;
+                margin-bottom: 4px;
+            }
+            .scanner-root .subtitle {
+                font-size: 14px;
+                color: var(--muted);
+                margin-bottom: 24px;
+            }
 
-/* ─── Passcode Auth ─── */
-.scanner-passcode {
-  text-align: center; padding: 60px 20px;
-  border: 2px dashed var(--border); border-radius: 16px;
-}
-.scanner-passcode .lock-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
-.scanner-passcode h2 { margin-bottom: 8px; }
-.scanner-passcode p { font-size: 14px; color: var(--muted); margin: 0 auto 24px; max-width: 320px; }
-.scanner-passcode .code-input {
-  max-width: 240px; margin: 0 auto;
-}
-.scanner-passcode .code-input input {
-  width: 100%; padding: 14px 16px; text-align: center;
-  font-family: var(--font-mono); font-size: 24px; font-weight: 600;
-  letter-spacing: 0.12em;
-  border: 2px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); color: var(--fg);
-  transition: border-color .2s;
-}
-.scanner-passcode .code-input input:focus { outline: none; border-color: var(--accent); }
-.scanner-passcode .code-input input::placeholder { font-size: 16px; letter-spacing: 0.04em; }
+            /* ─── Passcode Auth ─── */
+            .scanner-passcode {
+                text-align: center;
+                padding: 60px 20px;
+                border: 2px dashed var(--border);
+                border-radius: 16px;
+            }
+            .scanner-passcode .lock-icon {
+                font-size: 40px;
+                margin-bottom: 12px;
+                opacity: 0.5;
+            }
+            .scanner-passcode h2 {
+                margin-bottom: 8px;
+            }
+            .scanner-passcode p {
+                font-size: 14px;
+                color: var(--muted);
+                margin: 0 auto 24px;
+                max-width: 320px;
+            }
+            .scanner-passcode .code-input {
+                max-width: 240px;
+                margin: 0 auto;
+            }
+            .scanner-passcode .code-input input {
+                width: 100%;
+                padding: 14px 16px;
+                text-align: center;
+                font-family: var(--font-mono);
+                font-size: 24px;
+                font-weight: 600;
+                letter-spacing: 0.12em;
+                border: 2px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--surface);
+                color: var(--fg);
+                transition: border-color 0.2s;
+            }
+            .scanner-passcode .code-input input:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            .scanner-passcode .code-input input::placeholder {
+                font-size: 16px;
+                letter-spacing: 0.04em;
+            }
 
-/* ─── Mode Selection ─── */
-.scanner-modes { display: none; }
-.scanner-modes.active { display: block; }
-.mode-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-  margin-bottom: 24px;
-}
-.mode-btn {
-  padding: 28px 16px;
-  border: 1px solid var(--border); border-radius: 12px;
-  background: var(--surface);
-  cursor: pointer; text-align: center;
-  transition: border-color .2s, background .2s, box-shadow .2s;
-  font-family: var(--font-body);
-}
-.mode-btn:hover { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 2px 12px oklch(0% 0 0 / 0.04); }
-.mode-btn .mode-icon { font-size: 28px; margin-bottom: 8px; display: block; }
-.mode-btn .mode-label { font-size: 15px; font-weight: 500; }
-.mode-btn .mode-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.mode-btn.logout-mode { border-color: #e53e3e; color: #e53e3e; }
-.mode-btn.logout-mode:hover { background: #fff5f5; border-color: #e53e3e; }
+            /* ─── Mode Selection ─── */
+            .scanner-modes {
+                display: none;
+            }
+            .scanner-modes.active {
+                display: block;
+            }
+            .mode-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .mode-btn {
+                padding: 28px 16px;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--surface);
+                cursor: pointer;
+                text-align: center;
+                transition:
+                    border-color 0.2s,
+                    background 0.2s,
+                    box-shadow 0.2s;
+                font-family: var(--font-body);
+            }
+            .mode-btn:hover {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+                box-shadow: 0 2px 12px oklch(0% 0 0 / 0.04);
+            }
+            .mode-btn .mode-icon {
+                font-size: 28px;
+                margin-bottom: 8px;
+                display: block;
+            }
+            .mode-btn .mode-label {
+                font-size: 15px;
+                font-weight: 500;
+            }
+            .mode-btn .mode-desc {
+                font-size: 12px;
+                color: var(--muted);
+                margin-top: 2px;
+            }
+            .mode-btn.logout-mode {
+                border-color: #e53e3e;
+                color: #e53e3e;
+            }
+            .mode-btn.logout-mode:hover {
+                background: #fff5f5;
+                border-color: #e53e3e;
+            }
 
-/* ─── Scanner Viewport ─── */
-.scanner-view { display: none; }
-.scanner-view.active { display: block; }
+            /* ─── Scanner Viewport ─── */
+            .scanner-view {
+                display: none;
+            }
+            .scanner-view.active {
+                display: block;
+            }
 
-.scanner-header {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 20px;
-}
-.scanner-header .back-btn {
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); border-radius: 50%;
-  background: var(--surface); cursor: pointer;
-  font-size: 18px; transition: border-color .2s;
-  font-family: var(--font-body);
-}
-.scanner-header .back-btn:hover { border-color: var(--accent); }
-.scanner-header .mode-title { font-size: 18px; font-weight: 600; flex: 1; }
-.scanner-header .mode-badge {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
-  padding: 4px 12px; border-radius: 100px;
-  background: var(--accent-dim); color: var(--accent-text);
-}
+            .scanner-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .scanner-header .back-btn {
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 1px solid var(--border);
+                border-radius: 50%;
+                background: var(--surface);
+                cursor: pointer;
+                font-size: 18px;
+                transition: border-color 0.2s;
+                font-family: var(--font-body);
+            }
+            .scanner-header .back-btn:hover {
+                border-color: var(--accent);
+            }
+            .scanner-header .mode-title {
+                font-size: 18px;
+                font-weight: 600;
+                flex: 1;
+            }
+            .scanner-header .mode-badge {
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                padding: 4px 12px;
+                border-radius: 100px;
+                background: var(--accent-dim);
+                color: var(--accent-text);
+            }
 
-/* ─── Camera / QR Zone ─── */
-.camera-zone {
-  position: relative;
-  width: 100%; max-width: 360px; margin: 0 auto 16px;
-  aspect-ratio: 1;
-  background: var(--border); border-radius: 16px;
-  overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-}
-.camera-zone video {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-.camera-zone .camera-placeholder { text-align: center; color: var(--muted); font-size: 14px; }
-.camera-zone .camera-placeholder .cam-icon { font-size: 40px; display: block; margin-bottom: 8px; }
-.camera-zone .scan-overlay {
-  position: absolute; inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(to bottom, transparent 45%, oklch(62% 0.16 35 / 0.06) 48%, transparent 52%, transparent 55%),
-    radial-gradient(ellipse 60% 60% at 50% 50%, transparent 55%, oklch(0% 0 0 / 0.03) 100%);
-  animation: scan-line 2s ease-in-out infinite;
-}
-@keyframes scan-line {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-.camera-zone .manual-toggle {
-  position: absolute; bottom: 8px; right: 8px;
-  padding: 6px 14px; font-size: 12px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
-  cursor: pointer; color: var(--muted);
-  font-family: var(--font-body);
-  transition: border-color .2s, color .2s;
-  z-index: 10;
-}
-.camera-zone .manual-toggle:hover { border-color: var(--accent); color: var(--fg); }
+            /* ─── Camera / QR Zone ─── */
+            .camera-zone {
+                position: relative;
+                width: 100%;
+                max-width: 360px;
+                margin: 0 auto 16px;
+                aspect-ratio: 1;
+                background: var(--border);
+                border-radius: 16px;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .camera-zone video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .camera-zone .camera-placeholder {
+                text-align: center;
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .camera-zone .camera-placeholder .cam-icon {
+                font-size: 40px;
+                display: block;
+                margin-bottom: 8px;
+            }
+            .camera-zone .scan-overlay {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                background:
+                    linear-gradient(
+                        to bottom,
+                        transparent 45%,
+                        oklch(62% 0.16 35 / 0.06) 48%,
+                        transparent 52%,
+                        transparent 55%
+                    ),
+                    radial-gradient(
+                        ellipse 60% 60% at 50% 50%,
+                        transparent 55%,
+                        oklch(0% 0 0 / 0.03) 100%
+                    );
+                animation: scan-line 2s ease-in-out infinite;
+            }
+            @keyframes scan-line {
+                0%,
+                100% {
+                    opacity: 0.3;
+                }
+                50% {
+                    opacity: 1;
+                }
+            }
+            .camera-zone .manual-toggle {
+                position: absolute;
+                bottom: 8px;
+                right: 8px;
+                padding: 6px 14px;
+                font-size: 12px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 100px;
+                cursor: pointer;
+                color: var(--muted);
+                font-family: var(--font-body);
+                transition:
+                    border-color 0.2s,
+                    color 0.2s;
+                z-index: 10;
+            }
+            .camera-zone .manual-toggle:hover {
+                border-color: var(--accent);
+                color: var(--fg);
+            }
 
-/* ─── Manual Code Entry ─── */
-.manual-entry { display: none; margin: 16px 0; }
-.manual-entry.active { display: block; }
-.manual-entry .input-group {
-  display: flex; gap: 8px;
-}
-.manual-entry input {
-  flex: 1; padding: 12px 16px;
-  border: 2px solid var(--border); border-radius: var(--radius);
-  font-family: var(--font-mono); font-size: 16px; font-weight: 600;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  background: var(--surface); color: var(--fg);
-  transition: border-color .2s;
-}
-.manual-entry input:focus { outline: none; border-color: var(--accent); }
-.manual-entry input::placeholder { font-size: 14px; letter-spacing: 0.02em; text-transform: none; }
-.manual-entry .btn { white-space: nowrap; }
-.manual-entry .email-lookup { margin-top: 8px; font-size: 13px; color: var(--muted); cursor: pointer; text-align: center; }
-.manual-entry .email-lookup:hover { color: var(--accent); }
+            /* ─── Manual Code Entry ─── */
+            .manual-entry {
+                display: none;
+                margin: 16px 0;
+            }
+            .manual-entry.active {
+                display: block;
+            }
+            .manual-entry .input-group {
+                display: flex;
+                gap: 8px;
+            }
+            .manual-entry input {
+                flex: 1;
+                padding: 12px 16px;
+                border: 2px solid var(--border);
+                border-radius: var(--radius);
+                font-family: var(--font-mono);
+                font-size: 16px;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                background: var(--surface);
+                color: var(--fg);
+                transition: border-color 0.2s;
+            }
+            .manual-entry input:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            .manual-entry input::placeholder {
+                font-size: 14px;
+                letter-spacing: 0.02em;
+                text-transform: none;
+            }
+            .manual-entry .btn {
+                white-space: nowrap;
+            }
+            .manual-entry .email-lookup {
+                margin-top: 8px;
+                font-size: 13px;
+                color: var(--muted);
+                cursor: pointer;
+                text-align: center;
+            }
+            .manual-entry .email-lookup:hover {
+                color: var(--accent);
+            }
 
-/* ─── Ticket Info Card (Scanner) ─── */
-.scanner-ticket-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  margin: 16px 0;
-  transition: border-color .2s;
-}
-.scanner-ticket-card .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.scanner-ticket-card .info h3 { font-size: 16px; margin-bottom: 2px; }
-.scanner-ticket-card .info .code { font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent-text); }
-.scanner-ticket-card .info .meta { font-size: 12px; color: var(--muted); }
-.scanner-ticket-card .balance { text-align: right; }
-.scanner-ticket-card .balance .amt { font-family: var(--font-display); font-size: 24px; font-weight: 600; }
-.scanner-ticket-card .status-badge {
-  display: inline-block;
-  padding: 3px 10px; border-radius: 100px;
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-}
-.scanner-ticket-card .status-badge.active { background: #f0fff4; color: #2f855a; }
-.scanner-ticket-card .status-badge.used { background: #fff5f5; color: #c53030; }
-.scanner-ticket-card .status-badge.exhausted { background: #fff5f5; color: #c53030; }
-.scanner-ticket-card .status-badge.revoked { background: #fff5f5; color: #c53030; }
+            /* ─── Ticket Info Card (Scanner) ─── */
+            .scanner-ticket-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 20px;
+                margin: 16px 0;
+                transition: border-color 0.2s;
+            }
+            .scanner-ticket-card .row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+            .scanner-ticket-card .info h3 {
+                font-size: 16px;
+                margin-bottom: 2px;
+            }
+            .scanner-ticket-card .info .code {
+                font-family: var(--font-mono);
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+                color: var(--accent-text);
+            }
+            .scanner-ticket-card .info .meta {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .scanner-ticket-card .balance {
+                text-align: right;
+            }
+            .scanner-ticket-card .balance .amt {
+                font-family: var(--font-display);
+                font-size: 24px;
+                font-weight: 600;
+            }
+            .scanner-ticket-card .status-badge {
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 100px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .scanner-ticket-card .status-badge.active {
+                background: #f0fff4;
+                color: #2f855a;
+            }
+            .scanner-ticket-card .status-badge.used {
+                background: #fff5f5;
+                color: #c53030;
+            }
+            .scanner-ticket-card .status-badge.exhausted {
+                background: #fff5f5;
+                color: #c53030;
+            }
+            .scanner-ticket-card .status-badge.revoked {
+                background: #fff5f5;
+                color: #c53030;
+            }
 
-/* ─── Scanner Action Area ─── */
-.scanner-actions { margin: 16px 0; }
-.scanner-actions .action-btn { width: 100%; padding: 16px; font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-.scanner-actions .action-btn.success { background: #2f855a; color: #fff; }
-.scanner-actions .action-btn.success:hover { background: #276749; }
-.scanner-actions .action-btn.danger { background: #e53e3e; color: #fff; }
-.scanner-actions .action-btn.danger:disabled { opacity: 0.5; cursor: not-allowed; }
-.scanner-actions .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            /* ─── Scanner Action Area ─── */
+            .scanner-actions {
+                margin: 16px 0;
+            }
+            .scanner-actions .action-btn {
+                width: 100%;
+                padding: 16px;
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .scanner-actions .action-btn.success {
+                background: #2f855a;
+                color: #fff;
+            }
+            .scanner-actions .action-btn.success:hover {
+                background: #276749;
+            }
+            .scanner-actions .action-btn.danger {
+                background: #e53e3e;
+                color: #fff;
+            }
+            .scanner-actions .action-btn.danger:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .scanner-actions .action-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
 
-/* ─── Debit Amount Entry ─── */
-.debit-form { margin: 16px 0; display: none; }
-.debit-form.active { display: block; }
-.debit-form .amount-display {
-  text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 8px;
-}
-.debit-form .amount-display strong { font-family: var(--font-display); font-size: 20px; color: var(--fg); }
-.debit-form .input-large {
-  width: 100%; padding: 16px;
-  text-align: center;
-  font-family: var(--font-display); font-size: 32px; font-weight: 600;
-  border: 2px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); color: var(--fg);
-  transition: border-color .2s;
-}
-.debit-form .input-large:focus { outline: none; border-color: var(--accent); }
-.debit-form .preset-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
-  margin: 12px 0;
-}
-.debit-form .preset-btn {
-  padding: 12px; text-align: center;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); cursor: pointer;
-  font-family: var(--font-display); font-size: 16px; font-weight: 600;
-  transition: border-color .15s, background .15s;
-}
-.debit-form .preset-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
-.debit-form .preset-btn.selected { border-color: var(--accent); background: var(--accent-dim); }
+            /* ─── Debit Amount Entry ─── */
+            .debit-form {
+                margin: 16px 0;
+                display: none;
+            }
+            .debit-form.active {
+                display: block;
+            }
+            .debit-form .amount-display {
+                text-align: center;
+                font-size: 14px;
+                color: var(--muted);
+                margin-bottom: 8px;
+            }
+            .debit-form .amount-display strong {
+                font-family: var(--font-display);
+                font-size: 20px;
+                color: var(--fg);
+            }
+            .debit-form .input-large {
+                width: 100%;
+                padding: 16px;
+                text-align: center;
+                font-family: var(--font-display);
+                font-size: 32px;
+                font-weight: 600;
+                border: 2px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--surface);
+                color: var(--fg);
+                transition: border-color 0.2s;
+            }
+            .debit-form .input-large:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            .debit-form .preset-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                margin: 12px 0;
+            }
+            .debit-form .preset-btn {
+                padding: 12px;
+                text-align: center;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--surface);
+                cursor: pointer;
+                font-family: var(--font-display);
+                font-size: 16px;
+                font-weight: 600;
+                transition:
+                    border-color 0.15s,
+                    background 0.15s;
+            }
+            .debit-form .preset-btn:hover {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .debit-form .preset-btn.selected {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
 
-/* ─── Top-Up Form (Scanner) ─── */
-.booth-topup-form { display: none; margin: 16px 0; }
-.booth-topup-form.active { display: block; }
-.booth-topup-form .bundle-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-  margin-bottom: 16px;
-}
-.booth-topup-form .bundle-btn {
-  padding: 14px 8px; text-align: center;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); cursor: pointer;
-  font-family: var(--font-body);
-  transition: border-color .15s, background .15s;
-  min-height: 44px;
-}
-.booth-topup-form .bundle-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
-.booth-topup-form .bundle-btn.selected { border-color: var(--accent); background: var(--accent-dim); }
-.booth-topup-form .bundle-btn .amt { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
-.booth-topup-form .custom-input {
-  display: flex; gap: 8px; align-items: center;
-  padding: 8px 12px; margin-bottom: 12px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  transition: border-color .15s;
-}
-.booth-topup-form .custom-input:focus-within { border-color: var(--accent); }
-.booth-topup-form .custom-input .prefix { font-weight: 600; color: var(--muted); font-size: 18px; }
-.booth-topup-form .custom-input input {
-  flex: 1; border: none; padding: 8px 0;
-  font-family: var(--font-display); font-size: 18px; font-weight: 600;
-  background: transparent; color: var(--fg); outline: none;
-}
+            /* ─── Top-Up Form (Scanner) ─── */
+            .booth-topup-form {
+                display: none;
+                margin: 16px 0;
+            }
+            .booth-topup-form.active {
+                display: block;
+            }
+            .booth-topup-form .bundle-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+            .booth-topup-form .bundle-btn {
+                padding: 14px 8px;
+                text-align: center;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--surface);
+                cursor: pointer;
+                font-family: var(--font-body);
+                transition:
+                    border-color 0.15s,
+                    background 0.15s;
+                min-height: 44px;
+            }
+            .booth-topup-form .bundle-btn:hover {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .booth-topup-form .bundle-btn.selected {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .booth-topup-form .bundle-btn .amt {
+                font-family: var(--font-display);
+                font-size: 18px;
+                font-weight: 600;
+            }
+            .booth-topup-form .custom-input {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                padding: 8px 12px;
+                margin-bottom: 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                transition: border-color 0.15s;
+            }
+            .booth-topup-form .custom-input:focus-within {
+                border-color: var(--accent);
+            }
+            .booth-topup-form .custom-input .prefix {
+                font-weight: 600;
+                color: var(--muted);
+                font-size: 18px;
+            }
+            .booth-topup-form .custom-input input {
+                flex: 1;
+                border: none;
+                padding: 8px 0;
+                font-family: var(--font-display);
+                font-size: 18px;
+                font-weight: 600;
+                background: transparent;
+                color: var(--fg);
+                outline: none;
+            }
 
-/* ─── Payment Method Buttons (Scanner Top-Up) ─── */
-.payment-methods { display: none; margin: 12px 0; }
-.payment-methods.active { display: block; }
-.payment-methods .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.payment-methods .method-btn {
-  padding: 16px 8px; text-align: center;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); cursor: pointer;
-  transition: border-color .15s, background .15s;
-  font-family: var(--font-body);
-  min-height: 44px;
-}
-.payment-methods .method-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
-.payment-methods .method-btn .m-icon { font-size: 20px; display: block; margin-bottom: 4px; }
-.payment-methods .method-btn .m-label { font-size: 13px; font-weight: 500; }
-.payment-methods .method-btn .m-desc { font-size: 11px; color: var(--muted); }
+            /* ─── Payment Method Buttons (Scanner Top-Up) ─── */
+            .payment-methods {
+                display: none;
+                margin: 12px 0;
+            }
+            .payment-methods.active {
+                display: block;
+            }
+            .payment-methods .method-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .payment-methods .method-btn {
+                padding: 16px 8px;
+                text-align: center;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--surface);
+                cursor: pointer;
+                transition:
+                    border-color 0.15s,
+                    background 0.15s;
+                font-family: var(--font-body);
+                min-height: 44px;
+            }
+            .payment-methods .method-btn:hover {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .payment-methods .method-btn .m-icon {
+                font-size: 20px;
+                display: block;
+                margin-bottom: 4px;
+            }
+            .payment-methods .method-btn .m-label {
+                font-size: 13px;
+                font-weight: 500;
+            }
+            .payment-methods .method-btn .m-desc {
+                font-size: 11px;
+                color: var(--muted);
+            }
 
-/* ─── Cross-Type Toggle ─── */
-.cross-type-toggle {
-  display: flex; gap: 4px; margin-bottom: 16px;
-  background: var(--border); border-radius: var(--radius); padding: 4px;
-}
-.cross-type-toggle .toggle-btn {
-  flex: 1; padding: 10px; text-align: center;
-  font-size: 13px; font-weight: 500;
-  border: none; background: transparent; border-radius: 6px; cursor: pointer;
-  color: var(--muted); transition: background .15s, color .15s;
-  font-family: var(--font-body); min-height: 44px;
-}
-.cross-type-toggle .toggle-btn.active { background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px oklch(0% 0 0 / 0.08); }
-.cross-type-toggle .toggle-btn:hover:not(.active) { color: var(--fg); }
+            /* ─── Cross-Type Toggle ─── */
+            .cross-type-toggle {
+                display: flex;
+                gap: 4px;
+                margin-bottom: 16px;
+                background: var(--border);
+                border-radius: var(--radius);
+                padding: 4px;
+            }
+            .cross-type-toggle .toggle-btn {
+                flex: 1;
+                padding: 10px;
+                text-align: center;
+                font-size: 13px;
+                font-weight: 500;
+                border: none;
+                background: transparent;
+                border-radius: 6px;
+                cursor: pointer;
+                color: var(--muted);
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+                font-family: var(--font-body);
+                min-height: 44px;
+            }
+            .cross-type-toggle .toggle-btn.active {
+                background: var(--surface);
+                color: var(--fg);
+                box-shadow: 0 1px 4px oklch(0% 0 0 / 0.08);
+            }
+            .cross-type-toggle .toggle-btn:hover:not(.active) {
+                color: var(--fg);
+            }
 
-/* ─── Cross-Type New Ticket Form ─── */
-.new-ticket-form { display: none; margin: 16px 0; }
-.new-ticket-form.active { display: block; }
-.new-ticket-form .form-group { margin-bottom: 12px; }
-.new-ticket-form label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; color: var(--muted); }
-.new-ticket-form input, .new-ticket-form select {
-  width: 100%; padding: 10px 14px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  font-family: var(--font-body); font-size: 15px;
-  background: var(--surface); color: var(--fg);
-}
-.new-ticket-form input:focus, .new-ticket-form select:focus { outline: none; border-color: var(--accent); }
+            /* ─── Cross-Type New Ticket Form ─── */
+            .new-ticket-form {
+                display: none;
+                margin: 16px 0;
+            }
+            .new-ticket-form.active {
+                display: block;
+            }
+            .new-ticket-form .form-group {
+                margin-bottom: 12px;
+            }
+            .new-ticket-form label {
+                font-size: 13px;
+                font-weight: 500;
+                display: block;
+                margin-bottom: 4px;
+                color: var(--muted);
+            }
+            .new-ticket-form input,
+            .new-ticket-form select {
+                width: 100%;
+                padding: 10px 14px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                font-family: var(--font-body);
+                font-size: 15px;
+                background: var(--surface);
+                color: var(--fg);
+            }
+            .new-ticket-form input:focus,
+            .new-ticket-form select:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
 
-/* ─── Bulk Top-Up ─── */
-.bulk-section { display: none; }
-.bulk-section.active { display: block; }
-.bulk-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0; }
-.bulk-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 4px; }
-.bulk-table th:last-child { width: 40px; }
-.bulk-table td { padding: 8px 4px; border-top: 1px solid var(--border); }
-.bulk-table input, .bulk-table select {
-  width: 100%; padding: 8px 10px;
-  border: 1px solid var(--border); border-radius: 6px;
-  font-family: var(--font-body); font-size: 14px;
-  background: var(--surface); color: var(--fg);
-}
-.bulk-table .del-btn {
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid #e53e3e; border-radius: var(--radius);
-  background: transparent; color: #e53e3e; cursor: pointer;
-  font-size: 18px; transition: background .15s;
-  font-family: var(--font-body);
-}
-.bulk-table .del-btn:hover { background: #fff5f5; }
+            /* ─── Bulk Top-Up ─── */
+            .bulk-section {
+                display: none;
+            }
+            .bulk-section.active {
+                display: block;
+            }
+            .bulk-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+                margin: 12px 0;
+            }
+            .bulk-table th {
+                text-align: left;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--muted);
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                padding: 8px 4px;
+            }
+            .bulk-table th:last-child {
+                width: 40px;
+            }
+            .bulk-table td {
+                padding: 8px 4px;
+                border-top: 1px solid var(--border);
+            }
+            .bulk-table input,
+            .bulk-table select {
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                font-family: var(--font-body);
+                font-size: 14px;
+                background: var(--surface);
+                color: var(--fg);
+            }
+            .bulk-table .del-btn {
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 1px solid #e53e3e;
+                border-radius: var(--radius);
+                background: transparent;
+                color: #e53e3e;
+                cursor: pointer;
+                font-size: 18px;
+                transition: background 0.15s;
+                font-family: var(--font-body);
+            }
+            .bulk-table .del-btn:hover {
+                background: #fff5f5;
+            }
 
-/* ─── Result / Toast ─── */
-.scanner-result {
-  display: none; margin: 12px 0; padding: 12px 16px;
-  border-radius: var(--radius); font-size: 14px;
-  animation: result-in .3s ease;
-}
-.scanner-result.success { display: block; background: #f0fff4; border: 1px solid #9ae6b4; color: #2f855a; }
-.scanner-result.error { display: block; background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; }
-.scanner-result.info { display: block; background: #ebf8ff; border: 1px solid #bee3f8; color: #2b6cb0; }
+            /* ─── Result / Toast ─── */
+            .scanner-result {
+                display: none;
+                margin: 12px 0;
+                padding: 12px 16px;
+                border-radius: var(--radius);
+                font-size: 14px;
+                animation: result-in 0.3s ease;
+            }
+            .scanner-result.success {
+                display: block;
+                background: #f0fff4;
+                border: 1px solid #9ae6b4;
+                color: #2f855a;
+            }
+            .scanner-result.error {
+                display: block;
+                background: #fff5f5;
+                border: 1px solid #feb2b2;
+                color: #c53030;
+            }
+            .scanner-result.info {
+                display: block;
+                background: #ebf8ff;
+                border: 1px solid #bee3f8;
+                color: #2b6cb0;
+            }
 
-@keyframes result-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+            @keyframes result-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(-8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
 
-/* ─── Loading / States ─── */
-.scanner-loading { text-align: center; padding: 20px; color: var(--muted); }
-.scanner-loading .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+            /* ─── Loading / States ─── */
+            .scanner-loading {
+                text-align: center;
+                padding: 20px;
+                color: var(--muted);
+            }
+            .scanner-loading .spinner {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 2px solid var(--border);
+                border-top-color: var(--accent);
+                border-radius: 50%;
+                animation: spin 0.6s linear infinite;
+            }
 
-/* ─── Email Lookup Results ─── */
-.email-results { margin: 12px 0; }
-.email-result-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 8px; cursor: pointer;
-  transition: border-color .15s, background .15s;
-}
-.email-result-item:hover { border-color: var(--accent); background: var(--accent-dim); }
-.email-result-item .code { font-family: var(--font-mono); font-weight: 600; font-size: 14px; }
-.email-result-item .detail { font-size: 12px; color: var(--muted); }
-.email-result-item .bal { font-weight: 600; white-space: nowrap; }
+            /* ─── Email Lookup Results ─── */
+            .email-results {
+                margin: 12px 0;
+            }
+            .email-result-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 16px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                margin-bottom: 8px;
+                cursor: pointer;
+                transition:
+                    border-color 0.15s,
+                    background 0.15s;
+            }
+            .email-result-item:hover {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .email-result-item .code {
+                font-family: var(--font-mono);
+                font-weight: 600;
+                font-size: 14px;
+            }
+            .email-result-item .detail {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .email-result-item .bal {
+                font-weight: 600;
+                white-space: nowrap;
+            }
 
-/* ─── ModemPay QR Payment (Scanner) ─── */
-.payment-qr {
-  text-align: center; padding: 20px;
-  display: none;
-}
-.payment-qr.active { display: block; }
-.payment-qr .qr-box {
-  width: 220px; height: 220px; margin: 12px auto;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface); border: 2px solid var(--border); border-radius: 12px;
-}
-.payment-qr .qr-box img { width: 200px; height: 200px; image-rendering: pixelated; }
-.payment-qr .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
+            /* ─── ModemPay QR Payment (Scanner) ─── */
+            .payment-qr {
+                text-align: center;
+                padding: 20px;
+                display: none;
+            }
+            .payment-qr.active {
+                display: block;
+            }
+            .payment-qr .qr-box {
+                width: 220px;
+                height: 220px;
+                margin: 12px auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--surface);
+                border: 2px solid var(--border);
+                border-radius: 12px;
+            }
+            .payment-qr .qr-box img {
+                width: 200px;
+                height: 200px;
+                image-rendering: pixelated;
+            }
+            .payment-qr .status {
+                font-size: 13px;
+                color: var(--muted);
+                margin-top: 8px;
+            }
 
-/* ─── Bill Mode Session Log ─── */
-.bill-log-panel { margin: 0 0 16px; }
-.bill-log-panel.active { display: block !important; }
-.bill-log-panel-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 12px;
-}
+            /* ─── Bill Mode Session Log ─── */
+            .bill-log-panel {
+                margin: 0 0 16px;
+            }
+            .bill-log-panel.active {
+                display: block !important;
+            }
+            .bill-log-panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
 
-/* ─── Bill Log Toast ─── */
-.bill-log-toast {
-  position: sticky;
-  bottom: 0;
-  margin-top: 8px;
-  padding: 10px 14px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 500;
-  animation: result-in .3s ease;
-  z-index: 10;
-}
-.bill-log-toast.success {
-  background: #f0fff4;
-  border: 1px solid #9ae6b4;
-  color: #2f855a;
-}
-.bill-log-toast.error {
-  background: #fff5f5;
-  border: 1px solid #feb2b2;
-  color: #c53030;
-}
-.bill-log-empty {
-  text-align: center; padding: 32px 16px;
-  border: 2px dashed var(--border); border-radius: 12px;
-  font-size: 14px; color: var(--muted);
-}
-.bill-log-summary {
-  display: flex; gap: 12px; justify-content: center;
-  padding: 10px 16px; margin-bottom: 12px;
-  background: var(--accent-dim); border-radius: var(--radius);
-  font-size: 13px;
-}
-.bill-log-list { max-height: 360px; overflow-y: auto; }
-.bill-log-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 6px;
-  background: var(--surface);
-  transition: border-color .15s;
-}
-.bill-log-item.latest { border-color: var(--accent); background: var(--accent-dim); }
-.bill-log-item-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
-.bill-log-item-info { flex: 1; min-width: 0; }
-.bill-log-item-code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
-.bill-log-item-customer { font-size: 11px; color: var(--muted); }
-.bill-log-item-time { text-align: right; font-size: 11px; color: var(--muted); flex-shrink: 0; }
-.bill-log-undo-btn {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  align-self: center;
-  margin-left: 4px;
-}
-.bill-log-undo-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}.bill-log-undo-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  border-color: transparent;
-  color: var(--muted);
-}
+            /* ─── Bill Log Toast ─── */
+            .bill-log-toast {
+                position: sticky;
+                bottom: 0;
+                margin-top: 8px;
+                padding: 10px 14px;
+                border-radius: var(--radius);
+                font-size: 13px;
+                font-weight: 500;
+                animation: result-in 0.3s ease;
+                z-index: 10;
+            }
+            .bill-log-toast.success {
+                background: #f0fff4;
+                border: 1px solid #9ae6b4;
+                color: #2f855a;
+            }
+            .bill-log-toast.error {
+                background: #fff5f5;
+                border: 1px solid #feb2b2;
+                color: #c53030;
+            }
+            .bill-log-empty {
+                text-align: center;
+                padding: 32px 16px;
+                border: 2px dashed var(--border);
+                border-radius: 12px;
+                font-size: 14px;
+                color: var(--muted);
+            }
+            .bill-log-summary {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+                padding: 10px 16px;
+                margin-bottom: 12px;
+                background: var(--accent-dim);
+                border-radius: var(--radius);
+                font-size: 13px;
+            }
+            .bill-log-list {
+                max-height: 360px;
+                overflow-y: auto;
+            }
+            .bill-log-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                margin-bottom: 6px;
+                background: var(--surface);
+                transition: border-color 0.15s;
+            }
+            .bill-log-item.latest {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .bill-log-item-icon {
+                font-size: 22px;
+                line-height: 1;
+                flex-shrink: 0;
+            }
+            .bill-log-item-info {
+                flex: 1;
+                min-width: 0;
+            }
+            .bill-log-item-code {
+                font-family: var(--font-mono);
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+            }
+            .bill-log-item-customer {
+                font-size: 11px;
+                color: var(--muted);
+            }
+            .bill-log-item-time {
+                text-align: right;
+                font-size: 11px;
+                color: var(--muted);
+                flex-shrink: 0;
+            }
+            .bill-log-undo-btn {
+                flex-shrink: 0;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                border: 1px solid transparent;
+                border-radius: 8px;
+                background: transparent;
+                color: var(--muted);
+                font-size: 15px;
+                line-height: 1;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.15s ease;
+                align-self: center;
+                margin-left: 4px;
+            }
+            .bill-log-undo-btn:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .bill-log-undo-btn:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+                border-color: transparent;
+                color: var(--muted);
+            }
 
-/* ─── Bill Undo Note Input ─── */
-.bill-log-item.undoing {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-}
-.undo-note-wrapper {
-  width: 100%;
-}
-.undo-note-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--fg);
-  margin-bottom: 6px;
-}
-.undo-note-label strong {
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-.undo-note-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: var(--font-body);
-  font-size: 13px;
-  background: var(--surface);
-  color: var(--fg);
-  transition: border-color .15s;
-}
-.undo-note-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px oklch(62% 0.16 35 / 0.12);
-}
-.undo-note-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-}
-#bill-log-btn:hover { border-color: var(--accent); color: var(--fg); }
-#bill-log-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-text); }
+            /* ─── Bill Undo Note Input ─── */
+            .bill-log-item.undoing {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+            .undo-note-wrapper {
+                width: 100%;
+            }
+            .undo-note-label {
+                font-size: 12px;
+                font-weight: 500;
+                color: var(--fg);
+                margin-bottom: 6px;
+            }
+            .undo-note-label strong {
+                font-family: var(--font-mono);
+                font-weight: 600;
+            }
+            .undo-note-input {
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                font-family: var(--font-body);
+                font-size: 13px;
+                background: var(--surface);
+                color: var(--fg);
+                transition: border-color 0.15s;
+            }
+            .undo-note-input:focus {
+                outline: none;
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px oklch(62% 0.16 35 / 0.12);
+            }
+            .undo-note-actions {
+                display: flex;
+                gap: 6px;
+                margin-top: 8px;
+            }
+            #bill-log-btn:hover {
+                border-color: var(--accent);
+                color: var(--fg);
+            }
+            #bill-log-btn.active {
+                background: var(--accent-dim);
+                border-color: var(--accent);
+                color: var(--accent-text);
+            }
 
-/* ─── Print-friendly (paper slip for cross-type) ─── */
-@media print {
-  body * { visibility: hidden; }
-  .print-slip, .print-slip * { visibility: visible; }
-  .print-slip { position: absolute; inset: 0; padding: 40px; }
-  #bill-receipt-print, #bill-receipt-print * { visibility: visible; }
-  #bill-receipt-print {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    position: fixed; inset: 0;
-    background: #fff;
-    margin: 0;
-  }
-  #bill-receipt-print .receipt-print-wrapper {
-    width: 80mm;
-    padding: 8mm 4mm;
-    font-family: 'Courier New', Consolas, monospace;
-    font-size: 11px;
-    line-height: 1.5;
-    color: #000;
-    background: #fff;
-  }
-  #bill-receipt-print .receipt-print-wrapper table { border-collapse: collapse; }
-}
-</style>
-</head>
-<body data-page="scan">
+            /* ─── Print-friendly (paper slip for cross-type) ─── */
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                .print-slip,
+                .print-slip * {
+                    visibility: visible;
+                }
+                .print-slip {
+                    position: absolute;
+                    inset: 0;
+                    padding: 40px;
+                }
+                #bill-receipt-print,
+                #bill-receipt-print * {
+                    visibility: visible;
+                }
+                #bill-receipt-print {
+                    display: flex !important;
+                    align-items: center;
+                    justify-content: center;
+                    position: fixed;
+                    inset: 0;
+                    background: #fff;
+                    margin: 0;
+                }
+                #bill-receipt-print .receipt-print-wrapper {
+                    width: 80mm;
+                    padding: 8mm 4mm;
+                    font-family: "Courier New", Consolas, monospace;
+                    font-size: 11px;
+                    line-height: 1.5;
+                    color: #000;
+                    background: #fff;
+                }
+                #bill-receipt-print .receipt-print-wrapper table {
+                    border-collapse: collapse;
+                }
+            }
+        </style>
+    </head>
+    <body data-page="scan">
+        <a href="#main-content" class="skip-link">Skip to content</a>
+        <header>
+            <nav>
+                <div class="w">
+                    <a
+                        href="/"
+                        class="logo"
+                        style="display: flex; align-items: center"
+                        ><img
+                            src="/images/wf-main-logo.jpg"
+                            alt="Walking-Fish Group"
+                            style="height: 36px"
+                    /></a>
+                    <div class="nav-links">
+                        <a href="/">Home</a>
+                        <a href="/walkie-talkie">Experiences</a>
+                        <a href="/piroake">Piroake</a>
+                        <a href="/muster-point">Media</a>
+                        <a href="/vendors">Vendors</a>
+                        <details class="nav-more">
+                            <summary>More</summary>
+                            <div class="nav-dropdown">
+                                <a href="/about">About</a>
+                                <a href="/tickets">Tickets</a>
+                                <a href="/top-up">Top Up</a>
+                                <a href="/gallery">Gallery</a>
+                                <a href="/blog">Blog</a>
+                                <a href="/partners">Partners</a>
+                                <a href="/contact">Contact</a>
+                            </div>
+                        </details>
+                        <a href="/login" class="nav-cta" aria-label="Sign in"
+                            >Sign In</a
+                        >
+                    </div>
+                    <button
+                        class="nav-toggle"
+                        aria-label="Toggle navigation menu"
+                    >
+                        <span aria-hidden="true">&#9776;</span>
+                    </button>
+                </div>
+            </nav>
+        </header>
 
-<a href="#main-content" class="skip-link">Skip to content</a>
-<header><nav>
-<div class="w">
-  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
-  <div class="nav-links">
-    <a href="/">Home</a>
-    <a href="/walkie-talkie">Experiences</a>
-    <a href="/piroake">Piroake</a>
-    <a href="/muster-point">Media</a>
-    <a href="/vendors">Vendors</a>
-    <details class="nav-more">
-      <summary>More</summary>
-      <div class="nav-dropdown">
-        <a href="/about">About</a>
-        <a href="/tickets">Tickets</a>
-        <a href="/top-up">Top Up</a>
-        <a href="/gallery">Gallery</a>
-        <a href="/blog">Blog</a>
-        <a href="/partners">Partners</a>
-        <a href="/contact">Contact</a>
-      </div>
-    </details>
-    <a href="/login" class="nav-cta" aria-label="Sign in">Sign In</a>
-  </div>
-  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
-</div>
-</nav></header>
+        <main id="main-content">
+            <section class="page-header">
+                <div class="w">
+                    <p class="label">Piroake Fest 2026</p>
+                    <h1>Staff Scanner</h1>
+                    <p>
+                        Ticket verification, gate entry, activity debit, and
+                        booth top-up.
+                    </p>
+                </div>
+            </section>
 
-<main id="main-content">
+            <section>
+                <div class="w scanner-root">
+                    <!-- ─── PASSCODE AUTH ─── -->
+                    <div id="scanner-passcode" class="scanner-passcode">
+                        <div class="lock-icon">&#128274;</div>
+                        <h2>Staff Access</h2>
+                        <p>
+                            Enter your staff scanner code to access the ticket
+                            scanner and management tools.
+                        </p>
+                        <div class="code-input">
+                            <input
+                                type="password"
+                                id="passcode-input"
+                                placeholder="Staff Code"
+                                maxlength="20"
+                                autocomplete="off"
+                                inputmode="text"
+                            />
+                        </div>
+                        <div
+                            id="passcode-error"
+                            class="error-message"
+                            style="
+                                display: none;
+                                margin-top: 12px;
+                                max-width: 320px;
+                                margin-left: auto;
+                                margin-right: auto;
+                            "
+                        ></div>
+                    </div>
 
-<section class="page-header">
-  <div class="w">
-    <p class="label">Piroake Fest 2026</p>
-    <h1>Staff Scanner</h1>
-    <p>Ticket verification, gate entry, activity debit, and booth top-up.</p>
-  </div>
-</section>
+                    <!-- ─── MODE SELECTION ─── -->
+                    <div id="scanner-modes" class="scanner-modes">
+                        <h2 style="margin-bottom: 20px">Select Mode</h2>
+                        <div class="mode-grid">
+                            <button class="mode-btn" data-mode="gate">
+                                <span class="mode-icon">&#127983;</span>
+                                <span class="mode-label">Gate</span>
+                                <span class="mode-desc"
+                                    >Verify entry &amp; parking passes</span
+                                >
+                            </button>
+                            <button class="mode-btn" data-mode="debit">
+                                <span class="mode-icon">&#128176;</span>
+                                <span class="mode-label">Debit</span>
+                                <span class="mode-desc"
+                                    >Deduct activity credits</span
+                                >
+                            </button>
+                            <button class="mode-btn" data-mode="topup">
+                                <span class="mode-icon">&#10133;</span>
+                                <span class="mode-label">Top-Up</span>
+                                <span class="mode-desc"
+                                    >Add credits at booth</span
+                                >
+                            </button>
+                            <button class="mode-btn" data-mode="bill">
+                                <span class="mode-icon">&#128221;</span>
+                                <span class="mode-label">Bill</span>
+                                <span class="mode-desc"
+                                    >Redeem food &amp; drinks vouchers</span
+                                >
+                            </button>
+                            <button class="mode-btn" data-mode="bulk">
+                                <span class="mode-icon">&#128203;</span>
+                                <span class="mode-label">Bulk Catch-Up</span>
+                                <span class="mode-desc"
+                                    >Batch enter offline records</span
+                                >
+                            </button>
+                        </div>
+                        <button
+                            class="mode-btn logout-mode"
+                            id="scanner-logout"
+                            style="width: 100%"
+                        >
+                            &#8592; Lock Scanner
+                        </button>
+                    </div>
 
-<section>
-<div class="w scanner-root">
+                    <!-- ─── SCANNER VIEW (shared by Gate / Debit / Top-Up) ─── -->
+                    <div id="scanner-view" class="scanner-view">
+                        <!-- Scanner Header -->
+                        <div class="scanner-header">
+                            <button class="back-btn" id="scanner-back">
+                                &#8592;
+                            </button>
+                            <span class="mode-title" id="scanner-view-title"
+                                >Gate Mode</span
+                            >
+                            <span class="mode-badge" id="scanner-mode-badge"
+                                >Gate</span
+                            >
+                            <div
+                                id="bill-header-controls"
+                                style="
+                                    display: none;
+                                    align-items: center;
+                                    gap: 8px;
+                                "
+                            >
+                                <div
+                                    id="bill-counter-badge"
+                                    style="
+                                        display: none;
+                                        font-size: 13px;
+                                        font-weight: 600;
+                                        color: var(--accent-text);
+                                        background: var(--accent-dim);
+                                        padding: 4px 14px;
+                                        border-radius: 100px;
+                                        white-space: nowrap;
+                                    "
+                                >
+                                    &#10003; <span id="bill-counter">0</span>
+                                </div>
+                                <button
+                                    id="bill-log-btn"
+                                    style="
+                                        font-size: 12px;
+                                        font-weight: 500;
+                                        padding: 4px 12px;
+                                        border: 1px solid var(--border);
+                                        border-radius: 100px;
+                                        background: var(--surface);
+                                        cursor: pointer;
+                                        white-space: nowrap;
+                                        font-family: var(--font-body);
+                                        color: var(--muted);
+                                        transition:
+                                            border-color 0.2s,
+                                            color 0.2s;
+                                        min-height: 30px;
+                                    "
+                                >
+                                    &#128196; Log
+                                </button>
+                            </div>
+                        </div>
 
-  <!-- ─── PASSCODE AUTH ─── -->
-  <div id="scanner-passcode" class="scanner-passcode">
-    <div class="lock-icon">&#128274;</div>
-    <h2>Staff Access</h2>
-    <p>Enter your staff scanner code to access the ticket scanner and management tools.</p>
-    <div class="code-input">
-      <input type="password" id="passcode-input" placeholder="Staff Code" maxlength="20" autocomplete="off" inputmode="text">
-    </div>
-    <div id="passcode-error" class="error-message" style="display:none;margin-top:12px;max-width:320px;margin-left:auto;margin-right:auto;"></div>
-  </div>
+                        <!-- Bill Mode Session Log Panel -->
+                        <div
+                            id="bill-log-panel"
+                            class="bill-log-panel"
+                            style="display: none"
+                        >
+                            <div class="bill-log-panel-header">
+                                <span style="font-size: 16px; font-weight: 600"
+                                    >&#128196; Session Log</span
+                                >
+                                <span
+                                    id="bill-log-close-btn"
+                                    style="
+                                        font-size: 20px;
+                                        cursor: pointer;
+                                        color: var(--muted);
+                                        line-height: 1;
+                                    "
+                                    title="Close"
+                                    >&times;</span
+                                >
+                            </div>
+                        </div>
 
-  <!-- ─── MODE SELECTION ─── -->
-  <div id="scanner-modes" class="scanner-modes">
-    <h2 style="margin-bottom:20px;">Select Mode</h2>
-    <div class="mode-grid">
-      <button class="mode-btn" data-mode="gate">
-        <span class="mode-icon">&#127983;</span>
-        <span class="mode-label">Gate</span>
-        <span class="mode-desc">Verify entry &amp; parking passes</span>
-      </button>
-      <button class="mode-btn" data-mode="debit">
-        <span class="mode-icon">&#128176;</span>
-        <span class="mode-label">Debit</span>
-        <span class="mode-desc">Deduct activity credits</span>
-      </button>
-      <button class="mode-btn" data-mode="topup">
-        <span class="mode-icon">&#10133;</span>
-        <span class="mode-label">Top-Up</span>
-        <span class="mode-desc">Add credits at booth</span>
-      </button>
-      <button class="mode-btn" data-mode="bill">
-        <span class="mode-icon">&#128221;</span>
-        <span class="mode-label">Bill</span>
-        <span class="mode-desc">Redeem food &amp; drinks vouchers</span>
-      </button>
-      <button class="mode-btn" data-mode="bulk">
-        <span class="mode-icon">&#128203;</span>
-        <span class="mode-label">Bulk Catch-Up</span>
-        <span class="mode-desc">Batch enter offline records</span>
-      </button>
-    </div>
-    <button class="mode-btn logout-mode" id="scanner-logout" style="width:100%;">&#8592; Lock Scanner</button>
-  </div>
+                        <!-- Cross-Type Toggle (shown in Top-Up mode) -->
+                        <div
+                            id="cross-type-toggle"
+                            class="cross-type-toggle"
+                            style="display: none"
+                        >
+                            <button class="toggle-btn active" data-ct="scan">
+                                Scan Existing
+                            </button>
+                            <button class="toggle-btn" data-ct="new">
+                                New Activity Credit
+                            </button>
+                        </div>
 
-  <!-- ─── SCANNER VIEW (shared by Gate / Debit / Top-Up) ─── -->
-  <div id="scanner-view" class="scanner-view">
+                        <!-- Cross-Type: New Ticket Form -->
+                        <div id="new-ticket-form" class="new-ticket-form">
+                            <div class="form-group">
+                                <label>Ticket Type</label>
+                                <select id="new-ticket-type">
+                                    <option value="">Loading…</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Customer Name</label>
+                                <input
+                                    type="text"
+                                    id="new-ticket-name"
+                                    placeholder="Full name"
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <input
+                                    type="email"
+                                    id="new-ticket-email"
+                                    placeholder="customer@example.com"
+                                />
+                            </div>
+                            <div
+                                id="new-ticket-error"
+                                class="error-message"
+                                style="display: none"
+                            ></div>
+                            <button
+                                class="btn btn-primary"
+                                id="new-ticket-pay-btn"
+                                style="width: 100%"
+                            >
+                                Continue to Payment
+                            </button>
+                        </div>
 
-    <!-- Scanner Header -->
-    <div class="scanner-header">
-      <button class="back-btn" id="scanner-back">&#8592;</button>
-      <span class="mode-title" id="scanner-view-title">Gate Mode</span>
-      <span class="mode-badge" id="scanner-mode-badge">Gate</span>
-      <div id="bill-header-controls" style="display:none;align-items:center;gap:8px;">
-        <div id="bill-counter-badge" style="display:none;font-size:13px;font-weight:600;color:var(--accent-text);background:var(--accent-dim);padding:4px 14px;border-radius:100px;white-space:nowrap;">
-          &#10003; <span id="bill-counter">0</span>
-        </div>
-        <button id="bill-log-btn" style="font-size:12px;font-weight:500;padding:4px 12px;border:1px solid var(--border);border-radius:100px;background:var(--surface);cursor:pointer;white-space:nowrap;font-family:var(--font-body);color:var(--muted);transition:border-color .2s,color .2s;min-height:30px;">
-          &#128196; Log
-        </button>
-      </div>
-    </div>
+                        <!-- Camera Zone -->
+                        <div id="camera-zone" class="camera-zone">
+                            <div class="scan-overlay"></div>
+                            <div
+                                id="camera-placeholder"
+                                class="camera-placeholder"
+                            >
+                                <span class="cam-icon">&#128247;</span>
+                                <p>
+                                    Point camera at QR code<br /><span
+                                        style="font-size: 12px"
+                                        >or tap Manual Entry below</span
+                                    >
+                                </p>
+                            </div>
+                            <button
+                                id="manual-toggle-btn"
+                                class="manual-toggle"
+                            >
+                                Manual Entry
+                            </button>
+                        </div>
 
-    <!-- Bill Mode Session Log Panel -->
-    <div id="bill-log-panel" class="bill-log-panel" style="display:none;">
-      <div class="bill-log-panel-header">
-        <span style="font-size:16px;font-weight:600;">&#128196; Session Log</span>
-        <span id="bill-log-close-btn" style="font-size:20px;cursor:pointer;color:var(--muted);line-height:1;" title="Close">&times;</span>
-      </div>
-    </div>
+                        <!-- Manual Ticket Code Entry -->
+                        <div id="manual-entry" class="manual-entry">
+                            <div class="input-group">
+                                <input
+                                    type="text"
+                                    id="manual-code-input"
+                                    placeholder="TKT-XXXXXX"
+                                    maxlength="12"
+                                />
+                                <button
+                                    class="btn btn-primary"
+                                    id="manual-lookup-btn"
+                                >
+                                    Look Up
+                                </button>
+                            </div>
+                            <div class="email-lookup" id="email-lookup-toggle">
+                                &#128231; Look up by email instead
+                            </div>
+                        </div>
 
-    <!-- Cross-Type Toggle (shown in Top-Up mode) -->
-    <div id="cross-type-toggle" class="cross-type-toggle" style="display:none;">
-      <button class="toggle-btn active" data-ct="scan">Scan Existing</button>
-      <button class="toggle-btn" data-ct="new">New Activity Credit</button>
-    </div>
+                        <!-- Email Lookup -->
+                        <div
+                            id="email-lookup"
+                            class="manual-entry"
+                            style="display: none"
+                        >
+                            <div class="input-group">
+                                <input
+                                    type="email"
+                                    id="email-input"
+                                    placeholder="customer@example.com"
+                                />
+                                <button
+                                    class="btn btn-primary"
+                                    id="email-search-btn"
+                                >
+                                    Search
+                                </button>
+                            </div>
+                            <div id="email-results" class="email-results"></div>
+                        </div>
 
-    <!-- Cross-Type: New Ticket Form -->
-    <div id="new-ticket-form" class="new-ticket-form">
-      <div class="form-group">
-        <label>Ticket Type</label>
-        <select id="new-ticket-type"><option value="">Loading…</option></select>
-      </div>
-      <div class="form-group">
-        <label>Customer Name</label>
-        <input type="text" id="new-ticket-name" placeholder="Full name">
-      </div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="new-ticket-email" placeholder="customer@example.com">
-      </div>
-      <div id="new-ticket-error" class="error-message" style="display:none;"></div>
-      <button class="btn btn-primary" id="new-ticket-pay-btn" style="width:100%;">Continue to Payment</button>
-    </div>
+                        <!-- Debit Amount Form (shown after ticket is loaded in Debit mode) -->
+                        <div id="debit-form" class="debit-form">
+                            <div class="amount-display">
+                                Current balance:
+                                <strong id="debit-current-balance">D0</strong>
+                            </div>
+                            <input
+                                type="number"
+                                id="debit-amount-input"
+                                class="input-large"
+                                placeholder="0"
+                                min="0"
+                                step="10"
+                            />
+                            <div class="preset-grid">
+                                <button class="preset-btn" data-amount="50">
+                                    D50
+                                </button>
+                                <button class="preset-btn" data-amount="100">
+                                    D100
+                                </button>
+                                <button class="preset-btn" data-amount="200">
+                                    D200
+                                </button>
+                                <button class="preset-btn" data-amount="500">
+                                    D500
+                                </button>
+                            </div>
+                            <button
+                                class="btn btn-primary"
+                                id="debit-confirm-btn"
+                                style="width: 100%"
+                                disabled
+                            >
+                                Confirm Debit
+                            </button>
+                            <div
+                                id="debit-error"
+                                class="error-message"
+                                style="display: none; margin-top: 8px"
+                            ></div>
+                        </div>
 
-    <!-- Camera Zone -->
-    <div id="camera-zone" class="camera-zone">
-      <div class="scan-overlay"></div>
-      <div id="camera-placeholder" class="camera-placeholder">
-        <span class="cam-icon">&#128247;</span>
-        <p>Point camera at QR code<br><span style="font-size:12px;">or tap Manual Entry below</span></p>
-      </div>
-      <button id="manual-toggle-btn" class="manual-toggle">Manual Entry</button>
-    </div>
+                        <!-- Scanner Ticket Result -->
+                        <div id="scanner-ticket-result"></div>
 
-    <!-- Manual Ticket Code Entry -->
-    <div id="manual-entry" class="manual-entry">
-      <div class="input-group">
-        <input type="text" id="manual-code-input" placeholder="TKT-XXXXXX" maxlength="12">
-        <button class="btn btn-primary" id="manual-lookup-btn">Look Up</button>
-      </div>
-      <div class="email-lookup" id="email-lookup-toggle">&#128231; Look up by email instead</div>
-    </div>
+                        <!-- Scanner Result Toast -->
+                        <div
+                            id="scanner-result"
+                            class="scanner-result"
+                            style="display: none"
+                        ></div>
 
-    <!-- Email Lookup -->
-    <div id="email-lookup" class="manual-entry" style="display:none;">
-      <div class="input-group">
-        <input type="email" id="email-input" placeholder="customer@example.com">
-        <button class="btn btn-primary" id="email-search-btn">Search</button>
-      </div>
-      <div id="email-results" class="email-results"></div>
-    </div>
+                        <!-- Scanner Actions -->
+                        <div id="scanner-actions" class="scanner-actions"></div>
 
-    <!-- Debit Amount Form (shown after ticket is loaded in Debit mode) -->
-    <div id="debit-form" class="debit-form">
-      <div class="amount-display">Current balance: <strong id="debit-current-balance">D0</strong></div>
-      <input type="number" id="debit-amount-input" class="input-large" placeholder="0" min="0" step="10">
-      <div class="preset-grid">
-        <button class="preset-btn" data-amount="50">D50</button>
-        <button class="preset-btn" data-amount="100">D100</button>
-        <button class="preset-btn" data-amount="200">D200</button>
-        <button class="preset-btn" data-amount="500">D500</button>
-      </div>
-      <button class="btn btn-primary" id="debit-confirm-btn" style="width:100%;" disabled>Confirm Debit</button>
-      <div id="debit-error" class="error-message" style="display:none;margin-top:8px;"></div>
-    </div>
+                        <!-- Top-Up Form (Scanner Booth) -->
+                        <div id="booth-topup-form" class="booth-topup-form">
+                            <div class="bundle-grid" id="booth-bundles">
+                                <div class="scanner-loading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                            <div class="custom-input">
+                                <span class="prefix">D</span>
+                                <input
+                                    type="number"
+                                    id="booth-custom-amount"
+                                    placeholder="Custom amount"
+                                    min="50"
+                                    step="10"
+                                />
+                            </div>
+                            <div
+                                class="topup-summary"
+                                style="
+                                    background: var(--accent-dim);
+                                    border-radius: var(--radius);
+                                    padding: 12px 16px;
+                                    display: flex;
+                                    justify-content: space-between;
+                                    margin-bottom: 12px;
+                                "
+                            >
+                                <span
+                                    class="lbl"
+                                    style="font-size: 13px; color: var(--muted)"
+                                    >Top-Up Total</span
+                                >
+                                <span
+                                    class="val"
+                                    style="
+                                        font-family: var(--font-display);
+                                        font-size: 20px;
+                                        font-weight: 600;
+                                    "
+                                    id="booth-charge-amount"
+                                    >D0</span
+                                >
+                            </div>
 
-    <!-- Scanner Ticket Result -->
-    <div id="scanner-ticket-result"></div>
+                            <!-- Payment Methods -->
+                            <div id="payment-methods" class="payment-methods">
+                                <label
+                                    style="
+                                        font-size: 13px;
+                                        font-weight: 500;
+                                        display: block;
+                                        margin-bottom: 8px;
+                                        color: var(--muted);
+                                    "
+                                    >Receive payment</label
+                                >
+                                <div class="method-grid">
+                                    <button
+                                        class="method-btn"
+                                        data-method="modempay"
+                                    >
+                                        <span class="m-icon">&#128179;</span>
+                                        <span class="m-label">ModemPay</span>
+                                        <span class="m-desc"
+                                            >Customer scans QR</span
+                                        >
+                                    </button>
+                                    <button
+                                        class="method-btn"
+                                        data-method="cash"
+                                    >
+                                        <span class="m-icon">&#128184;</span>
+                                        <span class="m-label">Cash</span>
+                                        <span class="m-desc"
+                                            >Mark as received</span
+                                        >
+                                    </button>
+                                </div>
+                            </div>
 
-    <!-- Scanner Result Toast -->
-    <div id="scanner-result" class="scanner-result" style="display:none;"></div>
+                            <!-- ModemPay QR display -->
+                            <div id="modempay-qr" class="payment-qr">
+                                <p style="font-size: 14px; font-weight: 500">
+                                    Customer: scan to pay
+                                </p>
+                                <div class="qr-box" id="modempay-qr-box">
+                                    <span
+                                        style="
+                                            font-size: 13px;
+                                            color: var(--muted);
+                                        "
+                                        >Generating QR…</span
+                                    >
+                                </div>
+                                <div class="status" id="modempay-qr-status">
+                                    Waiting for payment…
+                                </div>
+                                <button
+                                    class="btn btn-secondary"
+                                    id="modempay-override-btn"
+                                    style="
+                                        margin-top: 8px;
+                                        width: 100%;
+                                        font-size: 13px;
+                                    "
+                                >
+                                    Manual Override (payment received)
+                                </button>
+                            </div>
 
-    <!-- Scanner Actions -->
-    <div id="scanner-actions" class="scanner-actions"></div>
+                            <!-- Top-Up Result -->
+                            <div
+                                id="booth-topup-result"
+                                class="scanner-result"
+                                style="display: none"
+                            ></div>
+                        </div>
 
-    <!-- Top-Up Form (Scanner Booth) -->
-    <div id="booth-topup-form" class="booth-topup-form">
-      <div class="bundle-grid" id="booth-bundles">
-        <div class="scanner-loading"><div class="spinner"></div></div>
-      </div>
-      <div class="custom-input">
-        <span class="prefix">D</span>
-        <input type="number" id="booth-custom-amount" placeholder="Custom amount" min="50" step="10">
-      </div>
-      <div class="topup-summary" style="background:var(--accent-dim);border-radius:var(--radius);padding:12px 16px;display:flex;justify-content:space-between;margin-bottom:12px;">
-        <span class="lbl" style="font-size:13px;color:var(--muted);">Top-Up Total</span>
-        <span class="val" style="font-family:var(--font-display);font-size:20px;font-weight:600;" id="booth-charge-amount">D0</span>
-      </div>
+                        <!-- Bulk Top-Up Section -->
+                        <div id="bulk-section" class="bulk-section">
+                            <p
+                                style="
+                                    font-size: 14px;
+                                    color: var(--muted);
+                                    margin-bottom: 16px;
+                                "
+                            >
+                                Enter offline top-ups recorded on paper during
+                                network outage. All entries will be processed
+                                together when submitted.
+                            </p>
+                            <div style="overflow-x: auto">
+                                <table class="bulk-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ticket Code</th>
+                                            <th>Amount</th>
+                                            <th>Method</th>
+                                            <th>Note</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bulk-rows">
+                                        <tr>
+                                            <td>
+                                                <input
+                                                    type="text"
+                                                    class="bulk-code"
+                                                    placeholder="TKT-XXXXXX"
+                                                    maxlength="12"
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    class="bulk-amount"
+                                                    placeholder="D"
+                                                    min="50"
+                                                    style="min-width: 70px"
+                                                />
+                                            </td>
+                                            <td>
+                                                <select class="bulk-method">
+                                                    <option value="cash">
+                                                        Cash
+                                                    </option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="text"
+                                                    class="bulk-note"
+                                                    placeholder="Booth # / staff name"
+                                                />
+                                            </td>
+                                            <td>
+                                                <button
+                                                    class="del-btn"
+                                                    onclick="
+                                                        this.closest(
+                                                            'tr',
+                                                        ).remove()
+                                                    "
+                                                >
+                                                    &times;
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div
+                                style="
+                                    display: flex;
+                                    gap: 8px;
+                                    margin-top: 12px;
+                                "
+                            >
+                                <button
+                                    class="btn btn-secondary"
+                                    id="bulk-add-row"
+                                >
+                                    + Add Row
+                                </button>
+                                <button
+                                    class="btn btn-primary"
+                                    id="bulk-submit-btn"
+                                >
+                                    Submit All
+                                </button>
+                            </div>
+                            <div
+                                id="bulk-result"
+                                class="scanner-result"
+                                style="display: none"
+                            ></div>
+                        </div>
+                    </div>
 
-      <!-- Payment Methods -->
-      <div id="payment-methods" class="payment-methods">
-        <label style="font-size:13px;font-weight:500;display:block;margin-bottom:8px;color:var(--muted);">Receive payment</label>
-        <div class="method-grid">
-          <button class="method-btn" data-method="modempay">
-            <span class="m-icon">&#128179;</span>
-            <span class="m-label">ModemPay</span>
-            <span class="m-desc">Customer scans QR</span>
-          </button>
-          <button class="method-btn" data-method="wave">
-            <span class="m-icon">&#128222;</span>
-            <span class="m-label">Wave</span>
-            <span class="m-desc">Confirm receipt</span>
-          </button>
-          <button class="method-btn" data-method="cash">
-            <span class="m-icon">&#128184;</span>
-            <span class="m-label">Cash</span>
-            <span class="m-desc">Mark as received</span>
-          </button>
-        </div>
-      </div>
+                    <!-- ─── PRINT-READY SLIP (hidden, shown during print) ─── -->
+                    <div
+                        id="print-slip"
+                        class="print-slip"
+                        style="display: none"
+                    >
+                        <div style="text-align: center; margin-bottom: 24px">
+                            <h1 style="font-size: 24px">Walking-Fish Group</h1>
+                            <p style="font-size: 14px">
+                                Piroake Fest 2026 — Activity Credit
+                            </p>
+                        </div>
+                        <div id="slip-content"></div>
+                    </div>
 
-      <!-- ModemPay QR display -->
-      <div id="modempay-qr" class="payment-qr">
-        <p style="font-size:14px;font-weight:500;">Customer: scan to pay</p>
-        <div class="qr-box" id="modempay-qr-box">
-          <span style="font-size:13px;color:var(--muted);">Generating QR…</span>
-        </div>
-        <div class="status" id="modempay-qr-status">Waiting for payment…</div>
-        <button class="btn btn-secondary" id="modempay-override-btn" style="margin-top:8px;width:100%;font-size:13px;">Manual Override (payment received)</button>
-      </div>
+                    <!-- ─── BILL RECEIPT FOR PRINTING (hidden, shown only during window.print()) ─── -->
+                    <div id="bill-receipt-print" style="display: none">
+                        <div class="receipt-print-wrapper">
+                            <div id="bill-receipt-print-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
 
-      <!-- Top-Up Result -->
-      <div id="booth-topup-result" class="scanner-result" style="display:none;"></div>
-    </div>
+        <footer>
+            <div class="w">
+                <div class="grid-4">
+                    <div>
+                        <p class="tagline">
+                            Walking-<em
+                                style="font-style: normal; color: var(--accent)"
+                                >Fish</em
+                            >
+                        </p>
+                        <p style="font-size: 14px; color: var(--muted)">
+                            Creating Experiences People Remember.
+                        </p>
+                    </div>
+                    <div>
+                        <h2
+                            style="
+                                font-size: 14px;
+                                color: var(--fg);
+                                font-family: var(--font-body);
+                                font-weight: 600;
+                                text-transform: uppercase;
+                                letter-spacing: 0.06em;
+                                margin-bottom: 20px;
+                            "
+                        >
+                            Explore
+                        </h2>
+                        <a href="/walkie-talkie">Experiences</a>
+                        <a href="/piroake">Piroake Fest</a>
+                        <a href="/muster-point">Media</a>
+                        <a href="/gallery">Gallery</a>
+                    </div>
+                    <div>
+                        <h2
+                            style="
+                                font-size: 14px;
+                                color: var(--fg);
+                                font-family: var(--font-body);
+                                font-weight: 600;
+                                text-transform: uppercase;
+                                letter-spacing: 0.06em;
+                                margin-bottom: 20px;
+                            "
+                        >
+                            Connect
+                        </h2>
+                        <a href="/about">About Us</a>
+                        <a href="/partners">Partners</a>
+                        <a href="/vendors">Vendors</a>
+                        <a href="/contact">Contact</a>
+                    </div>
+                    <div>
+                        <h2
+                            style="
+                                font-size: 14px;
+                                color: var(--fg);
+                                font-family: var(--font-body);
+                                font-weight: 600;
+                                text-transform: uppercase;
+                                letter-spacing: 0.06em;
+                                margin-bottom: 20px;
+                            "
+                        >
+                            More
+                        </h2>
+                        <a href="/blog">Blog</a>
+                        <a href="/tickets">Tickets</a>
+                        <a href="/top-up">Top Up</a>
+                        <a href="/privacy">Privacy Policy</a>
+                        <a href="/vendor-login">Vendor Login</a>
+                        <a
+                            href="/admin-login"
+                            style="font-size: 12px; opacity: 0.5"
+                            >Admin</a
+                        >
+                    </div>
+                </div>
+                <div class="copyright">
+                    &copy; 2026 Walking-Fish Group. All rights reserved.
+                </div>
+            </div>
+        </footer>
 
-    <!-- Bulk Top-Up Section -->
-    <div id="bulk-section" class="bulk-section">
-      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">
-        Enter offline top-ups recorded on paper during network outage.
-        All entries will be processed together when submitted.
-      </p>
-      <div style="overflow-x:auto;">
-        <table class="bulk-table">
-          <thead>
-            <tr>
-              <th>Ticket Code</th>
-              <th>Amount</th>
-              <th>Method</th>
-              <th>Note</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="bulk-rows">
-            <tr>
-              <td><input type="text" class="bulk-code" placeholder="TKT-XXXXXX" maxlength="12"></td>
-              <td><input type="number" class="bulk-amount" placeholder="D" min="50" style="min-width:70px;"></td>
-              <td>
-                <select class="bulk-method">
-                  <option value="wave">Wave</option>
-                  <option value="cash">Cash</option>
-                </select>
-              </td>
-              <td><input type="text" class="bulk-note" placeholder="Booth # / staff name"></td>
-              <td><button class="del-btn" onclick="this.closest('tr').remove()">&times;</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-secondary" id="bulk-add-row">+ Add Row</button>
-        <button class="btn btn-primary" id="bulk-submit-btn">Submit All</button>
-      </div>
-      <div id="bulk-result" class="scanner-result" style="display:none;"></div>
-    </div>
-
-  </div>
-
-  <!-- ─── PRINT-READY SLIP (hidden, shown during print) ─── -->
-  <div id="print-slip" class="print-slip" style="display:none;">
-    <div style="text-align:center;margin-bottom:24px;">
-      <h1 style="font-size:24px;">Walking-Fish Group</h1>
-      <p style="font-size:14px;">Piroake Fest 2026 — Activity Credit</p>
-    </div>
-    <div id="slip-content"></div>
-  </div>
-
-  <!-- ─── BILL RECEIPT FOR PRINTING (hidden, shown only during window.print()) ─── -->
-  <div id="bill-receipt-print" style="display:none;">
-    <div class="receipt-print-wrapper">
-      <div id="bill-receipt-print-content"></div>
-    </div>
-  </div>
-
-</div>
-</section>
-
-</main>
-
-<footer>
-<div class="w">
-  <div class="grid-4">
-    <div>
-      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
-      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
-    </div>
-    <div>
-      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
-      <a href="/walkie-talkie">Experiences</a>
-      <a href="/piroake">Piroake Fest</a>
-      <a href="/muster-point">Media</a>
-      <a href="/gallery">Gallery</a>
-    </div>
-    <div>
-      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
-      <a href="/about">About Us</a>
-      <a href="/partners">Partners</a>
-      <a href="/vendors">Vendors</a>
-      <a href="/contact">Contact</a>
-    </div>
-    <div>
-      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
-      <a href="/blog">Blog</a>
-      <a href="/tickets">Tickets</a>
-      <a href="/top-up">Top Up</a>
-      <a href="/privacy">Privacy Policy</a>
-      <a href="/vendor-login">Vendor Login</a>
-      <a href="/admin-login" style="font-size:12px;opacity:0.5;">Admin</a>
-    </div>
-  </div>
-  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
-</div>
-</footer>
-
-<nav class="bottom-tabs" aria-label="Main navigation">
-<div class="tab-row">
-  <a href="/">
-    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
-    Home
-  </a>
-  <a href="/piroake">
-    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
-    Events
-  </a>
-  <a href="/vendors">
-    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
-    Vendors
-  </a>
-  <a href="/tickets">
-    <span><svg viewBox="0 0 24 24"><path d="M20 12V4H4v8"/><path d="M4 12v8h16v-8"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg></span>
-    Tickets
-  </a>
-  <a href="#" id="menu-toggle">
-    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
-    Menu
-  </a>
-</div>
-</nav>
-<script>(function(){var p=window.location.pathname.replace(/\\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
-
-</body>
+        <nav class="bottom-tabs" aria-label="Main navigation">
+            <div class="tab-row">
+                <a href="/">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                            /></svg
+                    ></span>
+                    Home
+                </a>
+                <a href="/piroake">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" /></svg
+                    ></span>
+                    Events
+                </a>
+                <a href="/vendors">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path
+                                d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"
+                            />
+                            <path d="M16 10a4 4 0 01-8 0" /></svg
+                    ></span>
+                    Vendors
+                </a>
+                <a href="/tickets">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path d="M20 12V4H4v8" />
+                            <path d="M4 12v8h16v-8" />
+                            <line x1="12" y1="4" x2="12" y2="20" />
+                            <line x1="4" y1="12" x2="20" y2="12" /></svg
+                    ></span>
+                    Tickets
+                </a>
+                <a href="#" id="menu-toggle">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line></svg
+                    ></span>
+                    Menu
+                </a>
+            </div>
+        </nav>
+        <script>
+            (function () {
+                var p = window.location.pathname.replace(/\\.html$/, "");
+                document
+                    .querySelectorAll(".bottom-tabs a")
+                    .forEach(function (a) {
+                        var h = a.getAttribute("href");
+                        if (h !== "#" && h === p) a.classList.add("active");
+                    });
+            })();
+        </script>
+    </body>
 </html>

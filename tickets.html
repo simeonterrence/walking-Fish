@@ -161,19 +161,6 @@
 .payment-option-label { font-weight: 500; font-size: 14px; }
 .payment-option-desc { font-size: 12px; color: var(--muted); }
 
-/* ─── Wave Transfer Proof ─── */
-.wave-details { display: none; margin: 12px 0; padding: 16px; background: var(--accent-dim); border-radius: var(--radius); }
-.wave-details.active { display: block; }
-.wave-number-box {
-  font-family: var(--font-mono); font-size: 24px; font-weight: 700;
-  text-align: center; padding: 12px; margin: 12px 0;
-  background: var(--surface); border: 2px dashed var(--accent);
-  border-radius: var(--radius);
-}
-.wave-amount-box {
-  text-align: center; font-size: 18px; font-weight: 600; margin: 8px 0;
-}
-
 /* ─── Confirmation Section ─── */
 .confirmation-view { display: none; }
 .confirmation-view.active { display: block; }
@@ -292,7 +279,7 @@
   <div class="w">
     <p class="label">Piroake Fest 2026</p>
     <h1>Tickets</h1>
-    <p>Select your passes and activity credits. Secure checkout via ModemPay or Wave Transfer.</p>
+    <p>Select your passes and activity credits. Secure checkout via ModemPay.</p>
   </div>
 </section>
 
@@ -342,42 +329,14 @@
 
           <label style="font-size:13px;font-weight:500;display:block;margin:16px 0 8px;color:var(--muted);">Payment method</label>
           <div class="payment-options">
-            <label class="payment-option" id="pay-modempay" data-payment="modempay">
-              <input type="radio" name="payment" value="modempay" checked>
-              <div>
-                <div class="payment-option-label">ModemPay</div>
-                <div class="payment-option-desc">Pay online with card or mobile money</div>
-                <div class="ios-note" id="ios-modempay-note" style="display:none;font-size:12px;color:#c53030;margin-top:6px;">
-                  ⚠️ <strong>iPhone users:</strong> If the Wave app doesn't open after redirect, select <strong>Wave Transfer</strong> below to pay directly.
+            <div class="payment-option selected" style="cursor:default;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:24px;">💳</span>
+                <div>
+                  <div class="payment-option-label">ModemPay</div>
+                  <div class="payment-option-desc">Pay online with card or mobile money</div>
                 </div>
               </div>
-            </label>
-            <label class="payment-option" id="pay-wave" data-payment="wave">
-              <input type="radio" name="payment" value="wave">
-              <div>
-                <div class="payment-option-label">Wave / Bank Transfer</div>
-                <div class="payment-option-desc">Send to our Wave number or bank account and upload proof</div>
-              </div>
-            </label>
-          </div>
-
-          <!-- Wave Transfer details (shown when Wave selected) -->
-          <div class="wave-details" id="wave-details">
-            <p style="font-size:13px;color:var(--muted);margin-bottom:4px;">Send exact amount to one of the following:</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 12px 0;">
-              <div style="background: var(--surface); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 12px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 4px;">Wave Number</div>
-                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700;" id="wave-number-display">+220 696 3419</div>
-              </div>
-              <div style="background: var(--surface); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 12px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 4px;">Bank Account</div>
-                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700;">206370720110</div>
-              </div>
-            </div>
-            <div class="wave-amount-box">Amount: <span id="wave-amount">D0</span></div>
-            <div class="form-group" style="margin-top:12px;">
-              <label for="wave-ref">Transaction Reference / Proof</label>
-              <input type="text" id="wave-ref" placeholder="e.g. Wave reference or Bank transaction ID">
             </div>
           </div>
 

@@ -1,274 +1,629 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Ticketing dashboard for managing Piroake Fest 2026 ticketing operations.">
-<meta property="og:title" content="Ticketing Dashboard | Walking-Fish Group">
-<link rel="canonical" href="https://www.walkingfish.gm/admin-tickets">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
-<title>Ticketing Dashboard | Walking-Fish Group</title>
-<link rel="stylesheet" href="style.css?v=2">
-<style>
-.admin-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
-.admin-header h1 { font-size: 20px; }
-.admin-nav { display: flex; align-items: center; gap: 16px; }
-.ticket-section { margin-bottom: 24px; }
-.ticket-section h3 { font-size: 16px; margin-bottom: 12px; }
-.order-filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-.order-filter-btn { padding: 6px 14px; font-size: 13px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-family: var(--font-body); font-weight: 500; background: var(--surface); color: var(--fg); transition: all .15s; min-width: auto; min-height: auto; }
-.order-filter-btn:hover { background: var(--accent-dim); }
-.order-filter-active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
-.stat-card .num { font-family: var(--font-display); font-size: 32px; font-weight: 600; }
-.stat-card .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-.app-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.app-table th { text-align: left; padding: 12px 8px; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-.app-table td { padding: 12px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.status-badge { display: inline-block; padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; text-transform: capitalize; }
-.status-pending { background: #FEF3C7; color: #92400E; }
-.status-approved { background: #D1FAE5; color: #065F46; }
-.status-rejected { background: #FEE2E2; color: #991B1B; }
-.action-btn { padding: 6px 16px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font-body); font-weight: 500; }
-.action-approve { background: #065F46; color: white; }
-.action-reject { background: #DC2626; color: white; margin-left: 6px; }
-.empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
-@media (max-width: 768px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .app-table { font-size: 13px; }
-}
-</style>
-<script defer src="nav.min.js?v=3"></script>
-</head>
-<body>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta
+            name="description"
+            content="Ticketing dashboard for managing Piroake Fest 2026 ticketing operations."
+        />
+        <meta
+            property="og:title"
+            content="Ticketing Dashboard | Walking-Fish Group"
+        />
+        <link rel="canonical" href="https://www.walkingfish.gm/admin-tickets" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>"
+        />
+        <title>Ticketing Dashboard | Walking-Fish Group</title>
+        <link rel="stylesheet" href="style.css?v=2" />
+        <style>
+            .admin-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px 0;
+            }
+            .admin-header h1 {
+                font-size: 20px;
+            }
+            .admin-nav {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+            .ticket-section {
+                margin-bottom: 24px;
+            }
+            .ticket-section h3 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+            .order-filter-bar {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+            }
+            .order-filter-btn {
+                padding: 6px 14px;
+                font-size: 13px;
+                border-radius: 6px;
+                border: 1px solid var(--border);
+                cursor: pointer;
+                font-family: var(--font-body);
+                font-weight: 500;
+                background: var(--surface);
+                color: var(--fg);
+                transition: all 0.15s;
+                min-width: auto;
+                min-height: auto;
+            }
+            .order-filter-btn:hover {
+                background: var(--accent-dim);
+            }
+            .order-filter-active {
+                background: var(--accent);
+                color: #fff;
+                border-color: var(--accent);
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+                margin-bottom: 40px;
+            }
+            .stat-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+            }
+            .stat-card .num {
+                font-family: var(--font-display);
+                font-size: 32px;
+                font-weight: 600;
+            }
+            .stat-card .lbl {
+                font-size: 13px;
+                color: var(--muted);
+                margin-top: 4px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            .app-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            .app-table th {
+                text-align: left;
+                padding: 12px 8px;
+                border-bottom: 2px solid var(--border);
+                font-weight: 600;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: var(--muted);
+            }
+            .app-table td {
+                padding: 12px 8px;
+                border-bottom: 1px solid var(--border);
+                vertical-align: middle;
+            }
+            .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 100px;
+                font-size: 12px;
+                font-weight: 500;
+                text-transform: capitalize;
+            }
+            .status-pending {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .status-approved {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            .status-rejected {
+                background: #fee2e2;
+                color: #991b1b;
+            }
+            .action-btn {
+                padding: 6px 16px;
+                font-size: 13px;
+                border-radius: 6px;
+                border: none;
+                cursor: pointer;
+                font-family: var(--font-body);
+                font-weight: 500;
+            }
+            .action-approve {
+                background: #065f46;
+                color: white;
+            }
+            .action-reject {
+                background: #dc2626;
+                color: white;
+                margin-left: 6px;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 60px 20px;
+                color: var(--muted);
+            }
+            @media (max-width: 768px) {
+                .stats-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                .app-table {
+                    font-size: 13px;
+                }
+            }
+        </style>
+        <script defer src="nav.min.js?v=3"></script>
+    </head>
+    <body>
+        <header>
+            <nav>
+                <div class="w">
+                    <a
+                        href="/"
+                        class="logo"
+                        style="display: flex; align-items: center"
+                        ><img
+                            src="/images/wf-main-logo.jpg"
+                            alt="Walking-Fish Group"
+                            style="height: 36px"
+                    /></a>
+                    <div class="nav-links">
+                        <a href="/">Home</a>
+                        <a href="/walkie-talkie">Experiences</a>
+                        <a href="/piroake">Piroake</a>
+                        <a href="/muster-point">Media</a>
+                        <a href="/vendors">Vendors</a>
+                        <details class="nav-more">
+                            <summary>More</summary>
+                            <div class="nav-dropdown">
+                                <a href="/top-up">Top Up</a>
+                                <a href="/about">About</a>
+                                <a href="/gallery">Gallery</a>
+                                <a href="/blog">Blog</a>
+                                <a href="/partners">Partners</a>
+                                <a href="/contact">Contact</a>
+                            </div>
+                        </details>
+                        <a
+                            href="/login"
+                            class="nav-cta"
+                            aria-label="Sign in to admin or vendor dashboard"
+                            >Sign In</a
+                        >
+                    </div>
+                    <button
+                        class="nav-toggle"
+                        aria-label="Toggle navigation menu"
+                    >
+                        <span aria-hidden="true">&#9776;</span>
+                    </button>
+                </div>
+            </nav>
+        </header>
 
-<header><nav>
-<div class="w">
-  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
-  <div class="nav-links">
-    <a href="/">Home</a>
-    <a href="/walkie-talkie">Experiences</a>
-    <a href="/piroake">Piroake</a>
-    <a href="/muster-point">Media</a>
-    <a href="/vendors">Vendors</a>
-    <details class="nav-more">
-      <summary>More</summary>
-      <div class="nav-dropdown">
-        <a href="/top-up">Top Up</a>
-        <a href="/about">About</a>
-        <a href="/gallery">Gallery</a>
-        <a href="/blog">Blog</a>
-        <a href="/partners">Partners</a>
-        <a href="/contact">Contact</a>
-      </div>
-    </details>
-    <a href="/login" class="nav-cta" aria-label="Sign in to admin or vendor dashboard">Sign In</a>
-  </div>
-  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true">&#9776;</span></button>
-</div>
-</nav></header>
+        <main>
+            <div class="w" style="padding-block: 32px">
+                <div class="admin-header">
+                    <div>
+                        <p class="label" style="color: var(--accent)">
+                            Ticketing Dashboard
+                        </p>
+                        <h1>Piroake Fest 2026 Ticketing</h1>
+                    </div>
+                    <div class="admin-nav">
+                        <a href="/" style="font-size: 14px; color: var(--muted)"
+                            >Back to site</a
+                        >
+                        <button
+                            id="logout-btn"
+                            class="btn btn-secondary"
+                            style="padding: 6px 14px; font-size: 13px"
+                        >
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
 
-<main>
-<div class="w" style="padding-block: 32px;">
-  <div class="admin-header">
-    <div>
-      <p class="label" style="color:var(--accent);">Ticketing Dashboard</p>
-      <h1>Piroake Fest 2026 Ticketing</h1>
-    </div>
-    <div class="admin-nav">
-      <a href="/" style="font-size:14px;color:var(--muted);">Back to site</a>
-      <button id="logout-btn" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">Sign Out</button>
-    </div>
-  </div>
+                <!-- 1. Inventory Overview -->
+                <div class="ticket-section">
+                    <h3>Inventory Overview</h3>
+                    <div id="inventory-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading inventory...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 1. Inventory Overview -->
-  <div class="ticket-section">
-    <h3>Inventory Overview</h3>
-    <div id="inventory-container">
-      <p style="color:var(--muted);font-size:14px;">Loading inventory...</p>
-    </div>
-  </div>
+                <!-- 2. Order Management -->
+                <div class="ticket-section">
+                    <h3>Orders</h3>
+                    <div class="order-filter-bar">
+                        <button
+                            class="order-filter-btn order-filter-active"
+                            data-status="all"
+                        >
+                            All
+                        </button>
+                        <button class="order-filter-btn" data-status="unpaid">
+                            Unpaid
+                        </button>
+                        <button class="order-filter-btn" data-status="paid">
+                            Paid
+                        </button>
+                        <button
+                            class="order-filter-btn"
+                            data-status="pending_verification"
+                        >
+                            Pending Verification
+                        </button>
+                        <button
+                            class="order-filter-btn"
+                            data-status="cancelled"
+                        >
+                            Cancelled
+                        </button>
+                    </div>
+                    <div id="orders-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading orders...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 2. Order Management -->
-  <div class="ticket-section">
-    <h3>Orders</h3>
-    <div class="order-filter-bar">
-      <button class="order-filter-btn order-filter-active" data-status="all">All</button>
-      <button class="order-filter-btn" data-status="unpaid">Unpaid</button>
-      <button class="order-filter-btn" data-status="paid">Paid</button>
-      <button class="order-filter-btn" data-status="pending_verification">Pending Verification</button>
-      <button class="order-filter-btn" data-status="cancelled">Cancelled</button>
-    </div>
-    <div id="orders-container">
-      <p style="color:var(--muted);font-size:14px;">Loading orders...</p>
-    </div>
-  </div>
+                <!-- 3. Ticket Types -->
+                <div
+                    class="ticket-section"
+                    style="
+                        border-top: 1px solid var(--border);
+                        padding-top: 20px;
+                    "
+                >
+                    <h3>Ticket Types</h3>
+                    <div id="ticket-types-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading ticket types...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 3. Ticket Types -->
-  <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
-    <h3>Ticket Types</h3>
-    <div id="ticket-types-container">
-      <p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>
-    </div>
-  </div>
+                <!-- 4. Top-Up Bundles -->
+                <div
+                    class="ticket-section"
+                    style="
+                        border-top: 1px solid var(--border);
+                        padding-top: 20px;
+                    "
+                >
+                    <h3>Top-Up Bundles</h3>
+                    <div id="bundles-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading top-up bundles...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 4. Top-Up Bundles -->
-  <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
-    <h3>Top-Up Bundles</h3>
-    <div id="bundles-container">
-      <p style="color:var(--muted);font-size:14px;">Loading top-up bundles...</p>
-    </div>
-  </div>
+                <!-- 5. Balance Cap -->
+                <div
+                    class="ticket-section"
+                    style="
+                        border-top: 1px solid var(--border);
+                        padding-top: 20px;
+                    "
+                >
+                    <h3>Balance Cap</h3>
+                    <div id="balance-cap-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading setting...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 5. Balance Cap -->
-  <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
-    <h3>Balance Cap</h3>
-    <div id="balance-cap-container">
-      <p style="color:var(--muted);font-size:14px;">Loading setting...</p>
-    </div>
-  </div>
+                <!-- 6. Scanner Codes -->
+                <div
+                    class="ticket-section"
+                    style="
+                        border-top: 1px solid var(--border);
+                        padding-top: 20px;
+                    "
+                >
+                    <h3>Staff Scanner Codes</h3>
+                    <div id="scanner-codes-container">
+                        <p style="color: var(--muted); font-size: 14px">
+                            Loading scanner codes...
+                        </p>
+                    </div>
+                </div>
 
-  <!-- 6. Scanner Codes -->
-  <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
-    <h3>Staff Scanner Codes</h3>
-    <div id="scanner-codes-container">
-      <p style="color:var(--muted);font-size:14px;">Loading scanner codes...</p>
-    </div>
-  </div>
+                <!-- Account Settings -->
+                <details
+                    style="
+                        margin: 32px 0;
+                        border-top: 1px solid var(--border);
+                        padding-top: 24px;
+                    "
+                >
+                    <summary
+                        style="
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: var(--muted);
+                        "
+                    >
+                        Account Settings
+                    </summary>
+                    <div style="margin-top: 16px; max-width: 400px">
+                        <form id="pw-change-form">
+                            <div class="form-group">
+                                <label for="pw-current">Current Password</label>
+                                <input
+                                    type="password"
+                                    id="pw-current"
+                                    placeholder="Enter current password"
+                                    autocomplete="current-password"
+                                    style="
+                                        width: 100%;
+                                        padding: 8px 12px;
+                                        border: 1px solid var(--border);
+                                        border-radius: 6px;
+                                        font-family: var(--font-body);
+                                        font-size: 14px;
+                                    "
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="pw-new">New Password</label>
+                                <input
+                                    type="password"
+                                    id="pw-new"
+                                    placeholder="Enter new password"
+                                    autocomplete="new-password"
+                                    minlength="8"
+                                    style="
+                                        width: 100%;
+                                        padding: 8px 12px;
+                                        border: 1px solid var(--border);
+                                        border-radius: 6px;
+                                        font-family: var(--font-body);
+                                        font-size: 14px;
+                                    "
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="pw-confirm"
+                                    >Confirm New Password</label
+                                >
+                                <input
+                                    type="password"
+                                    id="pw-confirm"
+                                    placeholder="Confirm new password"
+                                    autocomplete="new-password"
+                                    style="
+                                        width: 100%;
+                                        padding: 8px 12px;
+                                        border: 1px solid var(--border);
+                                        border-radius: 6px;
+                                        font-family: var(--font-body);
+                                        font-size: 14px;
+                                    "
+                                />
+                            </div>
+                            <p
+                                id="pw-error"
+                                style="
+                                    color: #dc2626;
+                                    font-size: 13px;
+                                    display: none;
+                                "
+                            ></p>
+                            <p
+                                id="pw-success"
+                                style="
+                                    color: #065f46;
+                                    font-size: 13px;
+                                    display: none;
+                                "
+                            ></p>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                style="
+                                    padding: 8px 20px;
+                                    font-size: 13px;
+                                    justify-content: center;
+                                "
+                                id="pw-change-btn"
+                            >
+                                Change Password
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </main>
 
-  <!-- 7. Wave Transfer Payment Proofs -->
-  <div class="ticket-section" style="border-top:1px solid var(--border);padding-top:20px;">
-    <h3>Wave Transfer Payments</h3>
-    <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Review pending Wave Transfer payment proofs. Confirm to release tickets, or reject to cancel the order.</p>
-    <div id="proofs-container" style="overflow-x:auto;">
-      <p style="color:var(--muted);font-size:14px;">Loading payment proofs...</p>
-    </div>
-  </div>
+        <script src="supabase-config.js?v=2"></script>
+        <script src="vendor-auth.js?v=6"></script>
+        <script src="admin-tickets.js?v=3"></script>
+        <script>
+            (function () {
+                var session = getSession();
+                if (
+                    session.type !== "admin" &&
+                    session.role !== "ticketing_role"
+                ) {
+                    window.location.href = "/login";
+                }
+            })();
 
-  <!-- Account Settings -->
-  <details style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;">
-    <summary style="cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);">Account Settings</summary>
-    <div style="margin-top:16px;max-width:400px;">
-      <form id="pw-change-form">
-        <div class="form-group">
-          <label for="pw-current">Current Password</label>
-          <input type="password" id="pw-current" placeholder="Enter current password" autocomplete="current-password" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
-        </div>
-        <div class="form-group">
-          <label for="pw-new">New Password</label>
-          <input type="password" id="pw-new" placeholder="Enter new password" autocomplete="new-password" minlength="8" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
-        </div>
-        <div class="form-group">
-          <label for="pw-confirm">Confirm New Password</label>
-          <input type="password" id="pw-confirm" placeholder="Confirm new password" autocomplete="new-password" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
-        </div>
-        <p id="pw-error" style="color:#DC2626;font-size:13px;display:none;"></p>
-        <p id="pw-success" style="color:#065F46;font-size:13px;display:none;"></p>
-        <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:13px;justify-content:center;" id="pw-change-btn">Change Password</button>
-      </form>
-    </div>
-  </details>
+            document.addEventListener("DOMContentLoaded", function () {
+                // Load all ticketing sections
+                loadInventory();
+                loadOrders();
+                loadTicketTypes();
+                loadTopUpBundles();
+                loadBalanceCap();
+                loadScannerCodes();
+                document
+                    .getElementById("logout-btn")
+                    .addEventListener("click", function () {
+                        clearSession();
+                        window.location.href = "/login";
+                    });
 
-</div>
-</main>
+                // Password change
+                document
+                    .getElementById("pw-change-form")
+                    .addEventListener("submit", function (e) {
+                        e.preventDefault();
+                        var current =
+                            document.getElementById("pw-current").value;
+                        var newPw = document.getElementById("pw-new").value;
+                        var confirm =
+                            document.getElementById("pw-confirm").value;
+                        var errorEl = document.getElementById("pw-error");
+                        var successEl = document.getElementById("pw-success");
+                        errorEl.style.display = "none";
+                        successEl.style.display = "none";
 
-<script src="supabase-config.js?v=2"></script>
-<script src="vendor-auth.js?v=6"></script>
-<script src="admin-tickets.js?v=3"></script>
-<script>
-(function() {
-  var session = getSession();
-  if (session.type !== 'admin' && session.role !== 'ticketing_role') {
-    window.location.href = '/login';
-  }
-})();
+                        if (!current || !newPw) {
+                            errorEl.textContent = "Fill in all fields.";
+                            errorEl.style.display = "block";
+                            return;
+                        }
+                        if (newPw.length < 8) {
+                            errorEl.textContent =
+                                "New password must be at least 8 characters.";
+                            errorEl.style.display = "block";
+                            return;
+                        }
+                        if (newPw !== confirm) {
+                            errorEl.textContent = "Passwords do not match.";
+                            errorEl.style.display = "block";
+                            return;
+                        }
 
-document.addEventListener('DOMContentLoaded', function() {
-  // Load all ticketing sections
-  loadInventory();
-  loadOrders();
-  loadTicketTypes();
-  loadTopUpBundles();
-  loadBalanceCap();
-  loadScannerCodes();
-  loadPaymentProofs();
+                        var btn = document.getElementById("pw-change-btn");
+                        btn.disabled = true;
+                        btn.textContent = "Changing...";
 
-  document.getElementById('logout-btn').addEventListener('click', function() {
-    clearSession();
-    window.location.href = '/login';
-  });
+                        var session = getStoredSession();
+                        var email = session.user && session.user.email;
+                        if (!email) {
+                            errorEl.textContent =
+                                "Session expired. Sign in again.";
+                            errorEl.style.display = "block";
+                            btn.disabled = false;
+                            btn.textContent = "Change Password";
+                            return;
+                        }
 
-  // Password change
-  document.getElementById('pw-change-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var current = document.getElementById('pw-current').value;
-    var newPw = document.getElementById('pw-new').value;
-    var confirm = document.getElementById('pw-confirm').value;
-    var errorEl = document.getElementById('pw-error');
-    var successEl = document.getElementById('pw-success');
-    errorEl.style.display = 'none';
-    successEl.style.display = 'none';
+                        authLogin(email, current)
+                            .catch(function (err) {
+                                return Promise.reject(
+                                    new Error("Current password is incorrect."),
+                                );
+                            })
+                            .then(function () {
+                                return changeVendorPassword(newPw);
+                            })
+                            .then(function () {
+                                successEl.textContent =
+                                    "Password changed successfully.";
+                                successEl.style.display = "block";
+                                document.getElementById("pw-current").value =
+                                    "";
+                                document.getElementById("pw-new").value = "";
+                                document.getElementById("pw-confirm").value =
+                                    "";
+                            })
+                            .catch(function (err) {
+                                errorEl.textContent =
+                                    err.message || "Failed to change password.";
+                                errorEl.style.display = "block";
+                            })
+                            .then(function () {
+                                btn.disabled = false;
+                                btn.textContent = "Change Password";
+                            });
+                    });
+            });
+        </script>
 
-    if (!current || !newPw) { errorEl.textContent = 'Fill in all fields.'; errorEl.style.display = 'block'; return; }
-    if (newPw.length < 8) { errorEl.textContent = 'New password must be at least 8 characters.'; errorEl.style.display = 'block'; return; }
-    if (newPw !== confirm) { errorEl.textContent = 'Passwords do not match.'; errorEl.style.display = 'block'; return; }
-
-    var btn = document.getElementById('pw-change-btn');
-    btn.disabled = true;
-    btn.textContent = 'Changing...';
-
-    var session = getStoredSession();
-    var email = session.user && session.user.email;
-    if (!email) { errorEl.textContent = 'Session expired. Sign in again.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Change Password'; return; }
-
-    authLogin(email, current).catch(function(err) {
-      return Promise.reject(new Error('Current password is incorrect.'));
-    }).then(function() {
-      return changeVendorPassword(newPw);
-    }).then(function() {
-      successEl.textContent = 'Password changed successfully.';
-      successEl.style.display = 'block';
-      document.getElementById('pw-current').value = '';
-      document.getElementById('pw-new').value = '';
-      document.getElementById('pw-confirm').value = '';
-    }).catch(function(err) {
-      errorEl.textContent = err.message || 'Failed to change password.';
-      errorEl.style.display = 'block';
-    }).then(function() {
-      btn.disabled = false;
-      btn.textContent = 'Change Password';
-    });
-  });
-});
-</script>
-
-<nav class="bottom-tabs" aria-label="Main navigation">
-<div class="tab-row">
-  <a href="/">
-    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
-    Home
-  </a>
-  <a href="/piroake">
-    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
-    Events
-  </a>
-  <a href="/vendors">
-    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
-    Vendors
-  </a>
-  <a href="/contact">
-    <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-    Contact
-  </a>
-  <a href="#" id="menu-toggle">
-    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
-    Menu
-  </a>
-</div>
-</nav>
-<script>(function(){var p=window.location.pathname.replace(/\\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
-
-</body>
+        <nav class="bottom-tabs" aria-label="Main navigation">
+            <div class="tab-row">
+                <a href="/">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                            /></svg
+                    ></span>
+                    Home
+                </a>
+                <a href="/piroake">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" /></svg
+                    ></span>
+                    Events
+                </a>
+                <a href="/vendors">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path
+                                d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"
+                            />
+                            <path d="M16 10a4 4 0 01-8 0" /></svg
+                    ></span>
+                    Vendors
+                </a>
+                <a href="/contact">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <path
+                                d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                            />
+                            <polyline points="22,6 12,13 2,6" /></svg
+                    ></span>
+                    Contact
+                </a>
+                <a href="#" id="menu-toggle">
+                    <span
+                        ><svg viewBox="0 0 24 24">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line></svg
+                    ></span>
+                    Menu
+                </a>
+            </div>
+        </nav>
+        <script>
+            (function () {
+                var p = window.location.pathname.replace(/\\.html$/, "");
+                document
+                    .querySelectorAll(".bottom-tabs a")
+                    .forEach(function (a) {
+                        var h = a.getAttribute("href");
+                        if (h !== "#" && h === p) a.classList.add("active");
+                    });
+            })();
+        </script>
+    </body>
 </html>

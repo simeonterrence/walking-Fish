@@ -1351,10 +1351,8 @@
 
     if (method === 'modempay') {
       handleBoothModemPay(ticket, amount);
-    } else if (method === 'wave') {
-      handleBoothWaveCash(ticket, amount, 'wave_transfer');
     } else if (method === 'cash') {
-      handleBoothWaveCash(ticket, amount, 'cash');
+      handleBoothCash(ticket, amount);
     }
   }
 
@@ -1455,9 +1453,8 @@
     processBoothTopup(ticket, amount, 'modempay', 'Booth — manual override (ModemPay)');
   }
 
-  function handleBoothWaveCash(ticket, amount, method) {
-    var source = method === 'wave_transfer' ? 'wave' : 'cash';
-    processBoothTopup(ticket, amount, source, 'Booth top-up via ' + method);
+  function handleBoothCash(ticket, amount) {
+    processBoothTopup(ticket, amount, 'cash', 'Booth top-up via cash');
   }
 
   function processBoothTopup(ticket, amount, source, notes) {
@@ -1640,7 +1637,7 @@
     tr.innerHTML =
       '<td><input type="text" class="bulk-code" placeholder="TKT-XXXXXX" maxlength="12"></td>' +
       '<td><input type="number" class="bulk-amount" placeholder="D" min="50" style="min-width:70px;"></td>' +
-      '<td><select class="bulk-method"><option value="wave">Wave</option><option value="cash">Cash</option></select></td>' +
+      '<td><select class="bulk-method"><option value="cash">Cash</option></select></td>' +
       '<td><input type="text" class="bulk-note" placeholder="Booth # / staff name"></td>' +
       '<td><button class="del-btn" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
     tbody.appendChild(tr);
@@ -1669,7 +1666,7 @@
       entries.push({
         code: normalizedCode,
         amount: amountVal,
-        method: method ? method.value : 'wave',
+        method: method ? method.value : 'cash',
         note: note ? note.value.trim() : '',
       });
     });

@@ -1,10 +1,9 @@
 /* tickets.js — Piroake Fest 2026 ticket shop and dashboard
  *
  * Handles four views:
- *   1. Shop — ticket type listing, cart, checkout (ModemPay / Wave)
+ *   1. Shop — ticket type listing, cart, checkout (ModemPay)
  *   2. ModemPay — create order → create intent → simulate webhook → show tickets
- *   3. Wave Transfer — create order → insert payment proof → pending verification
- *   4. Dashboard — Supabase Auth magic link, ticket display, QR codes, balances,
+ *   3. Dashboard — Supabase Auth magic link, ticket display, QR codes, balances,
  *      transaction history
  *
  * API endpoints used (all via anon key unless JWT-authenticated):
@@ -15,7 +14,6 @@
  *   POST /functions/v1/ticketing/create-order
  *   POST /functions/v1/ticketing/create-intent
  *   POST /functions/v1/ticketing/webhook
- *   POST /rest/v1/payment_proofs  (anon, for Wave proof submission)
  *   POST /auth/v1/magic_link       (anon, for magic link login)
  *   POST /auth/v1/token            (anon, for token refresh)
  */
@@ -40,7 +38,6 @@
   /* ─── State ─────────────────────────────────────────────────────────────── */
   let cart = {};                  // { [ticketTypeId]: quantity }
   let ticketTypes = [];           // cached ticket type rows
-  let selectedPayment = 'modempay';
   let orderId = null;
   let orderTotal = 0;
   let userEmail = null;           // set after login hash is parsed
@@ -55,17 +52,10 @@
     setupDashboard();
     checkLoginHash();
     checkPaymentReturn();
-    detectiOS();
+
   }
 
-  /* ─── iOS detection (Safari deep links to Wave don't work on iPhone) ───── */
-  function detectiOS() {
-    var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    if (iOS) {
-      var note = document.getElementById('ios-modempay-note');
-      if (note) note.style.display = 'block';
-    }
-  }
+
 
   /* ═══════════════════════════════════════════════════════════════════════════
      SECTION 1 — SHOP: TICKET TYPE LISTING & CART
@@ -247,18 +237,7 @@
       $('checkout-btn').disabled = !email || orderTotal <= 0;
     });
 
-    /* payment method selection */
-    document.querySelectorAll('[data-payment]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        document.querySelectorAll('[data-payment]').forEach(function (p) {
-          p.classList.remove('selected');
-        });
-        el.classList.add('selected');
-        el.querySelector('input[type="radio"]').checked = true;
-        selectedPayment = el.getAttribute('data-payment');
-        $('wave-details').classList.toggle('active', selectedPayment === 'wave');
-      });
-    });
+
 
     $('checkout-btn').addEventListener('click', handleCheckout);
 
@@ -313,11 +292,7 @@
 
       orderId = orderData.order_id;
 
-      if (selectedPayment === 'modempay') {
-        await checkoutModemPay(email, name);
-      } else {
-        await checkoutWave(email);
-      }
+      await checkoutModemPay(email, name);
     } catch (err) {
       errEl.textContent = err.message;
       errEl.style.display = 'block';
@@ -358,70 +333,11 @@
     /* 4. Redirect to ModemPay hosted payment page */
     var payUrl = intentData.payment_url || '';
     if (!payUrl || !payUrl.startsWith('http')) {
-      throw new Error('Payment gateway did not return a valid checkout URL. Please try again or use Wave Transfer.');
+      throw new Error('Payment gateway did not return a valid checkout URL. Please try again.');
     }
     window.location.href = payUrl;
   }
 
-  /* ─── Wave Transfer Flow ─────────────────────────────────────────────────── */
-
-  async function checkoutWave(email) {
-    var ref = $('wave-ref').value.trim();
-    if (!ref) {
-      var errEl = $('checkout-error');
-      errEl.textContent = 'Please enter your transaction reference / proof.';
-      errEl.style.display = 'block';
-      $('checkout-btn').disabled = false;
-      $('checkout-btn').textContent = 'Proceed to Checkout';
-      return;
-    }
-
-    /* 2. Insert payment proof (anon → RLS allows INSERT) */
-    var proofRes = await fetch(SUPABASE_URL + '/rest/v1/payment_proofs', {
-      method: 'POST',
-      headers: ANON_H,
-      body: JSON.stringify({
-        order_id:         orderId,
-        email:            email,
-        amount:           orderTotal,
-        reference_number: ref
-      })
-    });
-
-    if (!proofRes.ok) {
-      var errData = {};
-      try { errData = await proofRes.json(); } catch (_) {}
-      throw new Error(errData.message || errData.error || 'Failed to submit payment proof');
-    }
-
-    /* 3. Show pending verification */
-    $('checkout-section').classList.remove('active');
-    var conf = $('confirmation-view');
-    conf.classList.add('active');
-    conf.innerHTML =
-      '<div style="font-size:48px;text-align:center;margin-bottom:16px;">⏳</div>'
-      + '<h2 style="text-align:center;margin-bottom:8px;">Awaiting Payment Verification</h2>'
-      + '<p style="font-size:14px;color:var(--muted);text-align:center;margin:8px 0 24px;max-width:400px;margin-inline:auto;">'
-      +   'Your order has been reserved. <strong>No tickets have been issued yet.</strong> Please follow the steps below to complete your payment:'
-      + '</p>'
-      + '<div style="background:var(--accent-dim);border:1px dashed var(--accent);border-radius:12px;padding:20px;margin:20px 0;text-align:left;">'
-      +   '<h4 style="margin:0 0 12px;color:var(--accent);font-size:14px;text-transform:uppercase;letter-spacing:0.05em;">How to Complete Your Purchase:</h4>'
-      +   '<ol style="margin:0;padding-left:20px;line-height:1.6;font-size:13px;color:var(--foreground);">'
-      +     '<li style="margin-bottom:8px;">Send exactly <strong>D' + orderTotal.toLocaleString() + '</strong> using Wave to <strong>+220 696 3419</strong> or via Bank Transfer to <strong>206370720110</strong>.</li>'
-      +     '<li style="margin-bottom:8px;">Our team will verify the transaction reference you provided: <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-weight:600;">' + escHtml(ref) + '</code>.</li>'
-      +     '<li>Once verified, your tickets and QR codes will be generated, sent to <strong>' + escHtml(email) + '</strong>, and added to your dashboard.</li>'
-      +   '</ol>'
-      + '</div>'
-      + '<p style="font-size:13px;color:var(--muted);text-align:center;margin-top:16px;">'
-      +   'Verification usually takes 1 to 3 hours. Thank you for your patience!'
-      + '</p>'
-      + '<div style="display:flex;gap:12px;margin-top:24px;">'
-      +   '<a href="/tickets" class="btn btn-primary" style="flex:1;text-align:center;">Go to Dashboard</a>'
-      +   '<button class="btn btn-secondary" id="confirmation-back-btn" style="flex:1;">Buy More Tickets</button>'
-      + '</div>';
-
-    conf.querySelector('#confirmation-back-btn').addEventListener('click', resetShop);
-  }
 
   /* ═══════════════════════════════════════════════════════════════════════════
      SECTION 4 — DASHBOARD: MAGIC LINK AUTH
