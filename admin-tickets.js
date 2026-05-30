@@ -93,34 +93,102 @@ function loadOrders() {
         return;
       }
 
-      var html = '';
-      html += '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-        '<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>' +
-        '</tr></thead><tbody>';
+      // Collect unique emails to fetch magic link send counts
+      var emails = [];
+      var emailMap = {};
       orders.forEach(function(o) {
-        var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
-        var payMethod = o.payment_method === 'modempay' ? 'ModemPay' : o.payment_method === 'wave_transfer' ? 'Wave' : '-';
-        html += '<tr>' +
-          '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
-          '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
-          '<td><strong>D' + o.total + '</strong></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
-          '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
-          '<td>' +
-            '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;">View Tickets</button>' +
-            (o.status === 'paid' ? '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" style="background:#065F46;color:white;">Send Login Link</button>' : '') +
-          '</td>' +
-          '</tr>';
-        // Hidden ticket row — expanded on click
-        html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+        if (o.email && !emailMap[o.email]) {
+          emailMap[o.email] = true;
+          emails.push(o.email);
+        }
       });
-      html += '</tbody></table></div>';
-      container.innerHTML = html;
+
+      // Fetch magic link logs for these emails
+      var logQuery = '/rest/v1/magic_link_logs?select=email,created_at&order=created_at.desc';
+      if (emails.length > 0) {
+        logQuery += '&email=in.(' + emails.map(function(e) { return encodeURIComponent('"' + e + '"'); }).join(',') + ')';
+      }
+
+      adminQuery(logQuery).then(function(logs) {
+        // Build send count map: email -> { count, last_sent_at }
+        var sendCounts = {};
+        if (logs && logs.length > 0) {
+          logs.forEach(function(l) {
+            if (!sendCounts[l.email]) {
+              sendCounts[l.email] = { count: 0, last_sent_at: l.created_at };
+            }
+            sendCounts[l.email].count++;
+            // First entry is most recent because of order=created_at.desc
+          });
+        }
+
+        var html = '';
+        html += '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+          '<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>' +
+          '</tr></thead><tbody>';
+        orders.forEach(function(o) {
+          var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
+          var payMethod = o.payment_method === 'modempay' ? 'ModemPay' : o.payment_method === 'wave_transfer' ? 'Wave' : '-';
+          var sendInfo = sendCounts[o.email];
+          var sendBadge = sendInfo
+            ? '<span style="font-size:11px;color:var(--muted);display:block;margin-top:2px;">Sent ' + sendInfo.count + 'x' +
+              (sendInfo.last_sent_at ? ' · last ' + new Date(sendInfo.last_sent_at).toLocaleDateString() : '') +
+              '</span>'
+            : '';
+          html += '<tr>' +
+            '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
+            '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
+            '<td><strong>D' + o.total + '</strong></td>' +
+            '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
+            '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
+            '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
+            '<td style="vertical-align:middle;">' +
+              '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+              '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
+              sendBadge +
+            '</td>' +
+            '</tr>';
+          // Hidden ticket row — expanded on click
+          html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+      }).catch(function() {
+        // Fallback: render orders without send counts if log fetch fails
+        renderOrders(orders);
+      });
     })
     .catch(function(err) {
       container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load orders: ' + escapeHtml(err.message) + '</p>';
     });
+}
+
+// ─── Fallback: render orders without send counts (if log fetch fails) ────
+
+function renderOrders(orders) {
+  var container = document.getElementById('orders-container');
+  var html = '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+    '<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>' +
+    '</tr></thead><tbody>';
+  orders.forEach(function(o) {
+    var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
+    var payMethod = o.payment_method === 'modempay' ? 'ModemPay' : o.payment_method === 'wave_transfer' ? 'Wave' : '-';
+    html += '<tr>' +
+      '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
+      '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
+      '<td><strong>D' + o.total + '</strong></td>' +
+      '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
+      '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
+      '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
+      '<td style="vertical-align:middle;">' +
+        '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+        '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
+      '</td>' +
+      '</tr>';
+    html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
 }
 
 function toggleOrderTickets(orderId) {
@@ -835,7 +903,8 @@ document.addEventListener('click', function(e) {
   // Resend magic link
   if (e.target.classList.contains('resend-magic-link-btn')) {
     var email = e.target.getAttribute('data-email');
-    if (email && confirm('Send a magic link to ' + email + '?')) {
+    var orderId = e.target.getAttribute('data-order-id');
+    if (email && confirm('Send a magic link to ' + email + '? A fresh sign-in link will be emailed to them.')) {
       e.target.disabled = true;
       e.target.textContent = 'Sending...';
       var token = getEdgeFunctionToken();
@@ -845,13 +914,30 @@ document.addEventListener('click', function(e) {
         body: JSON.stringify({ email: email })
       }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) {
-          alert('Magic link sent to ' + email);
+          // Log the send to magic_link_logs
+          var logPayload = {
+            email: email,
+            sent_by: 'admin',
+            order_id: orderId || null
+          };
+          fetchWithAuth(SUPABASE_URL + '/rest/v1/magic_link_logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify(logPayload)
+          }).catch(function(logErr) {
+            console.error('Failed to log magic link send:', logErr);
+          });
+
+          e.target.textContent = 'Sent!';
+          // Refresh orders to update the send count display
+          setTimeout(function() { loadOrders(); }, 500);
         } else {
           alert('Failed: ' + (d.error || 'Unknown error'));
+          e.target.disabled = false;
+          e.target.textContent = 'Send Login Link';
         }
       }).catch(function(err) {
         alert('Error: ' + err.message);
-      }).then(function() {
         e.target.disabled = false;
         e.target.textContent = 'Send Login Link';
       });
