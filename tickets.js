@@ -999,6 +999,31 @@
     });
   }
 
+  /* ─── Helper: rebuild login form after token exchange error ─────── */
+
+  function rebuildLoginForm(msg) {
+    var prompt = $("dashboard-login-prompt");
+    if (!prompt) return;
+    prompt.style.display = "block";
+    prompt.innerHTML =
+      '<div class="error-message">' +
+      escHtml(msg) +
+      '</div><p style="font-size:14px;color:var(--muted);margin:16px 0;">You can also request a fresh magic link using the form below.</p>' +
+      '<div class="login-form">' +
+      '<input type="email" id="dashboard-email" placeholder="you@example.com" required>' +
+      '<button class="btn btn-primary" id="dashboard-login-btn">Send Magic Link</button>' +
+      '<div id="dashboard-login-msg" style="font-size:13px;color:var(--muted);"></div>' +
+      "</div>";
+    var btn = $("dashboard-login-btn");
+    var input = $("dashboard-email");
+    if (btn) btn.addEventListener("click", sendMagicLink);
+    if (input) {
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") sendMagicLink();
+      });
+    }
+  }
+
   /* ─── Persistent token magic link handler ─────────────────────────── */
 
   async function checkTicketToken() {
@@ -1007,11 +1032,25 @@
 
     if (!ticketToken) return;
 
-    /* Show loading state in the login prompt */
+    /* Immediately switch to dashboard tab with visible loading state */
+    document.querySelectorAll("[data-tab]").forEach(function (t) {
+      t.classList.remove("active");
+      t.setAttribute("aria-selected", "false");
+    });
+    var dashTab = document.querySelector('[data-tab="dashboard"]');
+    if (dashTab) {
+      dashTab.classList.add("active");
+      dashTab.setAttribute("aria-selected", "true");
+    }
+    $("shop-view").style.display = "none";
+    $("dashboard-view").classList.add("active");
+
+    /* Show visible loading state in the dashboard login prompt */
     var loginPrompt = $("dashboard-login-prompt");
     if (loginPrompt) {
+      loginPrompt.style.display = "block";
       loginPrompt.innerHTML =
-        '<div class="loading-spinner"><div class="spinner"></div><p style="margin-top:12px;">Signing you in…</p></div>';
+        '<div class="loading-spinner"><div class="spinner"></div><p style="margin-top:12px;">Signing you in\u2026</p></div>';
     }
 
     try {
@@ -1041,36 +1080,15 @@
           userEmail = payload.email;
         } catch (_) {}
 
-        /* Switch to dashboard tab */
-        document.querySelectorAll("[data-tab]").forEach(function (t) {
-          t.classList.remove("active");
-          t.setAttribute("aria-selected", "false");
-        });
-        var dashTab = document.querySelector('[data-tab="dashboard"]');
-        if (dashTab) {
-          dashTab.classList.add("active");
-          dashTab.setAttribute("aria-selected", "true");
-        }
-        $("shop-view").style.display = "none";
-        $("dashboard-view").classList.add("active");
-
-        /* Load the ticket dashboard */
+        /* Load the ticket dashboard (dashboard view is already visible) */
         loadDashboard();
       } else {
-        /* Token exchange failed — show error */
-        if (loginPrompt) {
-          loginPrompt.innerHTML =
-            '<div class="error-message">' +
-            (data.error || "Link expired. Please request a new one.") +
-            '</div><div style="margin-top:16px;"><button class="btn btn-primary" onclick="location.reload()" style="width:100%;">Try Again</button></div>';
-        }
+        /* Token exchange failed — show error with login form retry */
+        rebuildLoginForm(data.error || "Link expired. Please request a new one.");
       }
     } catch (err) {
       console.error("[tickets] checkTicketToken:", err);
-      if (loginPrompt) {
-        loginPrompt.innerHTML =
-          '<div class="error-message">Something went wrong. Please try again or request a new link.</div>';
-      }
+      rebuildLoginForm("Something went wrong. Please try again or request a new link.");
     }
   }
 

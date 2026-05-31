@@ -1,5 +1,5 @@
 {
-  "name": "walking-fish-icons",
+  "name": "walking-fish-scan-icons",
   "preset": "clean",
   "grid": 24,
   "strokeWidth": 1.5,
@@ -8,7 +8,26 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 12,
-  "icons": ["ticket", "sparkle", "paper-plane", "package", "food", "drinks", "menu", "close", "star", "check", "arrow-right", "arrow-left"],
-  "generated": "2026-05-26"
+  "iconCount": 18,
+  "icons": [
+    "scan-lock",
+    "scan-qr",
+    "scan-camera",
+    "scan-gate",
+    "scan-debit",
+    "scan-topup",
+    "scan-bill",
+    "scan-bulk",
+    "scan-food",
+    "scan-drink",
+    "scan-cash",
+    "scan-smartphone",
+    "scan-search",
+    "scan-print",
+    "scan-undo",
+    "scan-file-text",
+    "scan-check-circle",
+    "scan-credit-card"
+  ],
+  "generated": "2026-05-31"
 }
