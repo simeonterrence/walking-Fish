@@ -336,6 +336,12 @@
       return;
     }
 
+    if (!EMAIL_RE.test(email)) {
+      errEl.textContent = "Please enter a valid email address (e.g. name@domain.com).";
+      errEl.style.display = "block";
+      return;
+    }
+
     var items = Object.keys(cart)
       .filter(function (id) {
         return cart[id] > 0;
@@ -430,6 +436,9 @@
     $("dashboard-logout-btn").addEventListener("click", handleLogout);
   }
 
+  /* ─── Email validation ────────────────────────────────────────── */
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function sendMagicLink() {
     var email = $("dashboard-email").value.trim().toLowerCase();
     var msg = $("dashboard-login-msg");
@@ -437,6 +446,12 @@
 
     if (!email) {
       msg.textContent = "Please enter your email.";
+      return;
+    }
+
+    if (!EMAIL_RE.test(email)) {
+      msg.style.color = "#c53030";
+      msg.textContent = "Please enter a valid email address (e.g. name@domain.com).";
       return;
     }
 

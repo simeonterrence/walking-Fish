@@ -2284,6 +2284,37 @@ async function handleResendMagicLink(req: Request): Promise<Response> {
       });
     }
 
+    // Check if this email has any purchased tickets before sending
+    const supabase = getSupabaseClient();
+    const { count: ticketCount, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("customer_email", email);
+
+    if (ticketErr) {
+      console.error("[resend-magic-link] Ticket lookup error:", ticketErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify email. Please try again." }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (!ticketCount || ticketCount === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "No tickets found for this email address.",
+        }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     // Generate magic link via admin API and send via Resend
     await sendMagicLinkEmail(email);
 
@@ -2341,6 +2372,37 @@ async function handleSendMagicLink(req: Request): Promise<Response> {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check if this email has any purchased tickets before sending the magic link
+    const supabase = getSupabaseClient();
+    const { count: ticketCount, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("customer_email", email);
+
+    if (ticketErr) {
+      console.error("[send-magic-link] Ticket lookup error:", ticketErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify email. Please try again." }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (!ticketCount || ticketCount === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "No tickets found for this email address. Please purchase tickets first.",
+        }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     await sendMagicLinkEmail(email);

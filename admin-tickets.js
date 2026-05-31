@@ -1099,7 +1099,11 @@ document.addEventListener('click', function(e) {
   if (e.target.classList.contains('resend-magic-link-btn')) {
     var email = e.target.getAttribute('data-email');
     var orderId = e.target.getAttribute('data-order-id');
-    if (email && confirm('Send a magic link to ' + email + '? A fresh sign-in link will be emailed to them.')) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Invalid email address: ' + (email || 'empty'));
+      return;
+    }
+    if (confirm('Send a magic link to ' + email + '? A fresh sign-in link will be emailed to them.')) {
       e.target.disabled = true;
       e.target.textContent = 'Sending...';
       var token = getEdgeFunctionToken();
