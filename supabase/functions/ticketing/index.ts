@@ -4,7 +4,8 @@ import * as QRCode from "qrcode";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 function hexToBytes(hex: string): Uint8Array {
@@ -74,7 +75,11 @@ function emailShell(body: string) {
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;color:#111;">${body}<hr style="margin:32px 0;border:none;border-top:1px solid #eee;"><p style="font-size:12px;color:#999;margin:0;">Walking-Fish Group · walkingfish.gm</p></div>`;
 }
 
-async function sendEmail(payload: { to: string; subject: string; html: string }) {
+async function sendEmail(payload: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) {
     console.warn("RESEND_API_KEY not set — skipping email");
@@ -117,13 +122,15 @@ async function sendMagicLinkEmail(email: string) {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const siteUrl = "https://www.walkingfish.gm";
 
-  async function tryGenerateLink(type: "magiclink" | "signup"): Promise<string | null> {
+  async function tryGenerateLink(
+    type: "magiclink" | "signup",
+  ): Promise<string | null> {
     try {
       const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${serviceKey}`,
-          "apikey": serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -138,13 +145,17 @@ async function sendMagicLinkEmail(email: string) {
       const body = await res.json();
 
       if (!res.ok) {
-        console.warn(`[MagicLink] ${type} API error for ${email}: ${res.status} ${JSON.stringify(body)}`);
+        console.warn(
+          `[MagicLink] ${type} API error for ${email}: ${res.status} ${JSON.stringify(body)}`,
+        );
         return null;
       }
 
       return body?.data?.properties?.action_link || body?.action_link || null;
     } catch (err: any) {
-      console.warn(`[MagicLink] ${type} fetch error for ${email}: ${err.message}`);
+      console.warn(
+        `[MagicLink] ${type} fetch error for ${email}: ${err.message}`,
+      );
       return null;
     }
   }
@@ -155,7 +166,9 @@ async function sendMagicLinkEmail(email: string) {
 
     // If user doesn't exist, fall back to signup (creates the user + returns a link)
     if (!magicLink) {
-      console.log(`[MagicLink] User ${email} not found, creating via signup link...`);
+      console.log(
+        `[MagicLink] User ${email} not found, creating via signup link...`,
+      );
       magicLink = await tryGenerateLink("signup");
     }
 
@@ -201,9 +214,12 @@ async function sendMagicLinkEmail(email: string) {
 // limits reset on cold start but still prevent sustained brute-force.
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX_ATTEMPTS = 5;    // 5 attempts per window
+const RATE_LIMIT_MAX_ATTEMPTS = 5; // 5 attempts per window
 
-const rateLimitStore = new Map<string, { attempts: number; windowStart: number }>();
+const rateLimitStore = new Map<
+  string,
+  { attempts: number; windowStart: number }
+>();
 
 // Periodically purge expired entries to prevent unbounded Map growth
 setInterval(() => {
@@ -225,14 +241,22 @@ function getClientIp(req: Request): string {
   return "unknown";
 }
 
-function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetMs: number } {
+function checkRateLimit(ip: string): {
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+} {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
 
   if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
     // New window
     rateLimitStore.set(ip, { attempts: 1, windowStart: now });
-    return { allowed: true, remaining: RATE_LIMIT_MAX_ATTEMPTS - 1, resetMs: RATE_LIMIT_WINDOW_MS };
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT_MAX_ATTEMPTS - 1,
+      resetMs: RATE_LIMIT_WINDOW_MS,
+    };
   }
 
   if (entry.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
@@ -241,7 +265,11 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
   }
 
   entry.attempts++;
-  return { allowed: true, remaining: RATE_LIMIT_MAX_ATTEMPTS - entry.attempts, resetMs: RATE_LIMIT_WINDOW_MS - (now - entry.windowStart) };
+  return {
+    allowed: true,
+    remaining: RATE_LIMIT_MAX_ATTEMPTS - entry.attempts,
+    resetMs: RATE_LIMIT_WINDOW_MS - (now - entry.windowStart),
+  };
 }
 
 // ─── Helper: generate QR code as base64 data URI ─────────────────────────────
@@ -266,7 +294,7 @@ async function createTicketsForOrder(
   orderId: string,
   email: string,
   items: OrderItem[],
-  customerName?: string
+  customerName?: string,
 ): Promise<{ code: string; ticketTypeSlug: string }[]> {
   const created: { code: string; ticketTypeSlug: string }[] = [];
 
@@ -279,14 +307,20 @@ async function createTicketsForOrder(
       .single();
 
     if (typeErr || !ticketType) {
-      console.error(`[Tickets] Ticket type ${item.ticket_type_id} not found:`, typeErr);
+      console.error(
+        `[Tickets] Ticket type ${item.ticket_type_id} not found:`,
+        typeErr,
+      );
       continue;
     }
 
     // Try to increment sold count — if at capacity, skip
-    const { data: canSell } = await supabase.rpc("increment_ticket_sold_count", {
-      ticket_type_id: item.ticket_type_id,
-    });
+    const { data: canSell } = await supabase.rpc(
+      "increment_ticket_sold_count",
+      {
+        ticket_type_id: item.ticket_type_id,
+      },
+    );
 
     if (canSell === false) {
       console.warn(`[Tickets] Ticket type ${ticketType.slug} is sold out`);
@@ -305,7 +339,8 @@ async function createTicketsForOrder(
       const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
       const qrDataUri = await generateQRDataUri(qrContent);
 
-      const initialBalance = ticketType.type === "activity_credit" ? ticketType.price : 0;
+      const initialBalance =
+        ticketType.type === "activity_credit" ? ticketType.price : 0;
 
       const { data: ticket, error: ticketErr } = await supabase
         .from("tickets")
@@ -356,12 +391,18 @@ async function createTicketsForOrder(
 
 async function handleCreateIntent(req: Request): Promise<Response> {
   try {
-    const { order_id, amount, email, description, purpose, ticket_code } = await req.json();
+    const { order_id, amount, email, description, purpose, ticket_code } =
+      await req.json();
 
     if (!order_id || !amount || !email) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: order_id, amount, email" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "Missing required fields: order_id, amount, email",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -375,16 +416,19 @@ async function handleCreateIntent(req: Request): Promise<Response> {
       .single();
 
     if (orderErr || !order) {
-      return new Response(
-        JSON.stringify({ error: "Order not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Order not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (order.status !== "unpaid") {
       return new Response(
         JSON.stringify({ error: `Order is already ${order.status}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -398,7 +442,10 @@ async function handleCreateIntent(req: Request): Promise<Response> {
       console.error("[create-intent] MODEMPAY_SECRET_KEY not configured");
       return new Response(
         JSON.stringify({ error: "Payment gateway not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -424,7 +471,7 @@ async function handleCreateIntent(req: Request): Promise<Response> {
       modemPayResponse = await fetch("https://api.modempay.com/v1/payments", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${modemPaySecretKey}`,
+          Authorization: `Bearer ${modemPaySecretKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -440,10 +487,16 @@ async function handleCreateIntent(req: Request): Promise<Response> {
         }),
       });
     } catch (fetchErr: any) {
-      console.error("[create-intent] ModemPay API call failed:", fetchErr.message);
+      console.error(
+        "[create-intent] ModemPay API call failed:",
+        fetchErr.message,
+      );
       return new Response(
         JSON.stringify({ error: "Payment gateway unreachable" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -454,28 +507,43 @@ async function handleCreateIntent(req: Request): Promise<Response> {
       console.error("[create-intent] Failed to parse ModemPay response");
       return new Response(
         JSON.stringify({ error: "Invalid response from payment gateway" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     if (!modemPayResponse.ok) {
-      console.error("[create-intent] ModemPay error:", JSON.stringify(modemPayData));
-      const errorMsg = modemPayData.message || modemPayData.error || "Payment gateway error";
-      return new Response(
-        JSON.stringify({ error: errorMsg }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      console.error(
+        "[create-intent] ModemPay error:",
+        JSON.stringify(modemPayData),
       );
+      const errorMsg =
+        modemPayData.message || modemPayData.error || "Payment gateway error";
+      return new Response(JSON.stringify({ error: errorMsg }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Handle both REST API response (top-level) and SDK-wrapped response (nested under .data)
     const responseData = modemPayData.data || modemPayData;
-    const paymentIntentId = responseData.payment_intent_id || modemPayData.payment_intent_id || `mp_${crypto.randomUUID()}`;
-    const paymentLink = responseData.payment_link || modemPayData.payment_link || "";
-    const intentSecret = responseData.intent_secret || modemPayData.intent_secret || "";
-    const expiresAt = responseData.expires_at || modemPayData.expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const paymentIntentId =
+      responseData.payment_intent_id ||
+      modemPayData.payment_intent_id ||
+      `mp_${crypto.randomUUID()}`;
+    const paymentLink =
+      responseData.payment_link || modemPayData.payment_link || "";
+    const intentSecret =
+      responseData.intent_secret || modemPayData.intent_secret || "";
+    const expiresAt =
+      responseData.expires_at ||
+      modemPayData.expires_at ||
+      new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     // Store the ModemPay intent ID and metadata on the order
-    const existingMeta = order.metadata as Record<string, any> || {};
+    const existingMeta = (order.metadata as Record<string, any>) || {};
     const metadata = {
       ...existingMeta,
       modempay_intent_id: paymentIntentId,
@@ -485,7 +553,9 @@ async function handleCreateIntent(req: Request): Promise<Response> {
     };
     await supabase.from("orders").update({ metadata }).eq("id", order_id);
 
-    console.log(`[ModemPay] Created intent ${paymentIntentId} for order ${order_id} (D${amount})`);
+    console.log(
+      `[ModemPay] Created intent ${paymentIntentId} for order ${order_id} (D${amount})`,
+    );
 
     return new Response(
       JSON.stringify({
@@ -495,13 +565,16 @@ async function handleCreateIntent(req: Request): Promise<Response> {
         intent_secret: intentSecret,
         expires_at: expiresAt,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[create-intent] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to create payment intent" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -515,7 +588,10 @@ async function handleCreateIntent(req: Request): Promise<Response> {
 async function handleWebhook(req: Request): Promise<Response> {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-modem-signature") || req.headers.get("x-modempay-signature") || "";
+    const signature =
+      req.headers.get("x-modem-signature") ||
+      req.headers.get("x-modempay-signature") ||
+      "";
     const webhookSecret = Deno.env.get("MODEMPAY_WEBHOOK_SECRET");
 
     // ─── Verify ModemPay webhook signature ───────────────────────────────────
@@ -533,13 +609,13 @@ async function handleWebhook(req: Request): Promise<Response> {
           encoder.encode(webhookSecret),
           { name: "HMAC", hash: "SHA-512" },
           false,
-          ["verify"]
+          ["verify"],
         );
         let valid = await crypto.subtle.verify(
           "HMAC",
           keyRaw,
           sigBytes,
-          encoder.encode(body)
+          encoder.encode(body),
         );
 
         // If validation fails and secret has "wh" prefix, try stripped secret
@@ -550,46 +626,55 @@ async function handleWebhook(req: Request): Promise<Response> {
             encoder.encode(strippedSecret),
             { name: "HMAC", hash: "SHA-512" },
             false,
-            ["verify"]
+            ["verify"],
           );
           valid = await crypto.subtle.verify(
             "HMAC",
             keyStripped,
             sigBytes,
-            encoder.encode(body)
+            encoder.encode(body),
           );
           if (valid) {
-            console.log("[Webhook] Signature verified using stripped webhook secret ✓");
+            console.log(
+              "[Webhook] Signature verified using stripped webhook secret ✓",
+            );
           }
         }
 
         if (!valid) {
-          console.warn("[Webhook] Signature verification FAILED — possible spoofed webhook");
-          // Return 401 so ModemPay retries
-          return new Response(
-            JSON.stringify({ error: "Invalid signature" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          console.warn(
+            "[Webhook] Signature verification FAILED — possible spoofed webhook",
           );
+          // Return 401 so ModemPay retries
+          return new Response(JSON.stringify({ error: "Invalid signature" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
         console.log("[Webhook] Signature verified ✓");
       } catch (sigErr: any) {
-        console.error("[Webhook] Signature verification error:", sigErr.message);
+        console.error(
+          "[Webhook] Signature verification error:",
+          sigErr.message,
+        );
         // On verification error, still process but log the issue
         // This prevents blocking legitimate webhooks due to implementation issues
       }
     } else {
-      console.warn(`[Webhook] Signature verification skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "signature header missing"}`);
+      console.warn(
+        `[Webhook] Signature verification skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "signature header missing"}`,
+      );
     }
 
     let payload: any;
     try {
       payload = JSON.parse(body);
     } catch {
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON payload" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -598,13 +683,19 @@ async function handleWebhook(req: Request): Promise<Response> {
     // This must be checked BEFORE the ModemPay intent lookup below, since
     // manual_paid requests don't have a modempay_intent_id.
     if (payload.trigger === "manual_paid") {
-      const { order_id, email, customer_name, payment_method } = payload;
+      const {
+        order_id,
+        email: rawEmail,
+        customer_name,
+        payment_method,
+      } = payload;
+      const email = (rawEmail || "").trim().toLowerCase();
 
       if (!order_id) {
-        return new Response(
-          JSON.stringify({ error: "Missing order_id" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Missing order_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Fetch the order and its items from metadata
@@ -616,32 +707,43 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       if (orderErr || !order) {
         console.error(`[Webhook] Order ${order_id} not found for manual_paid`);
-        return new Response(
-          JSON.stringify({ error: "Order not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Order not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       if (order.status !== "paid" && order.status !== "unpaid") {
-        console.log(`[Webhook] Order ${order_id} is ${order.status} — cannot process manual_paid`);
-        return new Response(
-          JSON.stringify({ status: "already_processed" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        console.log(
+          `[Webhook] Order ${order_id} is ${order.status} — cannot process manual_paid`,
         );
+        return new Response(JSON.stringify({ status: "already_processed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // If order was marked paid by createNewTicket, create the tickets
       if (order.status === "paid") {
-        const orderMetadata = order.metadata as Record<string, any> || {};
+        const orderMetadata = (order.metadata as Record<string, any>) || {};
         const items: OrderItem[] = orderMetadata.items || [];
-        const custName = customer_name || orderMetadata.customer_name || undefined;
+        const custName =
+          customer_name || orderMetadata.customer_name || undefined;
 
-        const tickets = await createTicketsForOrder(supabase, order.id, email, items, custName);
+        const tickets = await createTicketsForOrder(
+          supabase,
+          order.id,
+          email,
+          items,
+          custName,
+        );
 
         // Send confirmation email
         if (tickets.length > 0) {
           const ticketList = tickets
-            .map((t) => `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`)
+            .map(
+              (t) =>
+                `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
+            )
             .join("");
 
           await sendEmail({
@@ -670,18 +772,24 @@ async function handleWebhook(req: Request): Promise<Response> {
         // Return first ticket code for the frontend to show
         const firstCode = tickets.length > 0 ? tickets[0].code : null;
 
-        console.log(`[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`);
+        console.log(
+          `[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`,
+        );
 
         return new Response(
-          JSON.stringify({ success: true, tickets_created: tickets.length, ticket_code: firstCode }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            success: true,
+            tickets_created: tickets.length,
+            ticket_code: firstCode,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
       // Order is unpaid — return early
       return new Response(
         JSON.stringify({ success: false, status: "unpaid" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -698,25 +806,45 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // Early exit for unhandled events (e.g. payment_intent.created)
     const isSuccess = event === "charge.succeeded" || status === "completed";
-    const isFailure = event === "charge.cancelled" || event === "charge.failed" || status === "failed" || status === "cancelled";
+    const isFailure =
+      event === "charge.cancelled" ||
+      event === "charge.failed" ||
+      status === "failed" ||
+      status === "cancelled";
 
     if (!isSuccess && !isFailure) {
-      console.log(`[Webhook] Acknowledging receipt of unhandled event/status: ${event || status}`);
-      return new Response(
-        JSON.stringify({ received: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      console.log(
+        `[Webhook] Acknowledging receipt of unhandled event/status: ${event || status}`,
       );
+      return new Response(JSON.stringify({ received: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const intentId = data.payment_intent_id || payload.payment_intent_id || data.intent_id || payload.intent_id || "";
-    console.log(`[Webhook] Processing event: ${event}, Intent: ${intentId}, Status: ${status}`);
+    const intentId =
+      data.payment_intent_id ||
+      payload.payment_intent_id ||
+      data.intent_id ||
+      payload.intent_id ||
+      "";
+    console.log(
+      `[Webhook] Processing event: ${event}, Intent: ${intentId}, Status: ${status}`,
+    );
 
     // Guard: if intentId is blank the query would match nothing (or worse, everything).
     if (!intentId) {
-      console.error("[Webhook] Missing payment_intent_id / intent_id in payload — cannot match order.", JSON.stringify({ event, data_keys: Object.keys(data) }));
+      console.error(
+        "[Webhook] Missing payment_intent_id / intent_id in payload — cannot match order.",
+        JSON.stringify({ event, data_keys: Object.keys(data) }),
+      );
       return new Response(
-        JSON.stringify({ error: "Missing payment_intent_id or intent_id in webhook payload" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "Missing payment_intent_id or intent_id in webhook payload",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -734,18 +862,20 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       if (existingEvent) {
         console.log(`[Webhook] Duplicate event ${webhookEventId} — skipping`);
-        return new Response(
-          JSON.stringify({ status: "already_processed" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ status: "already_processed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Mark as processed (don't await — fire and forget)
-      supabase.from("processed_webhooks").insert({
-        webhook_event_id: webhookEventId,
-        event_type: event,
-        processed_at: new Date().toISOString(),
-      }).catch(() => {});
+      supabase
+        .from("processed_webhooks")
+        .insert({
+          webhook_event_id: webhookEventId,
+          event_type: event,
+          processed_at: new Date().toISOString(),
+        })
+        .catch(() => {});
     }
 
     // Find the order by ModemPay intent ID
@@ -760,7 +890,10 @@ async function handleWebhook(req: Request): Promise<Response> {
       console.error(`[Webhook] No order found for intent ${intentId}`);
       return new Response(
         JSON.stringify({ error: "Order not found for this intent" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -769,11 +902,12 @@ async function handleWebhook(req: Request): Promise<Response> {
     // Handle charge.succeeded
     if (event === "charge.succeeded" || status === "completed") {
       if (order.status === "paid") {
-        console.log(`[Webhook] Order ${order.id} already paid — skipping duplicate`);
-        return new Response(
-          JSON.stringify({ status: "already_processed" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        console.log(
+          `[Webhook] Order ${order.id} already paid — skipping duplicate`,
         );
+        return new Response(JSON.stringify({ status: "already_processed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Mark order as paid
@@ -782,12 +916,15 @@ async function handleWebhook(req: Request): Promise<Response> {
         .update({
           status: "paid",
           payment_method: "modempay",
-          metadata: { ...(order.metadata as Record<string, any> || {}), webhook_verified_at: new Date().toISOString() },
+          metadata: {
+            ...((order.metadata as Record<string, any>) || {}),
+            webhook_verified_at: new Date().toISOString(),
+          },
         })
         .eq("id", order.id);
 
       // Parse order metadata for purpose detection
-      const orderMetadata = order.metadata as Record<string, any> || {};
+      const orderMetadata = (order.metadata as Record<string, any>) || {};
       const isTopUp = orderMetadata.purpose === "top-up";
 
       if (isTopUp) {
@@ -796,10 +933,15 @@ async function handleWebhook(req: Request): Promise<Response> {
         const topupAmount = orderMetadata.topup_amount || amount;
 
         if (!ticketCode) {
-          console.error(`[Webhook] Top-up order ${order.id} has no ticket_code in metadata`);
+          console.error(
+            `[Webhook] Top-up order ${order.id} has no ticket_code in metadata`,
+          );
           return new Response(
             JSON.stringify({ error: "Missing ticket_code for top-up" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
           );
         }
 
@@ -811,25 +953,32 @@ async function handleWebhook(req: Request): Promise<Response> {
           .maybeSingle();
 
         if (!ticket) {
-          console.error(`[Webhook] Ticket ${ticketCode} not found for top-up order ${order.id}`);
-          return new Response(
-            JSON.stringify({ error: "Ticket not found" }),
-            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          console.error(
+            `[Webhook] Ticket ${ticketCode} not found for top-up order ${order.id}`,
           );
+          return new Response(JSON.stringify({ error: "Ticket not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
         // Update balance atomically
-        const { data: newBalance, error: balanceErr } = await supabase
-          .rpc("update_ticket_balance", {
+        const { data: newBalance, error: balanceErr } = await supabase.rpc(
+          "update_ticket_balance",
+          {
             p_ticket_id: ticket.id,
             p_amount_delta: topupAmount,
             p_txn_type: "top_up",
             p_source: "modempay",
             p_notes: "Self-service top-up via ModemPay",
-          });
+          },
+        );
 
         if (balanceErr || newBalance === -1) {
-          console.error(`[Webhook] Balance update failed for ticket ${ticketCode}:`, balanceErr);
+          console.error(
+            `[Webhook] Balance update failed for ticket ${ticketCode}:`,
+            balanceErr,
+          );
           // Don't fail the webhook — the order is already marked paid
         }
 
@@ -854,12 +1003,13 @@ async function handleWebhook(req: Request): Promise<Response> {
           `),
         });
 
-        console.log(`[Webhook] ✓ Top-up order ${order.id} — ticket ${ticketCode} +D${topupAmount}`);
-
-        return new Response(
-          JSON.stringify({ success: true, topup: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        console.log(
+          `[Webhook] ✓ Top-up order ${order.id} — ticket ${ticketCode} +D${topupAmount}`,
         );
+
+        return new Response(JSON.stringify({ success: true, topup: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // ─── Normal purchase: create tickets ─────────────────────────────────
@@ -871,38 +1021,47 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (!items || items.length === 0) {
         const debug = {
           success: false,
-          error: 'No items in metadata',
+          error: "No items in metadata",
           metadata_keys: Object.keys(orderMetadata),
-          has_items: 'items' in orderMetadata,
+          has_items: "items" in orderMetadata,
           items_json: JSON.stringify(orderMetadata.items),
           items_is_array: Array.isArray(orderMetadata.items),
         };
         console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
         return new Response(JSON.stringify(debug), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const tickets = await createTicketsForOrder(supabase, order.id, customerEmail, items, customerName);
+      const tickets = await createTicketsForOrder(
+        supabase,
+        order.id,
+        customerEmail,
+        items,
+        customerName,
+      );
 
       // Debug: if tickets_created is 0, return debug info
       if (tickets.length === 0) {
         const debug = {
           success: false,
-          error: 'createTicketsForOrder returned 0 tickets',
+          error: "createTicketsForOrder returned 0 tickets",
           items_length: items.length,
           first_item_type_id: items[0]?.ticket_type_id,
         };
         console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
         return new Response(JSON.stringify(debug), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       // Send confirmation email
       if (tickets.length > 0) {
         const ticketList = tickets
-          .map((t) => `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`)
+          .map(
+            (t) =>
+              `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
+          )
           .join("");
 
         await sendEmail({
@@ -926,22 +1085,30 @@ async function handleWebhook(req: Request): Promise<Response> {
         sendMagicLinkEmail(customerEmail);
       }
 
-      console.log(`[Webhook] ✓ Order ${order.id} paid, ${tickets.length} tickets created`);
+      console.log(
+        `[Webhook] ✓ Order ${order.id} paid, ${tickets.length} tickets created`,
+      );
 
       return new Response(
         JSON.stringify({ success: true, tickets_created: tickets.length }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Handle charge.cancelled / charge.failed
-    if (event === "charge.cancelled" || event === "charge.failed" || status === "failed" || status === "cancelled") {
+    if (
+      event === "charge.cancelled" ||
+      event === "charge.failed" ||
+      status === "failed" ||
+      status === "cancelled"
+    ) {
       if (order.status !== "unpaid") {
-        console.log(`[Webhook] Order ${order.id} is ${order.status} — skipping cancellation`);
-        return new Response(
-          JSON.stringify({ status: "already_processed" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        console.log(
+          `[Webhook] Order ${order.id} is ${order.status} — skipping cancellation`,
         );
+        return new Response(JSON.stringify({ status: "already_processed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       await supabase
@@ -953,23 +1120,21 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       return new Response(
         JSON.stringify({ success: true, status: "cancelled" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Unknown event — acknowledge receipt
     console.log(`[Webhook] Unhandled event: ${event}`);
-    return new Response(
-      JSON.stringify({ received: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err: any) {
     console.error("[Webhook] Error:", err.message);
     // Always return 200 for webhooks to acknowledge receipt
-    return new Response(
-      JSON.stringify({ received: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -983,10 +1148,10 @@ async function handleCheckOrder(req: Request): Promise<Response> {
     const { order_id } = await req.json();
 
     if (!order_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing order_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing order_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -998,10 +1163,10 @@ async function handleCheckOrder(req: Request): Promise<Response> {
       .single();
 
     if (error || !order) {
-      return new Response(
-        JSON.stringify({ error: "Order not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Order not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Count tickets created for this order
@@ -1010,7 +1175,7 @@ async function handleCheckOrder(req: Request): Promise<Response> {
       .select("*", { count: "exact", head: true })
       .eq("order_id", order_id);
 
-    const orderMeta = order.metadata as Record<string, any> || {};
+    const orderMeta = (order.metadata as Record<string, any>) || {};
 
     return new Response(
       JSON.stringify({
@@ -1022,13 +1187,16 @@ async function handleCheckOrder(req: Request): Promise<Response> {
         purpose: orderMeta.purpose || "purchase",
         tickets_count: ticketCount || 0,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[check-order] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to check order status" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -1040,12 +1208,23 @@ async function handleCheckOrder(req: Request): Promise<Response> {
 
 async function handleCreateOrder(req: Request): Promise<Response> {
   try {
-    const { email, customer_name, items, purpose, ticket_code, topup_amount } = await req.json();
+    const {
+      email: rawEmail,
+      customer_name,
+      items,
+      purpose,
+      ticket_code,
+      topup_amount,
+    } = await req.json();
+    const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email) {
       return new Response(
         JSON.stringify({ error: "Missing required field: email" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -1063,7 +1242,10 @@ async function handleCreateOrder(req: Request): Promise<Response> {
       if (!items || !Array.isArray(items) || items.length === 0) {
         return new Response(
           JSON.stringify({ error: "Missing required fields: items" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
 
@@ -1076,13 +1258,21 @@ async function handleCreateOrder(req: Request): Promise<Response> {
 
         if (!ticketType || !ticketType.is_active) {
           return new Response(
-            JSON.stringify({ error: `Invalid ticket type: ${item.ticket_type_id}` }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({
+              error: `Invalid ticket type: ${item.ticket_type_id}`,
+            }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
           );
         }
 
         total += ticketType.price * item.quantity;
-        validatedItems.push({ ticket_type_id: item.ticket_type_id, quantity: item.quantity });
+        validatedItems.push({
+          ticket_type_id: item.ticket_type_id,
+          quantity: item.quantity,
+        });
       }
     }
 
@@ -1111,22 +1301,22 @@ async function handleCreateOrder(req: Request): Promise<Response> {
 
     if (orderErr) {
       console.error("[create-order] Error:", orderErr);
-      return new Response(
-        JSON.stringify({ error: "Failed to create order" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to create order" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
       JSON.stringify({ success: true, order_id: order.id, total }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[create-order] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Failed to create order" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to create order" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1141,17 +1331,18 @@ async function handleLookupTicket(req: Request): Promise<Response> {
     const { code } = await req.json();
 
     if (!code) {
-      return new Response(
-        JSON.stringify({ error: "Missing ticket code" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing ticket code" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
 
     const { data: ticket, error: ticketErr } = await supabase
       .from("tickets")
-      .select(`
+      .select(
+        `
         id,
         code,
         type,
@@ -1163,7 +1354,8 @@ async function handleLookupTicket(req: Request): Promise<Response> {
         order_id,
         created_at,
         ticket_types!inner(name, slug, price)
-      `)
+      `,
+      )
       .eq("code", code.toUpperCase())
       .maybeSingle();
 
@@ -1171,15 +1363,18 @@ async function handleLookupTicket(req: Request): Promise<Response> {
       console.error("[lookup-ticket] Error:", ticketErr);
       return new Response(
         JSON.stringify({ error: "Failed to look up ticket" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     if (!ticket) {
-      return new Response(
-        JSON.stringify({ error: "Ticket not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Ticket not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Return safe public subset
@@ -1202,14 +1397,14 @@ async function handleLookupTicket(req: Request): Promise<Response> {
           created_at: ticket.created_at,
         },
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[lookup-ticket] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Failed to look up ticket" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to look up ticket" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1236,7 +1431,10 @@ async function isTicketingRequestAuthorized(req: Request): Promise<boolean> {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
     });
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
     if (error || !user) return false;
     const role = user?.app_metadata?.role;
     return role === "admin_role" || role === "ticketing_role";
@@ -1253,13 +1451,14 @@ async function isTicketingRequestAuthorized(req: Request): Promise<boolean> {
 
 async function handleLookupByEmail(req: Request): Promise<Response> {
   try {
-    const { email, mode } = await req.json();
+    const { email: rawEmail, mode } = await req.json();
+    const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email address" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid email address" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -1267,7 +1466,8 @@ async function handleLookupByEmail(req: Request): Promise<Response> {
     // Build query — optionally filter by type for bill mode (food/drinks only)
     let query = supabase
       .from("tickets")
-      .select(`
+      .select(
+        `
         id,
         code,
         type,
@@ -1275,7 +1475,8 @@ async function handleLookupByEmail(req: Request): Promise<Response> {
         balance,
         customer_name,
         ticket_types!inner(name)
-      `)
+      `,
+      )
       .eq("customer_email", email.trim().toLowerCase())
       .eq("status", "active")
       .order("code", { ascending: true });
@@ -1291,7 +1492,10 @@ async function handleLookupByEmail(req: Request): Promise<Response> {
       console.error("[lookup-by-email] Error:", error);
       return new Response(
         JSON.stringify({ error: "Failed to look up tickets" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -1308,18 +1512,19 @@ async function handleLookupByEmail(req: Request): Promise<Response> {
           ticket_type: { name: (t.ticket_types as any)?.name },
         })),
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[lookup-by-email] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to look up tickets by email" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
-
-
 
 // ─── Handler: /confirm-payment
 // Marks an order as paid and optionally updates ticket balance (for top-ups).
@@ -1332,19 +1537,20 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
     const {
       order_id,
       payment_method,
-      email,
+      email: rawEmail,
       customer_name,
       ticket_id,
       amount_delta,
       notes,
       purpose,
     } = await req.json();
+    const email = (rawEmail || "").trim().toLowerCase();
 
     if (!order_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing order_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing order_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -1357,16 +1563,19 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
       .single();
 
     if (orderErr || !order) {
-      return new Response(
-        JSON.stringify({ error: "Order not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Order not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (order.status !== "unpaid" && order.status !== "pending_verification") {
       return new Response(
         JSON.stringify({ error: `Order is already ${order.status}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -1379,24 +1588,30 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
 
     if (updateErr) {
       console.error("[confirm-payment] Order update failed:", updateErr);
-      return new Response(
-        JSON.stringify({ error: "Failed to update order" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to update order" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let newBalance: number | null = null;
 
     // If this is a top-up, update the ticket balance
-    if ((purpose === "topup" || purpose === "top-up") && ticket_id && amount_delta) {
-      const { data: balance, error: balanceErr } = await supabase
-        .rpc("update_ticket_balance", {
+    if (
+      (purpose === "topup" || purpose === "top-up") &&
+      ticket_id &&
+      amount_delta
+    ) {
+      const { data: balance, error: balanceErr } = await supabase.rpc(
+        "update_ticket_balance",
+        {
           p_ticket_id: ticket_id,
           p_amount_delta: amount_delta,
           p_txn_type: "top_up",
           p_source: payMethod === "modempay" ? "modempay" : payMethod,
           p_notes: notes || `Booth top-up via ${payMethod}`,
-        });
+        },
+      );
 
       if (balanceErr) {
         console.error("[confirm-payment] Balance update failed:", balanceErr);
@@ -1427,7 +1642,7 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
 
     console.log(
       `[confirm-payment] ✓ Order ${order_id} paid via ${payMethod}` +
-      `${newBalance !== null ? `, balance updated to D${newBalance}` : ""}`
+        `${newBalance !== null ? `, balance updated to D${newBalance}` : ""}`,
     );
 
     return new Response(
@@ -1437,13 +1652,16 @@ async function handleConfirmPayment(req: Request): Promise<Response> {
         status: "paid",
         new_balance: newBalance,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[confirm-payment] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to confirm payment" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -1474,17 +1692,17 @@ async function handleStaffAuth(req: Request): Promise<Response> {
             "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
             "X-RateLimit-Remaining": "0",
           },
-        }
+        },
       );
     }
 
     const { code } = await req.json();
 
     if (!code) {
-      return new Response(
-        JSON.stringify({ error: "Missing staff code" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing staff code" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -1497,20 +1715,26 @@ async function handleStaffAuth(req: Request): Promise<Response> {
 
     if (recordErr) {
       console.error("[staff-auth] Error:", recordErr);
-      return new Response(
-        JSON.stringify({ error: "Database error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Database error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!record || !record.is_active) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid or inactive staff code" }),
-        { status: 401, headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-          "X-RateLimit-Remaining": String(rateCheck.remaining),
-        } }
+        JSON.stringify({
+          success: false,
+          error: "Invalid or inactive staff code",
+        }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        },
       );
     }
 
@@ -1520,7 +1744,9 @@ async function handleStaffAuth(req: Request): Promise<Response> {
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", record.id);
 
-    console.log(`[staff-auth] ✓ Code ${code} authenticated (label: ${record.label || "none"})`);
+    console.log(
+      `[staff-auth] ✓ Code ${code} authenticated (label: ${record.label || "none"})`,
+    );
 
     return new Response(
       JSON.stringify({
@@ -1535,14 +1761,14 @@ async function handleStaffAuth(req: Request): Promise<Response> {
           "Content-Type": "application/json",
           "X-RateLimit-Remaining": String(rateCheck.remaining),
         },
-      }
+      },
     );
   } catch (err: any) {
     console.error("[staff-auth] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Authentication failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Authentication failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1557,36 +1783,42 @@ async function handleMarkUsed(req: Request): Promise<Response> {
     const { ticket_id } = await req.json();
 
     if (!ticket_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing ticket_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing ticket_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
 
-    const { data: success, error: rpcErr } = await supabase
-      .rpc("mark_ticket_used", { p_ticket_id: ticket_id });
+    const { data: success, error: rpcErr } = await supabase.rpc(
+      "mark_ticket_used",
+      { p_ticket_id: ticket_id },
+    );
 
     if (rpcErr) {
       console.error("[mark-used] RPC error:", rpcErr);
-      return new Response(
-        JSON.stringify({ error: "Failed to mark ticket" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to mark ticket" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`[mark-used] ✓ Ticket ${ticket_id} marked used (success=${success})`);
-
-    return new Response(
-      JSON.stringify({ success: !!success }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    console.log(
+      `[mark-used] ✓ Ticket ${ticket_id} marked used (success=${success})`,
     );
+
+    return new Response(JSON.stringify({ success: !!success }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err: any) {
     console.error("[mark-used] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to mark ticket as used" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -1604,49 +1836,58 @@ async function handleDebit(req: Request): Promise<Response> {
     if (!ticket_id || !amount || amount <= 0) {
       return new Response(
         JSON.stringify({ error: "Missing or invalid ticket_id or amount" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     const supabase = getSupabaseClient();
 
-    const { data: newBalance, error: rpcErr } = await supabase
-      .rpc("update_ticket_balance", {
+    const { data: newBalance, error: rpcErr } = await supabase.rpc(
+      "update_ticket_balance",
+      {
         p_ticket_id: ticket_id,
         p_amount_delta: -Math.abs(amount),
         p_txn_type: "debit",
         p_source: "booth_debit",
         p_notes: `Staff debit: D${amount}`,
-      });
+      },
+    );
 
     if (rpcErr) {
       console.error("[debit] RPC error:", rpcErr);
-      return new Response(
-        JSON.stringify({ error: "Failed to debit ticket" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to debit ticket" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (newBalance === -1) {
-      console.warn(`[debit] Insufficient balance for ticket ${ticket_id}, amount D${amount}`);
-      return new Response(
-        JSON.stringify({ error: "Insufficient balance" }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      console.warn(
+        `[debit] Insufficient balance for ticket ${ticket_id}, amount D${amount}`,
       );
+      return new Response(JSON.stringify({ error: "Insufficient balance" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`[debit] ✓ Ticket ${ticket_id} debited D${amount}, new balance D${newBalance}`);
+    console.log(
+      `[debit] ✓ Ticket ${ticket_id} debited D${amount}, new balance D${newBalance}`,
+    );
 
     return new Response(
       JSON.stringify({ success: true, new_balance: newBalance }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[debit] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Failed to debit ticket" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to debit ticket" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1671,7 +1912,10 @@ async function handleBulkTopup(req: Request): Promise<Response> {
     if (!entries || !Array.isArray(entries) || entries.length === 0) {
       return new Response(
         JSON.stringify({ error: "Missing or empty entries array" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -1684,11 +1928,17 @@ async function handleBulkTopup(req: Request): Promise<Response> {
       const { code, amount, method, note } = entry;
 
       if (!code || !amount || amount < 50) {
-        results.push({ code: code || "??", success: false, error: "Invalid entry" });
+        results.push({
+          code: code || "??",
+          success: false,
+          error: "Invalid entry",
+        });
         continue;
       }
 
-      const normalizedCode = code.toUpperCase().startsWith("TKT-") ? code.toUpperCase() : `TKT-${code.toUpperCase()}`;
+      const normalizedCode = code.toUpperCase().startsWith("TKT-")
+        ? code.toUpperCase()
+        : `TKT-${code.toUpperCase()}`;
 
       try {
         // Find the ticket
@@ -1699,27 +1949,41 @@ async function handleBulkTopup(req: Request): Promise<Response> {
           .maybeSingle();
 
         if (ticketErr || !ticket) {
-          results.push({ code: normalizedCode, success: false, error: "Ticket not found" });
+          results.push({
+            code: normalizedCode,
+            success: false,
+            error: "Ticket not found",
+          });
           continue;
         }
 
         if (ticket.status !== "active") {
-          results.push({ code: normalizedCode, success: false, error: `Ticket is ${ticket.status}` });
+          results.push({
+            code: normalizedCode,
+            success: false,
+            error: `Ticket is ${ticket.status}`,
+          });
           continue;
         }
 
         // Update balance atomically
-        const { data: newBalance, error: balanceErr } = await supabase
-          .rpc("update_ticket_balance", {
+        const { data: newBalance, error: balanceErr } = await supabase.rpc(
+          "update_ticket_balance",
+          {
             p_ticket_id: ticket.id,
             p_amount_delta: amount,
             p_txn_type: "top_up",
             p_source: method === "cash" ? "cash" : "wave",
             p_notes: `Booth — offline catch-up${note ? ` (${note})` : ""}`,
-          });
+          },
+        );
 
         if (balanceErr || newBalance === -1) {
-          results.push({ code: normalizedCode, success: false, error: "Balance update failed (cap?)" });
+          results.push({
+            code: normalizedCode,
+            success: false,
+            error: "Balance update failed (cap?)",
+          });
           continue;
         }
 
@@ -1749,13 +2013,19 @@ async function handleBulkTopup(req: Request): Promise<Response> {
         results.push({ code: normalizedCode, success: true });
         processed++;
       } catch (innerErr: any) {
-        results.push({ code: normalizedCode || "??", success: false, error: innerErr.message });
+        results.push({
+          code: normalizedCode || "??",
+          success: false,
+          error: innerErr.message,
+        });
       }
     }
 
     const errors = results.filter((r) => !r.success);
 
-    console.log(`[bulk-topup] Processed ${processed} of ${entries.length} entries, ${errors.length} errors`);
+    console.log(
+      `[bulk-topup] Processed ${processed} of ${entries.length} entries, ${errors.length} errors`,
+    );
 
     return new Response(
       JSON.stringify({
@@ -1765,13 +2035,16 @@ async function handleBulkTopup(req: Request): Promise<Response> {
         errors: errors.length > 0 ? errors : undefined,
         results: errors.length > 0 ? results : undefined,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[bulk-topup] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to process bulk top-up" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -1787,10 +2060,10 @@ async function handleUnmarkUsed(req: Request): Promise<Response> {
     const { ticket_id, reason, staff_code } = await req.json();
 
     if (!ticket_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing ticket_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing ticket_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -1804,17 +2077,24 @@ async function handleUnmarkUsed(req: Request): Promise<Response> {
 
     if (fetchErr || !ticket) {
       console.error("[unmark-used] Ticket not found:", ticket_id);
-      return new Response(
-        JSON.stringify({ error: "Ticket not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Ticket not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (ticket.status !== "used") {
-      console.warn(`[unmark-used] Ticket ${ticket.code} is not 'used' (current: ${ticket.status})`);
+      console.warn(
+        `[unmark-used] Ticket ${ticket.code} is not 'used' (current: ${ticket.status})`,
+      );
       return new Response(
-        JSON.stringify({ error: `Ticket is ${ticket.status}, not 'used' — cannot undo` }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: `Ticket is ${ticket.status}, not 'used' — cannot undo`,
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -1832,28 +2112,33 @@ async function handleUnmarkUsed(req: Request): Promise<Response> {
       .from("tickets")
       .update({ status: "active", metadata: updatedMeta })
       .eq("id", ticket_id)
-      .eq("status", "used");  // Optimistic concurrency — only if still 'used'
+      .eq("status", "used"); // Optimistic concurrency — only if still 'used'
 
     if (updateErr) {
       console.error("[unmark-used] Update failed:", updateErr);
       return new Response(
         JSON.stringify({ error: "Failed to revert ticket status" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    console.log(`[unmark-used] ✓ Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`);
+    console.log(
+      `[unmark-used] ✓ Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`,
+    );
 
     return new Response(
       JSON.stringify({ success: true, code: ticket.code, status: "active" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[unmark-used] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Failed to revert ticket" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to revert ticket" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1885,7 +2170,10 @@ async function isAuthenticatedUser(req: Request): Promise<boolean> {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
     });
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
     return !error && !!user;
   } catch {
     return false;
@@ -1895,38 +2183,38 @@ async function isAuthenticatedUser(req: Request): Promise<boolean> {
 async function handleAdminQuery(req: Request): Promise<Response> {
   try {
     if (!(await isAuthenticatedUser(req))) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { method = "GET", path, body } = await req.json();
 
     if (!path) {
-      return new Response(
-        JSON.stringify({ error: "Missing path" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing path" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     if (!supabaseUrl || !serviceKey) {
-      return new Response(
-        JSON.stringify({ error: "Server config error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Server config error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const response = await fetch(`${supabaseUrl}${path}`, {
       method,
       headers: {
-        "Authorization": `Bearer ${serviceKey}`,
-        "apikey": serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
         "Content-Type": "application/json",
-        "Prefer": "return=representation",
+        Prefer: "return=representation",
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -1939,10 +2227,10 @@ async function handleAdminQuery(req: Request): Promise<Response> {
     });
   } catch (err: any) {
     console.error("[admin-query] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Query failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Query failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -1956,18 +2244,24 @@ async function handleResendMagicLink(req: Request): Promise<Response> {
   try {
     if (!(await isTicketingRequestAuthorized(req))) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized. Service key or ticketing staff JWT required." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "Unauthorized. Service key or ticketing staff JWT required.",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    const { email } = await req.json();
+    const { email: rawEmail } = await req.json();
+    const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email address" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid email address" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Generate magic link via admin API and send via Resend
@@ -1975,13 +2269,16 @@ async function handleResendMagicLink(req: Request): Promise<Response> {
 
     return new Response(
       JSON.stringify({ success: true, message: `Magic link sent to ${email}` }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[resend-magic-link] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to resend magic link" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -2012,30 +2309,37 @@ async function handleSendMagicLink(req: Request): Promise<Response> {
             "Content-Type": "application/json",
             "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
           },
-        }
+        },
       );
     }
 
-    const { email } = await req.json();
+    const { email: rawEmail } = await req.json();
+    const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email address" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid email address" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     await sendMagicLinkEmail(email);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Check your email for the sign-in link." }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: true,
+        message: "Check your email for the sign-in link.",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("[send-magic-link] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to send magic link. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }
@@ -2050,8 +2354,13 @@ async function handleDebugTicket(req: Request): Promise<Response> {
 
     if (!order_id || !ticket_type_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: order_id, ticket_type_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Missing required fields: order_id, ticket_type_id",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -2067,37 +2376,54 @@ async function handleDebugTicket(req: Request): Promise<Response> {
 
     if (typeErr || !ticketType) {
       return new Response(
-        JSON.stringify({ step: 1, error: 'Ticket type not found', db_error: typeErr }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          step: 1,
+          error: "Ticket type not found",
+          db_error: typeErr,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Step 2: Try to increment sold count
-    const { data: canSell, error: sellErr } = await supabase.rpc("increment_ticket_sold_count", {
-      ticket_type_id,
-    });
+    const { data: canSell, error: sellErr } = await supabase.rpc(
+      "increment_ticket_sold_count",
+      {
+        ticket_type_id,
+      },
+    );
 
     if (sellErr) {
       return new Response(
-        JSON.stringify({ step: 2, error: 'RPC call failed', db_error: sellErr }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          step: 2,
+          error: "RPC call failed",
+          db_error: sellErr,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     if (canSell === false) {
       return new Response(
-        JSON.stringify({ step: 2, error: 'Sold out', canSell }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ step: 2, error: "Sold out", canSell }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Step 3: Generate ticket code
-    const { data: code, error: codeErr } = await supabase.rpc("generate_ticket_code");
+    const { data: code, error: codeErr } = await supabase.rpc(
+      "generate_ticket_code",
+    );
 
     if (codeErr || !code) {
       return new Response(
-        JSON.stringify({ step: 3, error: 'Code generation failed', db_error: codeErr }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          step: 3,
+          error: "Code generation failed",
+          db_error: codeErr,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -2110,8 +2436,8 @@ async function handleDebugTicket(req: Request): Promise<Response> {
         type: ticketType.type,
         code,
         balance: 0,
-        customer_email: email || 'debug@test.com',
-        customer_name: 'Debug User',
+        customer_email: email || "debug@test.com",
+        customer_name: "Debug User",
         qr_url: `https://www.walkingfish.gm/t?t=${code}`,
       })
       .select()
@@ -2119,20 +2445,23 @@ async function handleDebugTicket(req: Request): Promise<Response> {
 
     if (ticketErr) {
       return new Response(
-        JSON.stringify({ step: 4, error: 'Ticket insert failed', db_error: ticketErr }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          step: 4,
+          error: "Ticket insert failed",
+          db_error: ticketErr,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, ticket, ticketType }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: true, ticket, ticketType }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err: any) {
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
@@ -2149,9 +2478,9 @@ Deno.serve(async (req) => {
     return await routeRequest(req, pathname || "/");
   } catch (err: any) {
     console.error("[ticketing] Unhandled error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Internal Server Error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

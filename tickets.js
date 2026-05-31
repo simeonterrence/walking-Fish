@@ -259,7 +259,7 @@
 
     var section = $("checkout-section");
     section.classList.add("active");
-    var email = $("checkout-email").value.trim();
+    var email = $("checkout-email").value.trim().toLowerCase();
     $("checkout-btn").disabled = !email || total <= 0;
   }
 
@@ -326,7 +326,7 @@
     var errEl = $("checkout-error");
     errEl.style.display = "none";
 
-    var email = $("checkout-email").value.trim();
+    var email = $("checkout-email").value.trim().toLowerCase();
     var name = $("checkout-name").value.trim();
 
     if (!email) {
@@ -430,7 +430,7 @@
   }
 
   async function sendMagicLink() {
-    var email = $("dashboard-email").value.trim();
+    var email = $("dashboard-email").value.trim().toLowerCase();
     var msg = $("dashboard-login-msg");
     var btn = $("dashboard-login-btn");
 
@@ -635,7 +635,7 @@
       var [ticketsRes, txnsRes] = await Promise.all([
         fetch(
           SUPABASE_URL +
-            "/rest/v1/tickets?customer_email=eq." +
+            "/rest/v1/tickets?customer_email=ilike." +
             encEmail +
             "&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types(name,slug,price)" +
             "&order=created_at.desc",
