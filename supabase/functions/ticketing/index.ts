@@ -16,6 +16,37 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+// ─── Helper: HMAC-SHA256 sign a message (used for persistent ticket tokens) ──
+
+async function signMessage(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", key, messageData);
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// ─── Helper: URL-safe base64 encode/decode ───────────────────────────────────
+
+function base64UrlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlDecode(str: string): string {
+  return atob(str.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
 // ─── Request routing ─────────────────────────────────────────────────────────
 
 async function routeRequest(req: Request, pathname: string): Promise<Response> {
@@ -49,6 +80,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleResendMagicLink(req);
     case "/send-magic-link":
       return handleSendMagicLink(req);
+    case "/exchange-token":
+      return handleExchangeToken(req);
     case "/admin-query":
       return handleAdminQuery(req);
     case "/debug-ticket":
@@ -121,62 +154,49 @@ async function sendMagicLinkEmail(email: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const siteUrl = "https://www.walkingfish.gm";
+  const tokenSecret = Deno.env.get("TICKET_TOKEN_SECRET") ?? serviceKey;
 
-  async function tryGenerateLink(
-    type: "magiclink" | "signup",
-  ): Promise<string | null> {
-    try {
-      const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          "Content-Type": "application/json",
+  // Generate persistent custom token (never consumed — reusable link)
+  const expiresAt = Date.now() + 22 * 24 * 60 * 60 * 1000; // 22 days
+  const message = email + ":" + expiresAt;
+  const sig = await signMessage(tokenSecret, message);
+  const encodedEmail = base64UrlEncode(email);
+  const ticketToken = `v1.${expiresAt}.${encodedEmail}.${sig}`;
+  const persistentLink = `${siteUrl}/tickets?ticket_token=${ticketToken}`;
+
+  // Ensure Supabase Auth has a user record for session generation
+  // (signup link creates the user if they don't exist yet)
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "signup",
+        email,
+        options: {
+          redirect_to: `${siteUrl}/tickets`,
         },
-        body: JSON.stringify({
-          type,
-          email,
-          options: {
-            redirect_to: `${siteUrl}/tickets`,
-          },
-        }),
-      });
+      }),
+    });
 
+    if (res.ok) {
+      console.log(`[MagicLink] User record ensured for ${email}`);
+    } else {
       const body = await res.json();
-
-      if (!res.ok) {
-        console.warn(
-          `[MagicLink] ${type} API error for ${email}: ${res.status} ${JSON.stringify(body)}`,
-        );
-        return null;
-      }
-
-      return body?.data?.properties?.action_link || body?.action_link || null;
-    } catch (err: any) {
-      console.warn(
-        `[MagicLink] ${type} fetch error for ${email}: ${err.message}`,
+      // User already exists — that's fine
+      console.log(
+        `[MagicLink] User already exists for ${email}: ${res.status}`,
       );
-      return null;
     }
+  } catch (err: any) {
+    console.warn(`[MagicLink] User check error for ${email}: ${err.message}`);
   }
 
   try {
-    // Try magiclink first (works for existing users)
-    let magicLink = await tryGenerateLink("magiclink");
-
-    // If user doesn't exist, fall back to signup (creates the user + returns a link)
-    if (!magicLink) {
-      console.log(
-        `[MagicLink] User ${email} not found, creating via signup link...`,
-      );
-      magicLink = await tryGenerateLink("signup");
-    }
-
-    if (!magicLink) {
-      console.error(`[MagicLink] Failed to generate any link for ${email}`);
-      return;
-    }
-
     await sendEmail({
       to: email,
       subject: "Sign in to your tickets — Walking-Fish",
@@ -186,7 +206,7 @@ async function sendMagicLinkEmail(email: string) {
           Click the button below to sign in to your ticket dashboard. You'll find all your tickets, QR codes, and top-up credits.
         </p>
         <p style="text-align:center;margin:32px 0;">
-          <a href="${magicLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
+          <a href="${persistentLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
             Sign In to My Tickets
           </a>
         </p>
@@ -194,15 +214,15 @@ async function sendMagicLinkEmail(email: string) {
           Or copy this link into your browser:
         </p>
         <p style="font-size:12px;color:#666;word-break:break-all;background:#f5f5f5;padding:12px;border-radius:6px;">
-          ${magicLink}
+          ${persistentLink}
         </p>
         <p style="margin-top:24px;font-size:12px;color:#999;">
-          This link expires after 24 hours. If you didn't request this, you can safely ignore this email.
+          This link is valid for 22 days and can be used multiple times. If you didn't request this, you can safely ignore this email.
         </p>
       `),
     });
 
-    console.log(`[MagicLink] ✓ Magic link sent to ${email}`);
+    console.log(`[MagicLink] Persistent ticket token sent to ${email}`);
   } catch (err: any) {
     console.error(`[MagicLink] Send error for ${email}: ${err.message}`);
   }
@@ -2336,6 +2356,248 @@ async function handleSendMagicLink(req: Request): Promise<Response> {
     console.error("[send-magic-link] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Failed to send magic link. Please try again." }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
+// ─── Handler: /exchange-token
+// Exchanges a persistent ticket token for a fresh Supabase Auth session.
+// The token is an HMAC-signed payload containing email + expiry.
+// Each click generates a FRESH magic link + session — the token is never consumed.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleExchangeToken(req: Request): Promise<Response> {
+  try {
+    const { ticket_token } = await req.json();
+    if (!ticket_token) {
+      return new Response(JSON.stringify({ error: "Missing ticket_token" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse token: v1.{expiresAt}.{base64url(email)}.{hexSig}
+    const parts = ticket_token.split(".");
+    if (parts.length !== 4 || parts[0] !== "v1") {
+      return new Response(JSON.stringify({ error: "Invalid token format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const expiresAt = parseInt(parts[1], 10);
+    const encodedEmail = parts[2];
+    const sig = parts[3];
+
+    // Check expiry
+    if (isNaN(expiresAt) || expiresAt < Date.now()) {
+      return new Response(
+        JSON.stringify({
+          error: "Link expired. Please request a new sign-in link.",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Decode email
+    const email = base64UrlDecode(encodedEmail).toLowerCase();
+    if (!email || !email.includes("@")) {
+      return new Response(JSON.stringify({ error: "Invalid email in token" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify HMAC signature
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const tokenSecret = Deno.env.get("TICKET_TOKEN_SECRET") ?? serviceKey;
+    const message = email + ":" + expiresAt;
+    const expectedSig = await signMessage(tokenSecret, message);
+
+    if (sig !== expectedSig) {
+      console.warn(`[exchange-token] Invalid signature for ${email}`);
+      return new Response(
+        JSON.stringify({ error: "Invalid token signature" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Token is valid — generate a fresh session via Supabase Auth
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+
+    // Step 1: Generate a fresh magic link via admin API
+    let linkData: any;
+    const linkRes = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "magiclink",
+        email,
+        options: {
+          redirect_to: "https://www.walkingfish.gm/tickets",
+        },
+      }),
+    });
+
+    if (!linkRes.ok) {
+      // If magiclink fails, try signup (creates the user if first time)
+      console.log(
+        `[exchange-token] magiclink failed for ${email}, trying signup...`,
+      );
+      const signupRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/generate_link`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "signup",
+            email,
+            options: {
+              redirect_to: "https://www.walkingfish.gm/tickets",
+            },
+          }),
+        },
+      );
+
+      if (!signupRes.ok) {
+        console.error(
+          `[exchange-token] Failed to generate any link for ${email}`,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Unable to sign you in. Please try requesting a new link.",
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Retry magiclink now that user exists
+      const retryRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/generate_link`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "magiclink",
+            email,
+            options: {
+              redirect_to: "https://www.walkingfish.gm/tickets",
+            },
+          }),
+        },
+      );
+
+      if (!retryRes.ok) {
+        return new Response(
+          JSON.stringify({
+            error: "Unable to sign you in. Please try requesting a new link.",
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      linkData = await retryRes.json();
+    } else {
+      linkData = await linkRes.json();
+    }
+
+    const actionLink =
+      linkData?.data?.properties?.action_link || linkData?.action_link || null;
+    if (!actionLink) {
+      return new Response(
+        JSON.stringify({ error: "Failed to generate auth link" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Step 2: Call the Supabase Auth verify endpoint server-side to get session tokens
+    const actionUrl = new URL(actionLink);
+    const verifyToken = actionUrl.searchParams.get("token");
+
+    if (!verifyToken) {
+      return new Response(
+        JSON.stringify({ error: "Failed to extract verification token" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceKey,
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        type: "magiclink",
+        token: verifyToken,
+      }),
+    });
+
+    const verifyData = await verifyRes.json();
+
+    if (!verifyRes.ok || !verifyData.access_token) {
+      console.error(`[exchange-token] verify failed for ${email}:`, verifyData);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify auth token" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Return session tokens — the frontend will store them in sessionStorage
+    return new Response(
+      JSON.stringify({
+        success: true,
+        access_token: verifyData.access_token,
+        refresh_token: verifyData.refresh_token,
+        expires_in: verifyData.expires_in,
+        user: verifyData.user,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  } catch (err: any) {
+    console.error("[exchange-token] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to exchange token. Please try again." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

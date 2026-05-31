@@ -61,7 +61,7 @@
       el = document.getElementById(el);
     }
     if (el) {
-      el.style.display = "";
+      el.style.display = "block";
       el.classList.remove("hidden-elem");
     }
   }
@@ -430,17 +430,18 @@
       var placeholder = document.getElementById("camera-placeholder");
       video = document.createElement("video");
       video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
       video.setAttribute("autoplay", "");
+      video.setAttribute("muted", "");
       video.style.cssText =
-        "width:100%;height:100%;object-fit:cover;border-radius:16px;display:none;";
+        "width:100%;height:100%;object-fit:cover;border-radius:16px;";
       if (placeholder) cameraZone.insertBefore(video, placeholder);
     }
 
     if (state.cameraStream) {
       // Already have camera
-      video.style.display = "block";
-      var placeholder = document.getElementById("camera-placeholder");
-      if (placeholder) placeholder.style.display = "none";
+      var existingPlaceholder = document.getElementById("camera-placeholder");
+      if (existingPlaceholder) existingPlaceholder.style.display = "none";
       return;
     }
 
@@ -451,8 +452,9 @@
 
     navigator.mediaDevices
       .getUserMedia({
+        audio: false,
         video: {
-          facingMode: "environment",
+          facingMode: { ideal: "environment" },
           width: { ideal: 640 },
           height: { ideal: 640 },
         },
@@ -461,8 +463,8 @@
         state.cameraStream = stream;
         video.srcObject = stream;
         video.style.display = "block";
-        var placeholder = document.getElementById("camera-placeholder");
-        if (placeholder) placeholder.style.display = "none";
+        var ph = document.getElementById("camera-placeholder");
+        if (ph) ph.style.display = "none";
         video
           .play()
           .then(function () {

@@ -63,6 +63,7 @@
     setupDashboard();
     checkLoginHash();
     checkPaymentReturn();
+    checkTicketToken();
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -635,7 +636,7 @@
       var [ticketsRes, txnsRes] = await Promise.all([
         fetch(
           SUPABASE_URL +
-            "/rest/v1/tickets?customer_email=ilike." +
+            "/rest/v1/tickets?customer_email=eq." +
             encEmail +
             "&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types(name,slug,price)" +
             "&order=created_at.desc",
@@ -983,7 +984,82 @@
     });
   }
 
-  /* ─── Helpers ────────────────────────────────────────────────────────────── */
+  /* ─── Persistent token magic link handler ─────────────────────────── */
+
+  async function checkTicketToken() {
+    var params = new URLSearchParams(window.location.search);
+    var ticketToken = params.get("ticket_token");
+
+    if (!ticketToken) return;
+
+    /* Show loading state in the login prompt */
+    var loginPrompt = $("dashboard-login-prompt");
+    if (loginPrompt) {
+      loginPrompt.innerHTML =
+        '<div class="loading-spinner"><div class="spinner"></div><p style="margin-top:12px;">Signing you in…</p></div>';
+    }
+
+    try {
+      var res = await fetch(TICKET_FN + "/exchange-token", {
+        method: "POST",
+        headers: ANON_H,
+        body: JSON.stringify({ ticket_token: ticketToken }),
+      });
+
+      var data = await res.json();
+
+      if (res.ok && data.success && data.access_token) {
+        sessionStorage.setItem(
+          "wf_ticket_session",
+          JSON.stringify({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          }),
+        );
+
+        /* Clean the ticket_token from the URL */
+        window.history.replaceState({}, document.title, "/tickets");
+
+        /* Extract email from JWT */
+        try {
+          var payload = JSON.parse(atob(data.access_token.split(".")[1]));
+          userEmail = payload.email;
+        } catch (_) {}
+
+        /* Switch to dashboard tab */
+        document.querySelectorAll("[data-tab]").forEach(function (t) {
+          t.classList.remove("active");
+          t.setAttribute("aria-selected", "false");
+        });
+        var dashTab = document.querySelector('[data-tab="dashboard"]');
+        if (dashTab) {
+          dashTab.classList.add("active");
+          dashTab.setAttribute("aria-selected", "true");
+        }
+        $("shop-view").style.display = "none";
+        $("dashboard-view").classList.add("active");
+
+        /* Load the ticket dashboard */
+        loadDashboard();
+      } else {
+        /* Token exchange failed — show error */
+        if (loginPrompt) {
+          loginPrompt.innerHTML =
+            '<div class="error-message">' +
+            (data.error || "Link expired. Please request a new one.") +
+            '</div><div style="margin-top:16px;"><button class="btn btn-primary" onclick="location.reload()" style="width:100%;">Try Again</button></div>';
+        }
+      }
+    } catch (err) {
+      console.error("[tickets] checkTicketToken:", err);
+      if (loginPrompt) {
+        loginPrompt.innerHTML =
+          '<div class="error-message">Something went wrong. Please try again or request a new link.</div>';
+      }
+    }
+  }
+
+  /* ─── Helpers ──────────────────────────────────────────────────── */
 
   function fmtDate(iso) {
     if (!iso) return "";
