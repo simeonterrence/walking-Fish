@@ -1790,14 +1790,12 @@
       return;
     }
 
-    if (ticket.status !== "active") {
+    if (ticket.status === "revoked") {
       var actions = document.getElementById("scanner-actions");
       if (actions) {
         actions.innerHTML =
           '<div style="padding:16px;text-align:center;color:#c53030;font-size:14px;">' +
-          "Ticket is " +
-          escapeHtml(ticket.status) +
-          " — cannot top up." +
+          "This ticket has been revoked and cannot be topped up." +
           "</div>";
       }
       return;

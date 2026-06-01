@@ -108,9 +108,9 @@
         return;
       }
 
-      if (ticket.status !== "active") {
+      if (ticket.status === "revoked") {
         $("topup-error").querySelector("p").textContent =
-          "This ticket is " + ticket.status + " and cannot be topped up.";
+          "This ticket has been revoked and cannot be topped up.";
         showView("error");
         return;
       }
