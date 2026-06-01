@@ -2189,6 +2189,45 @@ async function handleMarkUsed(req) {
       );
     }
     const supabase = getSupabaseClient();
+
+    // Guard: balance-based tickets (food, drinks, activity_credit) must be
+    // debited via /debit, not marked as used via /mark-used.
+    const { data: ticket, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("id, type")
+      .eq("id", ticket_id)
+      .single();
+
+    if (ticketErr || !ticket) {
+      return new Response(
+        JSON.stringify({
+          error: "Ticket not found",
+        }),
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
+    if (ticket.type === "activity_credit" || ticket.type === "food" || ticket.type === "drinks") {
+      return new Response(
+        JSON.stringify({
+          error: "Balance-based tickets cannot be marked as used. Use Debit mode to deduct from balance instead.",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
     const { data: success, error: rpcErr } = await supabase.rpc(
       "mark_ticket_used",
       {
