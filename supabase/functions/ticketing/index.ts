@@ -3277,6 +3277,7 @@ async function handleExchangeToken(req) {
           },
           body: JSON.stringify({
             password: tempPassword,
+            email_confirm: true,
           }),
         },
       );
@@ -3297,13 +3298,17 @@ async function handleExchangeToken(req) {
           },
         );
       }
+      // Small delay to let Supabase Auth process the password change
+      await new Promise((r) => setTimeout(r, 300));
       // 2d. Get a session via password grant
+      // Use the anon key here (not service key) — this is a public auth endpoint
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
       const tokenRes = await fetch(
         `${supabaseUrl}/auth/v1/token?grant_type=password`,
         {
           method: "POST",
           headers: {
-            apikey: serviceKey,
+            apikey: anonKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
