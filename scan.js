@@ -662,7 +662,7 @@
             '</div><div class="detail">' +
             escapeHtml(typeName) +
             "</div></div>" +
-            (t.type === "activity_credit"
+            (t.type === "activity_credit" || t.type === "food" || t.type === "drinks"
               ? '<div class="bal">' + formatCurrency(t.balance) + "</div>"
               : '<div style="font-size:12px;color:var(--muted);">' +
                 t.status +
@@ -745,7 +745,7 @@
       statusClass = "";
     }
 
-    var isActivity = ticket.type === "activity_credit";
+    var hasBalance = ticket.type === "activity_credit" || ticket.type === "food" || ticket.type === "drinks";
     var headerName = escapeHtml(ticket.customer_name || "Anonymous");
 
     container.innerHTML =
@@ -762,7 +762,7 @@
       "</div>" +
       '<div class="meta">' +
       escapeHtml(typeName) +
-      (isActivity
+      (hasBalance
         ? " &middot; Balance: " + formatCurrency(ticket.balance)
         : "") +
       "</div>" +
@@ -773,7 +773,7 @@
       '">' +
       statusLabel +
       "</div>" +
-      (isActivity
+      (hasBalance
         ? '<div class="amt">' + formatCurrency(ticket.balance) + "</div>"
         : "") +
       "</div>" +
@@ -816,6 +816,7 @@
     var voucherEmoji = ticket.type === "food" ? "&#127858;" : "&#127866;";
     var voucherLabel =
       ticket.type === "food" ? "Food Voucher" : "Drinks Voucher";
+    var debitedAmt = ticket.debited_amount || 0;
 
     return (
       '<div class="bill-receipt" style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:12px;text-align:center;">' +
@@ -830,6 +831,9 @@
       escapeHtml(ticket.customer_name || "Anonymous") +
       " &middot; " +
       voucherLabel +
+      "</div>" +
+      '<div style="font-size:13px;font-weight:600;margin-top:6px;">' +
+      "Debited: " + formatCurrency(debitedAmt) +
       "</div>" +
       '<div style="font-size:11px;color:var(--muted);margin-top:8px;display:flex;justify-content:center;gap:16px;">' +
       "<span>" +
@@ -849,6 +853,10 @@
   }
 
   function printBillReceipt() {
+    // Get the debited amount from the last bill log entry
+    var lastEntry = state.billLog.length > 0 ? state.billLog[state.billLog.length - 1] : null;
+    var debitedAmount = lastEntry ? lastEntry.value : 0;
+
     // Snapshot ticket data before print (print() is non-blocking in some browsers)
     var ticketSnapshot = {
       code: state.currentTicket ? state.currentTicket.code : "—",
@@ -872,12 +880,6 @@
 
     var voucherLabel =
       ticketSnapshot.type === "food" ? "FOOD VOUCHER" : "DRINKS VOUCHER";
-    var voucherPrice =
-      ticketSnapshot.ticket_type && ticketSnapshot.ticket_type.price
-        ? "D" + Number(ticketSnapshot.ticket_type.price).toLocaleString()
-        : ticketSnapshot.type === "food"
-          ? "D200"
-          : "D150";
 
     var content = document.getElementById("bill-receipt-print-content");
     if (!content) return;
@@ -902,7 +904,7 @@
       voucherLabel +
       "</td></tr>" +
       '<tr><td style="padding:1px 0;color:#555;">Value</td><td style="padding:1px 0;text-align:right;font-weight:600;">' +
-      voucherPrice +
+      formatCurrency(debitedAmount) +
       "</td></tr>" +
       '<tr><td style="padding:1px 0;color:#555;">Customer</td><td style="padding:1px 0;text-align:right;">' +
       escapeHtml(ticketSnapshot.customer_name || "Anonymous") +
@@ -1255,11 +1257,24 @@
       undoBtn.textContent = "…";
     }
 
-    callEdgeFunction("/unmark-used", {
-      ticket_id: entry.id,
-      reason: reason,
-      staff_code: state.scannerCode || null,
-    })
+    // Restore the debited balance via /reverse-debit
+    var undoPromise;
+    if (entry.value > 0) {
+      undoPromise = callEdgeFunction("/reverse-debit", {
+        ticket_id: entry.id,
+        amount: entry.value,
+        reason: reason,
+        staff_code: state.scannerCode || null,
+      });
+    } else {
+      undoPromise = callEdgeFunction("/unmark-used", {
+        ticket_id: entry.id,
+        reason: reason,
+        staff_code: state.scannerCode || null,
+      });
+    }
+
+    undoPromise
       .then(function (data) {
         if (!data.success) throw new Error(data.error || "Undo failed");
 
@@ -1306,7 +1321,7 @@
     if (ticket.type !== "food" && ticket.type !== "drinks") {
       container.innerHTML =
         '<div style="padding:16px;text-align:center;color:var(--muted);font-size:14px;">' +
-        "This is not a food or drinks voucher. Switch to Gate, Debit, or Top-Up mode." +
+        "This is not a food or drinks ticket. Switch to Gate, Debit, or Top-Up mode." +
         "</div>";
       return;
     }
@@ -1314,17 +1329,17 @@
     if (ticket.status !== "active") {
       container.innerHTML =
         '<div style="padding:16px;text-align:center;color:#c53030;font-size:14px;">' +
-        "<strong>Voucher already " +
+        "<strong>Ticket already " +
         escapeHtml(ticket.status) +
         "</strong><br>" +
-        '<span style="font-size:12px;color:var(--muted);">Cannot redeem again.</span>' +
+        '<span style="font-size:12px;color:var(--muted);">Cannot debit.</span>' +
         "</div>";
       return;
     }
 
     var voucherEmoji = ticket.type === "food" ? "&#127858;" : "&#127866;";
     var voucherLabel =
-      ticket.type === "food" ? "Food Voucher" : "Drinks Voucher";
+      ticket.type === "food" ? "Food Ticket" : "Drinks Ticket";
 
     container.innerHTML =
       '<div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--accent-dim);border-radius:12px;margin-bottom:12px;">' +
@@ -1336,14 +1351,28 @@
       voucherLabel +
       "</div>" +
       '<div style="font-size:12px;color:var(--muted);">' +
+      "Balance: <strong>" + formatCurrency(ticket.balance) + "</strong>" +
+      " &middot; " +
       escapeHtml(ticket.customer_name || "Anonymous") +
       "</div>" +
       "</div>" +
       "</div>" +
-      '<button class="action-btn success" id="gate-mark-used-btn" style="background:var(--accent);font-size:18px;padding:20px;">' +
-      "&#10003; Redeem Voucher" +
-      "</button>" +
-      '<div id="gate-error" class="error-message" style="display:none;margin-top:8px;"></div>';
+      '<div class="debit-form" id="bill-debit-form" style="display:block;margin-top:12px;">' +
+      '<div class="amount-display">' +
+      'Current balance: <strong id="bill-current-balance">' + formatCurrency(ticket.balance) + '</strong>' +
+      '</div>' +
+      '<input type="number" id="bill-amount-input" class="input-large" placeholder="0" min="0" step="10">' +
+      '<div class="preset-grid">' +
+      '<button class="preset-btn" data-amount="50">D50</button>' +
+      '<button class="preset-btn" data-amount="100">D100</button>' +
+      '<button class="preset-btn" data-amount="200">D200</button>' +
+      '<button class="preset-btn" data-amount="500">D500</button>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="bill-debit-confirm-btn" style="width:100%;margin-top:12px;" disabled>' +
+      'Confirm Debit' +
+      '</button>' +
+      '<div id="bill-debit-error" class="error-message" style="display:none;margin-top:8px;"></div>' +
+      '</div>';
   }
 
   // ─── Gate Mode ────────────────────────────────────────────────────────────
@@ -1352,8 +1381,6 @@
     if (
       ticket.type !== "entry" &&
       ticket.type !== "parking" &&
-      ticket.type !== "food" &&
-      ticket.type !== "drinks" &&
       ticket.type !== "kids_zone"
     ) {
       container.innerHTML =
@@ -1497,7 +1524,7 @@
   // ─── Debit Mode ───────────────────────────────────────────────────────────
 
   function showDebitForm(ticket) {
-    if (ticket.type !== "activity_credit") {
+    if (ticket.type !== "activity_credit" && ticket.type !== "food" && ticket.type !== "drinks") {
       var container = document.getElementById("scanner-actions");
       if (container) {
         container.innerHTML =
@@ -1565,6 +1592,106 @@
       })
       .catch(function (err) {
         showError("debit-error", err.message || "Debit failed.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Confirm Debit";
+        }
+      });
+  }
+
+  // ─── Bill Mode: Debit (Food & Drinks Balance-Based) ──────────────────────
+
+  function debitBillTicket(ticketId, amount) {
+    hideError("bill-debit-error");
+    var btn = document.getElementById("bill-debit-confirm-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Processing…";
+    }
+
+    callEdgeFunction("/debit", { ticket_id: ticketId, amount: amount })
+      .then(function (data) {
+        if (!data.success) throw new Error(data.error || "Debit failed");
+
+        // Update local state
+        if (state.currentTicket) {
+          state.currentTicket.balance = data.new_balance;
+          renderScannerTicket(state.currentTicket);
+        }
+
+        // Bill mode: count it, show receipt card with Print button
+        state.billCount++;
+        var counterEl = document.getElementById("bill-counter");
+        if (counterEl) counterEl.textContent = state.billCount;
+
+        // Log this redemption with actual value
+        state.billLog.push({
+          id: state.currentTicket.id,
+          code: state.currentTicket.code,
+          type: state.currentTicket.type,
+          customer_name: state.currentTicket.customer_name || "Anonymous",
+          time: new Date().toLocaleTimeString("en-GM", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          staff: state.scannerCode || "—",
+          value: amount,
+        });
+
+        showResult(
+          "success",
+          "&#10003; Debited <strong>" +
+            formatCurrency(amount) +
+            "</strong> from " +
+            escapeHtml(state.currentTicket.code) +
+            ". Remaining: " +
+            formatCurrency(data.new_balance),
+        );
+
+        // Snapshot ticket so receipt shows correct info
+        var redeemedTicket = {
+          code: state.currentTicket.code,
+          type: state.currentTicket.type,
+          customer_name: state.currentTicket.customer_name,
+          debited_amount: amount,
+        };
+
+        // Reset bill debit form
+        var input = document.getElementById("bill-amount-input");
+        if (input) input.value = "";
+        $$("#bill-debit-form .preset-btn").forEach(function (b) {
+          b.classList.remove("selected");
+        });
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Confirm Debit";
+        }
+
+        // Delay showing receipt card so staff can show customer the confirmation first
+        state.billReceiptDelay = setTimeout(function () {
+          var actionsContainer = document.getElementById("scanner-actions");
+          if (actionsContainer) {
+            actionsContainer.innerHTML =
+              generateBillReceiptHTML(redeemedTicket);
+          }
+
+          // Auto-clear 10s after receipt appears
+          state.billClearTimer = setTimeout(function () {
+            var container = document.getElementById("scanner-actions");
+            if (container) container.innerHTML = "";
+            var ticketResult = document.getElementById("scanner-ticket-result");
+            if (ticketResult) ticketResult.innerHTML = "";
+            redeemedTicket = null;
+            if (state.currentTicket) state.currentTicket = null;
+            if (state.scanningActive === false) {
+              state.scanningActive = true;
+              if (typeof detectLoop === "function") detectLoop();
+            }
+          }, 10000);
+        }, 2000);
+      })
+      .catch(function (err) {
+        showError("bill-debit-error", err.message || "Debit failed.");
         if (btn) {
           btn.disabled = false;
           btn.textContent = "Confirm Debit";
@@ -2332,24 +2459,29 @@
         return;
       }
 
-      // Debit: preset buttons
+      // Debit / Bill debit: preset buttons
       if (target.closest(".preset-btn")) {
         var presetBtn = target.closest(".preset-btn");
         var amount = presetBtn.getAttribute("data-amount");
-        var input = document.getElementById("debit-amount-input");
+        var isBillMode = state.mode === "bill";
+        var input = document.getElementById(isBillMode ? "bill-amount-input" : "debit-amount-input");
         if (input) input.value = amount;
         $$(".preset-btn").forEach(function (b) {
           b.classList.remove("selected");
         });
         presetBtn.classList.add("selected");
-        var confirmBtn = document.getElementById("debit-confirm-btn");
+        var confirmBtn = document.getElementById(isBillMode ? "bill-debit-confirm-btn" : "debit-confirm-btn");
         if (confirmBtn) confirmBtn.disabled = false;
         return;
       }
 
-      // Debit: amount input change
+      // Debit/Bill: amount input change
       var debitInput = document.getElementById("debit-amount-input");
-      if (debitInput && e.target === debitInput && e.key === undefined) {
+      var billAmountInput = document.getElementById("bill-amount-input");
+      var activeDebitInput = null;
+      if (debitInput && e.target === debitInput) activeDebitInput = debitInput;
+      if (billAmountInput && e.target === billAmountInput) activeDebitInput = billAmountInput;
+      if (activeDebitInput) {
         // handled by keydown/input
         return;
       }
@@ -2371,6 +2503,26 @@
           return;
         }
         if (state.currentTicket) debitTicket(state.currentTicket.id, amount);
+        return;
+      }
+
+      // Bill debit: confirm
+      if (target.closest("#bill-debit-confirm-btn")) {
+        var billInput = document.getElementById("bill-amount-input");
+        var billAmount = parseInt(billInput ? billInput.value : "0", 10);
+        if (!billAmount || billAmount < 0) {
+          showError("bill-debit-error", "Please enter a valid amount.");
+          return;
+        }
+        if (state.currentTicket && billAmount > state.currentTicket.balance) {
+          showError(
+            "bill-debit-error",
+            "Insufficient balance. Available: " +
+              formatCurrency(state.currentTicket.balance),
+          );
+          return;
+        }
+        if (state.currentTicket) debitBillTicket(state.currentTicket.id, billAmount);
         return;
       }
 
@@ -2480,6 +2632,23 @@
             (state.currentTicket && val > state.currentTicket.balance);
         }
         $$(".preset-btn").forEach(function (b) {
+          b.classList.remove("selected");
+        });
+        return;
+      }
+
+      // Bill debit amount input — enable/disable confirm button
+      var billAmountInput = document.getElementById("bill-amount-input");
+      if (billAmountInput && e.target === billAmountInput) {
+        var billConfirmBtn = document.getElementById("bill-debit-confirm-btn");
+        var billVal = parseInt(billAmountInput.value, 10);
+        if (billConfirmBtn) {
+          billConfirmBtn.disabled =
+            !billVal ||
+            billVal <= 0 ||
+            (state.currentTicket && billVal > state.currentTicket.balance);
+        }
+        $$("#bill-debit-form .preset-btn").forEach(function (b) {
           b.classList.remove("selected");
         });
         return;

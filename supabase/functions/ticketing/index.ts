@@ -67,6 +67,8 @@ async function routeRequest(req, pathname) {
       return handleConfirmPayment(req);
     case "/unmark-used":
       return handleUnmarkUsed(req);
+    case "/reverse-debit":
+      return handleReverseDebit(req);
     case "/resend-magic-link":
       return handleResendMagicLink(req);
     case "/send-magic-link":
@@ -321,7 +323,9 @@ async function createTicketsForOrder(
       const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
       const qrDataUri = await generateQRDataUri(qrContent);
       const initialBalance =
-        ticketType.type === "activity_credit" ? ticketType.price : 0;
+        ticketType.type === "activity_credit" || ticketType.type === "food" || ticketType.type === "drinks"
+          ? ticketType.price
+          : 0;
       const { data: ticket, error: ticketErr } = await supabase
         .from("tickets")
         .insert({
@@ -343,7 +347,7 @@ async function createTicketsForOrder(
         console.error(`[Tickets] Failed to create ticket:`, ticketErr);
         continue;
       }
-      // Record initial balance transaction for activity credits
+      // Record initial balance transaction for tickets with a balance
       // The balance is already set in the insert above; this just creates the audit trail.
       // We insert directly rather than calling update_ticket_balance (which would double-add).
       if (initialBalance > 0) {
@@ -2571,7 +2575,7 @@ async function handleUnmarkUsed(req) {
       );
     }
     console.log(
-      `[unmark-used] ✓ Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`,
+      `[unmark-used] Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`,
     );
     return new Response(
       JSON.stringify({
@@ -2591,6 +2595,121 @@ async function handleUnmarkUsed(req) {
     return new Response(
       JSON.stringify({
         error: "Failed to revert ticket",
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }
+}
+// ─── Handler: /reverse-debit
+// Reverses a previous debit by adding balance back to a ticket.
+// Called from scanner Bill mode when undoing a mistaken voucher redemption.
+// Uses the update_ticket_balance RPC with a positive amount.
+// ──────────────────────────────────────────────────────────────────────────────
+async function handleReverseDebit(req) {
+  try {
+    const { ticket_id, amount, reason, staff_code } = await req.json();
+    if (!ticket_id || !amount || amount <= 0) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing or invalid ticket_id or amount",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    const supabase = getSupabaseClient();
+    // First verify the ticket exists and is active
+    const { data: ticket, error: fetchErr } = await supabase
+      .from("tickets")
+      .select("id, code, balance, status")
+      .eq("id", ticket_id)
+      .single();
+    if (fetchErr || !ticket) {
+      return new Response(
+        JSON.stringify({
+          error: "Ticket not found",
+        }),
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    // Add the balance back
+    const { data: newBalance, error: rpcErr } = await supabase.rpc(
+      "update_ticket_balance",
+      {
+        p_ticket_id: ticket_id,
+        p_amount_delta: amount,
+        p_txn_type: "debit_reversal",
+        p_source: "booth_debit_reversal",
+        p_notes: `Reversal of debit: D${amount}${reason ? ` - ${reason}` : ""}${staff_code ? ` (by ${staff_code})` : ""}`,
+      },
+    );
+    if (rpcErr) {
+      console.error("[reverse-debit] RPC error:", rpcErr);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to reverse debit",
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    if (newBalance === -1) {
+      return new Response(
+        JSON.stringify({
+          error: "Balance update failed (cap reached?)",
+        }),
+        {
+          status: 409,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    console.log(
+      `[reverse-debit] Ticket ${ticket.code} reversed D${amount}, new balance D${newBalance}` +
+        `${reason ? ` (reason: ${reason})` : ""}`,
+    );
+    return new Response(
+      JSON.stringify({
+        success: true,
+        new_balance: newBalance,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    console.error("[reverse-debit] Error:", err.message);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to reverse debit",
       }),
       {
         status: 500,

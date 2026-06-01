@@ -745,7 +745,7 @@
     tickets.forEach(function (t) {
       var typeName = (t.ticket_types && t.ticket_types.name) || "Ticket";
       var typeSlug = t.type || "entry";
-      var isActivity = t.type === "activity_credit";
+      var hasBalance = t.type === "activity_credit" || t.type === "food" || t.type === "drinks";
       var balance = t.balance || 0;
       var statusBadge =
         t.status !== "active"
@@ -784,7 +784,7 @@
         fmtDate(t.created_at) +
         "</div>" +
         "</div>" +
-        (isActivity
+        (hasBalance
           ? '<div class="ticket-db-balance"><div class="amt">D' +
             balance.toLocaleString() +
             '</div><div class="lbl">Balance</div></div>'

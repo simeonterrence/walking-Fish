@@ -236,7 +236,7 @@ function toggleOrderTickets(orderId) {
           '<td style="padding:6px 8px;">' + escapeHtml(t.ticket_types.name) + '</td>' +
           '<td style="padding:6px 8px;font-size:13px;">' + escapeHtml(t.customer_name || '-') + '</td>' +
           '<td style="padding:6px 8px;"><span class="status-badge ' + statusClass + '">' + t.status + '</span></td>' +
-          '<td style="padding:6px 8px;font-weight:600;">' + (t.type === 'activity_credit' ? 'D' + t.balance : '-') + '</td>' +
+          '<td style="padding:6px 8px;font-weight:600;">' + (t.type === 'activity_credit' || t.type === 'food' || t.type === 'drinks' ? 'D' + t.balance : '-') + '</td>' +
           '<td style="padding:6px 8px;white-space:nowrap;">' +
             '<button class="action-btn ticket-edit-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-status="' + t.status + '" data-name="' + escapeHtml(t.customer_name || '') + '" data-email="' + escapeHtml(t.customer_email || '') + '" data-balance="' + t.balance + '" data-type="' + t.type + '" data-order="' + orderId + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
             (isRevocable ? '<button class="action-btn ticket-revoke-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-order="' + orderId + '" style="background:#92400E;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Revoke</button>' : '') +
