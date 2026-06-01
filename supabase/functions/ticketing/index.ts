@@ -3247,9 +3247,26 @@ async function handleExchangeToken(req) {
             redirect_to: `${siteUrl}/tickets`,
           },
         });
-      if (linkError || !linkData?.id) {
+      if (linkError) {
         console.error(
-          `[exchange-token] User ensure failed for ${email}: ${linkError?.message || "No user ID"}`,
+          `[exchange-token] Generate link failed for ${email}: ${linkError.message}`,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Unable to sign you in. Please try again.",
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+      if (!linkData?.properties?.action_link) {
+        console.error(
+          `[exchange-token] No action_link in generateLink response for ${email}`,
         );
         return new Response(
           JSON.stringify({
@@ -3265,7 +3282,26 @@ async function handleExchangeToken(req) {
         );
       }
 
-      const userId = linkData.id;
+      // Get user ID — SDK response may nest it differently across versions
+      const userId = linkData?.id || linkData?.user?.id;
+      if (!userId) {
+        console.error(
+          `[exchange-token] No user ID in generateLink response for ${email}`,
+        );
+        // Fallback: return action_link for browser redirect
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action_link: linkData.properties.action_link,
+          }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
 
       // 3. Generate a strong temporary password
       const tempPassword = crypto.randomUUID().replace(/-/g, "") + "Aa1!";
