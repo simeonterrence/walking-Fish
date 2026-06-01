@@ -337,7 +337,8 @@
     }
 
     if (!EMAIL_RE.test(email)) {
-      errEl.textContent = "Please enter a valid email address (e.g. name@domain.com).";
+      errEl.textContent =
+        "Please enter a valid email address (e.g. name@domain.com).";
       errEl.style.display = "block";
       return;
     }
@@ -451,7 +452,8 @@
 
     if (!EMAIL_RE.test(email)) {
       msg.style.color = "#c53030";
-      msg.textContent = "Please enter a valid email address (e.g. name@domain.com).";
+      msg.textContent =
+        "Please enter a valid email address (e.g. name@domain.com).";
       return;
     }
 
@@ -1001,7 +1003,7 @@
         "Your payment was successful but we\u2019re still processing. Tickets will arrive by email shortly." +
         "</p>" +
         '<p style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;">' +
-        "If your tickets don\u2019t appear within 15 minutes, please contact us at the venue info desk or email <a href=\"mailto:support@walkingfish.gm\" style=\"color:var(--accent);\">support@walkingfish.gm</a>." +
+        'If your tickets don\u2019t appear within 15 minutes, please contact us at the venue info desk or email <a href="mailto:support@walkingfish.gm" style="color:var(--accent);">support@walkingfish.gm</a>.' +
         "</p>" +
         '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
         '<button class="btn btn-primary" onclick="location.reload()">Check Again</button>' +
@@ -1088,21 +1090,43 @@
 
       var data = await res.json();
 
+      if (res.ok && data.success && data.access_token) {
+        /* Server-side: edge function already exchanged the token for a session.
+         * Store the session directly and load the dashboard — no browser redirect needed.
+         * This works reliably on mobile in-app browsers where redirect chains break. */
+        sessionStorage.setItem(
+          "wf_ticket_session",
+          JSON.stringify({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token || "",
+          }),
+        );
+        try {
+          var payload = JSON.parse(atob(data.access_token.split(".")[1]));
+          userEmail = payload.email;
+        } catch (_) {
+          userEmail = null;
+        }
+        window.history.replaceState({}, document.title, "/tickets");
+        loadDashboard();
+        return;
+      }
+
       if (res.ok && data.success && data.action_link) {
-        /* Redirect the browser to the action_link URL.
+        /* Legacy fallback: redirect the browser to the action_link URL.
          * Supabase Auth will process the magic link (GET redirect),
-         * create a session, and redirect back to /tickets#access_token=xxx
-         * The checkLoginHash() function in init() will parse the tokens
-         * from the URL hash and load the dashboard. */
+         * create a session, and redirect back to /tickets#access_token=xxx */
         window.location.href = data.action_link;
         return;
-      } else {
-        /* Token exchange failed — show error with login form retry */
-        rebuildLoginForm(data.error || "Link expired. Please request a new one.");
       }
+
+      /* Token exchange failed — show error with login form retry */
+      rebuildLoginForm(data.error || "Link expired. Please request a new one.");
     } catch (err) {
       console.error("[tickets] checkTicketToken:", err);
-      rebuildLoginForm("Something went wrong. Please try again or request a new link.");
+      rebuildLoginForm(
+        "Something went wrong. Please try again or request a new link.",
+      );
     }
   }
 
