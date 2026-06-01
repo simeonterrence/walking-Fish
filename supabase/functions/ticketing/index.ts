@@ -3328,46 +3328,54 @@ async function handleExchangeToken(req) {
       );
     }
     // Step 2: Exchange the confirmation token for a session server-side.
-    // The action_link is a Supabase Auth verify URL designed for browser GET redirect.
-    // We make a GET request with redirect:manual to get the 302 response,
-    // which contains the access_token/refresh_token in the Location hash.
-    // This avoids the browser redirect chain that breaks on mobile in-app browsers.
+    // Parse the `token` and `type` from the action_link URL, then call POST
+    // /auth/v1/verify to exchange them for session tokens.
+    // This avoids the browser redirect chain that breaks on mobile Safari/in-app browsers.
     try {
-      const verifyRes = await fetch(actionLink, {
-        method: "GET",
-        redirect: "manual",
-      });
-      const locationUrl = verifyRes.headers.get("location");
-      if (locationUrl) {
-        // Parse the hash fragment from the Location URL
-        // Format: https://.../tickets#access_token=xxx&refresh_token=yyy&...
-        const hashIdx = locationUrl.indexOf("#");
-        if (hashIdx !== -1) {
-          const hash = locationUrl.substring(hashIdx + 1);
-          const hashParams = new URLSearchParams(hash);
-          const accessToken = hashParams.get("access_token");
-          const refreshToken = hashParams.get("refresh_token");
-          if (accessToken) {
-            console.log(`[exchange-token] ✓ Session obtained for ${email}`);
-            return new Response(
-              JSON.stringify({
-                success: true,
-                access_token: accessToken,
-                refresh_token: refreshToken || "",
-              }),
-              {
-                headers: {
-                  ...corsHeaders,
-                  "Content-Type": "application/json",
-                },
+      const actionUrl = new URL(actionLink);
+      const verifyToken = actionUrl.searchParams.get("token");
+      const verifyType = actionUrl.searchParams.get("type") || "magiclink";
+      if (verifyToken) {
+        const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: verifyType,
+            token: verifyToken,
+            redirect_to: "https://www.walkingfish.gm/tickets",
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyRes.ok && verifyData.access_token) {
+          console.log(
+            `[exchange-token] ✓ Session obtained for ${email} (POST verify)`,
+          );
+          return new Response(
+            JSON.stringify({
+              success: true,
+              access_token: verifyData.access_token,
+              refresh_token: verifyData.refresh_token || "",
+            }),
+            {
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
               },
-            );
-          }
+            },
+          );
+        } else {
+          console.warn(
+            `[exchange-token] POST verify returned ${verifyRes.status} for ${email}: ${JSON.stringify(verifyData)}`,
+          );
         }
       }
     } catch (verifyErr) {
       console.warn(
-        `[exchange-token] Server-side verify failed for ${email}: ${verifyErr.message}`,
+        `[exchange-token] POST verify error for ${email}: ${verifyErr.message}`,
       );
     }
     // Fallback: return action_link for browser redirect (legacy)
