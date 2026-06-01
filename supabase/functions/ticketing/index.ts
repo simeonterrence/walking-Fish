@@ -161,7 +161,7 @@ async function sendMagicLinkEmail(email) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        type: "signup",
+        type: "magiclink",
         email,
         redirect_to: `${siteUrl}/tickets`,
       }),
@@ -3221,73 +3221,33 @@ async function handleExchangeToken(req) {
         },
       );
     }
-    // Token is valid — create a session directly via password grant.
+    // Token is valid — create a session via magic link OTP verification.
+    // Uses the Supabase JS SDK's admin.generateLink() to get a verification token,
+    // then verifyOtp() to create a session — no browser redirect needed.
+    // This works reliably on mobile and in-app browsers where redirect chains break.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    // The magic link confirmation token from admin/generate_link can ONLY be
-    // verified via browser GET redirect (POST /auth/v1/verify with type="magiclink"
-    // rejects with "Only an email should be provided on verify").
-    // Since the redirect chain breaks on iOS Safari, we bypass it entirely by:
-    //   1. Look up the user in Supabase Auth
-    //   2. Set a temporary password
-    //   3. Get session tokens via password grant
-    //   4. Clear the temporary password
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const siteUrl = "https://www.walkingfish.gm";
     try {
-      // 2a. Look up the user by email
-      const userRes = await fetch(
-        `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-            "Content-Type": "application/json",
+      // 1. Create admin client and generate a magic link to get the verification token
+      const adminSupabase = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: linkData, error: linkError } =
+        await adminSupabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: email,
+          options: {
+            redirect_to: `${siteUrl}/tickets`,
           },
-        },
-      );
-      const userData = await userRes.json();
-      const users = userData?.users || [];
-      if (!users.length) {
-        console.error(`[exchange-token] User not found for ${email}`);
+        });
+      if (linkError || !linkData?.properties?.action_link) {
+        console.error(
+          `[exchange-token] Generate link failed for ${email}: ${linkError?.message || "No action_link"}`,
+        );
         return new Response(
           JSON.stringify({
             error: "Unable to sign you in. Please request a new link.",
-          }),
-          {
-            status: 404,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
-      const userId = users[0].id;
-      // 2b. Generate a random temporary password
-      const tempPassword =
-        "tmp_" + crypto.randomUUID().replace(/-/g, "").substring(0, 24);
-      // 2c. Set the temporary password
-      const updateRes = await fetch(
-        `${supabaseUrl}/auth/v1/admin/users/${userId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            password: tempPassword,
-            email_confirm: true,
-          }),
-        },
-      );
-      if (!updateRes.ok) {
-        console.error(
-          `[exchange-token] Failed to set temp password for ${email}: ${updateRes.status}`,
-        );
-        return new Response(
-          JSON.stringify({
-            error: "Unable to sign you in. Please try again.",
           }),
           {
             status: 500,
@@ -3298,47 +3258,19 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      // Small delay to let Supabase Auth process the password change
-      await new Promise((r) => setTimeout(r, 300));
-      // 2d. Get a session via password grant
-      // Use the anon key here (not service key) — this is a public auth endpoint
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-      const tokenRes = await fetch(
-        `${supabaseUrl}/auth/v1/token?grant_type=password`,
-        {
-          method: "POST",
-          headers: {
-            apikey: anonKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email,
-            password: tempPassword,
-          }),
-        },
-      );
-      const tokenData = await tokenRes.json();
-      // 2e. Clear the temporary password (regardless of whether token exchange succeeded)
-      fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password: "" }),
-      }).catch(() => {});
-      if (tokenRes.ok && tokenData.access_token) {
-        console.log(
-          `[exchange-token] ✓ Session obtained for ${email} (password grant)`,
+      // 2. Extract the verification token from the action link URL
+      const actionLink = linkData.properties.action_link;
+      const verificationToken = new URL(actionLink).searchParams.get("token");
+      if (!verificationToken) {
+        console.error(
+          `[exchange-token] No verification token in action_link for ${email}`,
         );
         return new Response(
           JSON.stringify({
-            success: true,
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token || "",
+            error: "Unable to sign you in. Please request a new link.",
           }),
           {
+            status: 500,
             headers: {
               ...corsHeaders,
               "Content-Type": "application/json",
@@ -3346,15 +3278,45 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      console.error(
-        `[exchange-token] Password grant failed for ${email}: ${tokenRes.status} ${JSON.stringify(tokenData)}`,
+      // 3. Create an anon client and verify the OTP to get a session
+      const anonSupabase = createClient(supabaseUrl, anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: sessionData, error: verifyError } =
+        await anonSupabase.auth.verifyOtp({
+          type: "magiclink",
+          email: email,
+          token: verificationToken,
+          redirect_to: `${siteUrl}/tickets`,
+        });
+      if (verifyError || !sessionData?.session) {
+        console.error(
+          `[exchange-token] OTP verify failed for ${email}: ${verifyError?.message || "No session"}`,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Unable to sign you in. Please request a new link.",
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+      // 4. Session obtained successfully
+      console.log(
+        `[exchange-token] ✓ Session obtained for ${email} (verifyOtp)`,
       );
       return new Response(
         JSON.stringify({
-          error: "Unable to sign you in. Please request a new link.",
+          success: true,
+          access_token: sessionData.session.access_token,
+          refresh_token: sessionData.session.refresh_token || "",
         }),
         {
-          status: 500,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
