@@ -135,6 +135,8 @@ function loadOrders() {
               (sendInfo.last_sent_at ? ' · last ' + new Date(sendInfo.last_sent_at).toLocaleDateString() : '') +
               '</span>'
             : '';
+          var isPaid = o.status === 'paid';
+          var isUnpaid = o.status === 'unpaid' || o.status === 'pending_verification';
           html += '<tr>' +
             '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
             '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
@@ -143,7 +145,9 @@ function loadOrders() {
             '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
             '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
             '<td style="vertical-align:middle;">' +
-              '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+              '<button class="action-btn order-expand-btn" data-order="' + o.id + '" data-status="' + o.status + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+              (isUnpaid ? '<button class="action-btn mark-paid-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>' : '') +
+              (isPaid ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>' : '') +
               '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
               sendBadge +
             '</td>' +
@@ -172,8 +176,9 @@ function renderOrders(orders) {
     '</tr></thead><tbody>';
   orders.forEach(function(o) {
     var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
-    var payMethod = o.payment_method === 'modempay' ? 'ModemPay' : o.payment_method === 'wave_transfer' ? 'Wave' : '-';
-    html += '<tr>' +
+    var isPaid = o.status === 'paid';
+    var isUnpaid = o.status === 'unpaid' || o.status === 'pending_verification';
+      html += '<tr>' +
       '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
       '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
       '<td><strong>D' + o.total + '</strong></td>' +
@@ -181,7 +186,9 @@ function renderOrders(orders) {
       '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
       '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
       '<td style="vertical-align:middle;">' +
-        '<button class="action-btn order-expand-btn" data-order="' + o.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+        '<button class="action-btn order-expand-btn" data-order="' + o.id + '" data-status="' + o.status + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+        (isUnpaid ? '<button class="action-btn mark-paid-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>' : '') +
+        (isPaid ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>' : '') +
         '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
       '</td>' +
       '</tr>';
@@ -1093,6 +1100,81 @@ document.addEventListener('click', function(e) {
   // Revoke scanner code
   if (e.target.classList.contains('revoke-code-btn')) {
     revokeScannerCode(e.target.getAttribute('data-id'));
+  }
+
+  // Mark an unpaid order as paid and create tickets
+  if (e.target.classList.contains('mark-paid-btn')) {
+    var btn = e.target;
+    var orderId = btn.getAttribute('data-order-id');
+    var email = btn.getAttribute('data-email');
+    if (!orderId) { alert('Missing order ID'); return; }
+    if (!confirm('Mark order #' + orderId.slice(0, 8) + ' as paid? Tickets will be created and the customer will receive an email with their ticket codes and QR codes.')) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    // Step 1: Mark order as paid via confirm-payment endpoint
+    var token = getEdgeFunctionToken();
+    fetch(SUPABASE_URL + '/functions/v1/ticketing/confirm-payment', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, payment_method: 'cash' })
+    }).then(function(r) { return r.json(); }).then(function(result) {
+      if (!result.success) throw new Error(result.error || 'Failed to mark as paid');
+
+      // Step 2: Create tickets via manual_paid webhook trigger
+      return fetch(SUPABASE_URL + '/functions/v1/ticketing/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger: 'manual_paid', order_id: orderId, email: email, payment_method: 'cash' })
+      }).then(function(r2) { return r2.json(); });
+    }).then(function(result2) {
+      var ticketCount = result2.tickets_created || 0;
+      var msg = 'Order marked as paid!';
+      if (ticketCount > 0) {
+        msg += ' ' + ticketCount + ' ticket(s) created. Customer will receive QR codes by email.';
+      } else if (result2.status === 'already_processed') {
+        msg += ' Tickets already existed.';
+      }
+      alert(msg);
+      loadOrders();
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Mark Paid';
+    });
+    return;
+  }
+
+  // Regenerate tickets for paid orders with no tickets
+  if (e.target.classList.contains('regenerate-tickets-btn')) {
+    var btn = e.target;
+    var orderId = btn.getAttribute('data-order-id');
+    if (!orderId) { alert('Missing order ID'); return; }
+    if (!confirm('Re-create tickets for order #' + orderId.slice(0, 8) + '? Only use if this paid order has zero tickets.')) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Regenerating...';
+    var token = getEdgeFunctionToken();
+    fetch(SUPABASE_URL + '/functions/v1/ticketing/regenerate-tickets', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) {
+        alert('Success! ' + d.tickets_created + ' ticket(s) created.');
+        loadOrders();
+      } else {
+        alert('Failed: ' + (d.error || 'Unknown error'));
+        btn.disabled = false;
+        btn.textContent = 'Regenerate';
+      }
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Regenerate';
+    });
+    return;
   }
 
   // Resend magic link

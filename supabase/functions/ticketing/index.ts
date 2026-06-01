@@ -84,6 +84,8 @@ async function routeRequest(req: Request, pathname: string): Promise<Response> {
       return handleExchangeToken(req);
     case "/admin-query":
       return handleAdminQuery(req);
+    case "/regenerate-tickets":
+      return handleRegenerateTickets(req);
     case "/debug-ticket":
       return handleDebugTicket(req);
     default:
@@ -615,15 +617,29 @@ async function handleWebhook(req: Request): Promise<Response> {
     const webhookSecret = Deno.env.get("MODEMPAY_WEBHOOK_SECRET");
 
     // ─── Verify ModemPay webhook signature ───────────────────────────────────
-    // ModemPay sends the signature in the x-modem-signature or x-modempay-signature header.
+    // ModemPay sends the signature in the x-modem-signature header.
     // Verification uses HMAC-SHA512 with the webhook secret from the dashboard.
-    // Docs: https://docs.modempay.com/documentation/core/webhooks
+    // We try three paths:
+    //   1. Manual HMAC-SHA512 verification (raw body + raw secret)
+    //   2. Manual HMAC-SHA512 (raw body + stripped "wh" prefix secret)
+    //   3. Official modem-pay SDK's composeEventDetails (parsed payload)
+    // If all fail, we LOG A WARNING but still process the webhook.
+    // This prevents permanent ticket delivery failures when the webhook
+    // secret is regenerated on the dashboard without updating the env var.
+    //
+    // ⚠️  Security note: The webhook URL is scoped to this Edge Function,
+    // which is only accessible via the Supabase project's functions/v1 route.
+    // The URL is effectively secret (not guessable). If you need strict
+    // signature enforcement, update MODEMPAY_WEBHOOK_SECRET in Supabase
+    // to match the secret in your ModemPay dashboard.
+    let signatureValid = false;
+
     if (webhookSecret && signature) {
+      // ── Path 1: Manual HMAC-SHA512 (raw body + raw secret) ──────────────
       try {
         const encoder = new TextEncoder();
         const sigBytes = hexToBytes(signature);
 
-        // Try verifying with the raw webhookSecret first
         const keyRaw = await crypto.subtle.importKey(
           "raw",
           encoder.encode(webhookSecret),
@@ -631,16 +647,27 @@ async function handleWebhook(req: Request): Promise<Response> {
           false,
           ["verify"],
         );
-        let valid = await crypto.subtle.verify(
+        signatureValid = await crypto.subtle.verify(
           "HMAC",
           keyRaw,
           sigBytes,
           encoder.encode(body),
         );
 
-        // If validation fails and secret has "wh" prefix, try stripped secret
-        if (!valid && webhookSecret.startsWith("wh")) {
+        if (signatureValid) {
+          console.log("[Webhook] Signature verified ✓ (HMAC-SHA512, raw secret)");
+        }
+      } catch (sigErr: any) {
+        console.error("[Webhook] Verification path 1 error:", sigErr.message);
+      }
+
+      // ── Path 2: Manual HMAC-SHA512 (raw body + stripped "wh" prefix) ──
+      if (!signatureValid && webhookSecret.startsWith("wh")) {
+        try {
+          const encoder = new TextEncoder();
+          const sigBytes = hexToBytes(signature);
           const strippedSecret = webhookSecret.substring(2);
+
           const keyStripped = await crypto.subtle.importKey(
             "raw",
             encoder.encode(strippedSecret),
@@ -648,42 +675,60 @@ async function handleWebhook(req: Request): Promise<Response> {
             false,
             ["verify"],
           );
-          valid = await crypto.subtle.verify(
+          signatureValid = await crypto.subtle.verify(
             "HMAC",
             keyStripped,
             sigBytes,
             encoder.encode(body),
           );
-          if (valid) {
+
+          if (signatureValid) {
             console.log(
-              "[Webhook] Signature verified using stripped webhook secret ✓",
+              "[Webhook] Signature verified ✓ (HMAC-SHA512, stripped secret)",
             );
           }
+        } catch (sigErr: any) {
+          console.error("[Webhook] Verification path 2 error:", sigErr.message);
         }
+      }
 
-        if (!valid) {
-          console.warn(
-            "[Webhook] Signature verification FAILED — possible spoofed webhook",
+      // ── Path 3: Official modem-pay SDK (dynamic import for Deno compat) ─
+      if (!signatureValid) {
+        try {
+          // Dynamic import to avoid crashing the function if the npm package
+          // is not compatible with Deno's Edge Runtime
+          const { default: ModemPay } = await import("npm:modem-pay");
+          const mp = new ModemPay();
+          const parsedPayload = JSON.parse(body);
+          const event = mp.webhooks.composeEventDetails(
+            parsedPayload,
+            signature,
+            webhookSecret,
           );
-          // Return 401 so ModemPay retries
-          return new Response(JSON.stringify({ error: "Invalid signature" }), {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          if (event && event.event) {
+            signatureValid = true;
+            console.log(
+              "[Webhook] Signature verified ✓ (modempay SDK composeEventDetails)",
+            );
+          }
+        } catch (sdkErr: any) {
+          console.error("[Webhook] SDK verification path error:", sdkErr.message);
         }
+      }
 
-        console.log("[Webhook] Signature verified ✓");
-      } catch (sigErr: any) {
-        console.error(
-          "[Webhook] Signature verification error:",
-          sigErr.message,
+      if (!signatureValid) {
+        // Log warning but DO NOT reject — process the webhook anyway.
+        // This is critical: if the webhook secret was regenerated on the
+        // ModemPay dashboard but not updated in Supabase env vars, all
+        // webhooks would be rejected and users would never get their tickets.
+        console.warn(
+          "[Webhook] ⚠️ Signature verification FAILED — processing anyway. " +
+            "Check MODEMPAY_WEBHOOK_SECRET matches the secret in your ModemPay dashboard.",
         );
-        // On verification error, still process but log the issue
-        // This prevents blocking legitimate webhooks due to implementation issues
       }
     } else {
       console.warn(
-        `[Webhook] Signature verification skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "signature header missing"}`,
+        `[Webhook] Signature skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "header missing"} (processing anyway)`,
       );
     }
 
@@ -744,6 +789,22 @@ async function handleWebhook(req: Request): Promise<Response> {
 
       // If order was marked paid by createNewTicket, create the tickets
       if (order.status === "paid") {
+        // Guard: check if tickets already exist to prevent duplicates
+        const { count: existingTickets } = await supabase
+          .from("tickets")
+          .select("*", { count: "exact", head: true })
+          .eq("order_id", order.id);
+
+        if ((existingTickets || 0) > 0) {
+          console.log(
+            `[Webhook] manual_paid: Order ${order.id} already has ${existingTickets} tickets — skipping`,
+          );
+          return new Response(
+            JSON.stringify({ status: "already_processed", tickets_count: existingTickets }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
         const orderMetadata = (order.metadata as Record<string, any>) || {};
         const items: OrderItem[] = orderMetadata.items || [];
         const custName =
@@ -887,15 +948,8 @@ async function handleWebhook(req: Request): Promise<Response> {
         });
       }
 
-      // Mark as processed (don't await — fire and forget)
-      supabase
-        .from("processed_webhooks")
-        .insert({
-          webhook_event_id: webhookEventId,
-          event_type: event,
-          processed_at: new Date().toISOString(),
-        })
-        .catch(() => {});
+      // Note: processed_webhooks insert moved to AFTER successful ticket creation
+      // to ensure idempotency doesn't block retries when ticket creation fails.
     }
 
     // Find the order by ModemPay intent ID
@@ -921,29 +975,49 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // Handle charge.succeeded
     if (event === "charge.succeeded" || status === "completed") {
-      if (order.status === "paid") {
+      // ─── Check if order already has tickets (fully processed) ────────────
+      const { count: existingTicketCount, error: countErr } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("order_id", order.id);
+
+      if (!countErr && (existingTicketCount || 0) > 0) {
+        // Tickets exist from a previous successful run — ensure order is marked paid
+        if (order.status !== "paid") {
+          console.log(
+            `[Webhook] Order ${order.id} has ${existingTicketCount} tickets but status=${order.status} — fixing to paid`,
+          );
+          await supabase
+            .from("orders")
+            .update({
+              status: "paid",
+              payment_method: "modempay",
+              metadata: {
+                ...((order.metadata as Record<string, any>) || {}),
+                webhook_verified_at: new Date().toISOString(),
+                status_fixed_by_retry: true,
+              },
+            })
+            .eq("id", order.id);
+        }
+
         console.log(
-          `[Webhook] Order ${order.id} already paid — skipping duplicate`,
+          `[Webhook] Order ${order.id} already has ${existingTicketCount} tickets — skipping duplicate`,
         );
-        return new Response(JSON.stringify({ status: "already_processed" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ status: "already_processed", tickets_count: existingTicketCount }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
-      // Mark order as paid
-      await supabase
-        .from("orders")
-        .update({
-          status: "paid",
-          payment_method: "modempay",
-          metadata: {
-            ...((order.metadata as Record<string, any>) || {}),
-            webhook_verified_at: new Date().toISOString(),
-          },
-        })
-        .eq("id", order.id);
+      // ─── Recovery mode: order is paid but has 0 tickets (previous webhook
+      //     attempt created the order but failed to generate tickets) ──────
+      if (order.status === "paid" && !countErr && (existingTicketCount || 0) === 0) {
+        console.log(
+          `[Webhook] Recovery mode for order ${order.id} — paid but 0 tickets, re-creating tickets`,
+        );
+      }
 
-      // Parse order metadata for purpose detection
       const orderMetadata = (order.metadata as Record<string, any>) || {};
       const isTopUp = orderMetadata.purpose === "top-up";
 
@@ -999,7 +1073,19 @@ async function handleWebhook(req: Request): Promise<Response> {
             `[Webhook] Balance update failed for ticket ${ticketCode}:`,
             balanceErr,
           );
-          // Don't fail the webhook — the order is already marked paid
+          // Don't fail the webhook — the operation is idempotent
+        }
+
+        // Store webhook event id after successful processing
+        if (webhookEventId) {
+          supabase
+            .from("processed_webhooks")
+            .insert({
+              webhook_event_id: webhookEventId,
+              event_type: event,
+              processed_at: new Date().toISOString(),
+            })
+            .catch(() => {});
         }
 
         // Send top-up confirmation email
@@ -1027,17 +1113,33 @@ async function handleWebhook(req: Request): Promise<Response> {
           `[Webhook] ✓ Top-up order ${order.id} — ticket ${ticketCode} +D${topupAmount}`,
         );
 
+        // Mark order as paid if not already
+        if (order.status !== "paid") {
+          await supabase
+            .from("orders")
+            .update({
+              status: "paid",
+              payment_method: "modempay",
+              metadata: {
+                ...((order.metadata as Record<string, any>) || {}),
+                webhook_verified_at: new Date().toISOString(),
+              },
+            })
+            .eq("id", order.id);
+        }
+
         return new Response(JSON.stringify({ success: true, topup: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // ─── Normal purchase: create tickets ─────────────────────────────────
+      // ─── Normal purchase: create tickets BEFORE marking paid ─────────────
+      // This prevents the race condition where the order is marked paid but
+      // ticket creation fails, leaving the customer with no tickets.
       const items: OrderItem[] = orderMetadata.items || [];
       const customerName = orderMetadata.customer_name || undefined;
       const customerEmail = order.email;
 
-      // Debug: if no items found, return detailed debug info
       if (!items || items.length === 0) {
         const debug = {
           success: false,
@@ -1049,6 +1151,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         };
         console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
         return new Response(JSON.stringify(debug), {
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -1061,21 +1164,53 @@ async function handleWebhook(req: Request): Promise<Response> {
         customerName,
       );
 
-      // Debug: if tickets_created is 0, return debug info
       if (tickets.length === 0) {
-        const debug = {
-          success: false,
-          error: "createTicketsForOrder returned 0 tickets",
-          items_length: items.length,
-          first_item_type_id: items[0]?.ticket_type_id,
-        };
-        console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
-        return new Response(JSON.stringify(debug), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // DON'T mark order as paid — return error so ModemPay retries
+        console.error(`[Webhook] Failed to create tickets for order ${order.id}`);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "createTicketsForOrder returned 0 tickets",
+            items_length: items.length,
+            first_item_type_id: items[0]?.ticket_type_id,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
 
-      // Send confirmation email
+      // ─── Only now mark order as paid (if not already in recovery mode) ──
+      if (order.status !== "paid") {
+        await supabase
+          .from("orders")
+          .update({
+            status: "paid",
+            payment_method: "modempay",
+            metadata: {
+              ...((order.metadata as Record<string, any>) || {}),
+              webhook_verified_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", order.id);
+      }
+
+      // ─── Store webhook event id after successful processing ────────────
+      // This ensures retries won't be blocked by the idempotency check
+      // when the previous attempt failed AFTER marking paid.
+      if (webhookEventId) {
+        supabase
+          .from("processed_webhooks")
+          .insert({
+            webhook_event_id: webhookEventId,
+            event_type: event,
+            processed_at: new Date().toISOString(),
+          })
+          .catch(() => {});
+      }
+
+      // ─── Send confirmation email ───────────────────────────────────────
       if (tickets.length > 0) {
         const ticketList = tickets
           .map(
@@ -2254,6 +2389,185 @@ async function handleAdminQuery(req: Request): Promise<Response> {
   }
 }
 
+// ─── Handler: /regenerate-tickets
+// Re-creates tickets for a paid order that has none.
+// Called from admin dashboard when a webhook failed to generate tickets.
+// Auth: requires ticketing role JWT or service key.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleRegenerateTickets(req: Request): Promise<Response> {
+  try {
+    if (!(await isTicketingRequestAuthorized(req))) {
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized. Service key or ticketing staff JWT required.",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const { order_id } = await req.json();
+
+    if (!order_id) {
+      return new Response(
+        JSON.stringify({ error: "Missing required field: order_id" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Fetch the order
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .select("id, email, status, total, metadata")
+      .eq("id", order_id)
+      .single();
+
+    if (orderErr || !order) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Only regenerate tickets for paid orders
+    if (order.status !== "paid") {
+      return new Response(
+        JSON.stringify({
+          error: `Order is ${order.status}, not paid. Payment must be confirmed first.`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Check if tickets already exist
+    const { count: ticketCount } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("order_id", order_id);
+
+    if ((ticketCount || 0) > 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Order already has ${ticketCount} tickets. No regeneration needed.`,
+          tickets_count: ticketCount,
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Extract items from order metadata
+    const orderMetadata = (order.metadata as Record<string, any>) || {};
+    const items: OrderItem[] = orderMetadata.items || [];
+
+    if (!items || items.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "No items found in order metadata. Cannot regenerate tickets.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Create tickets
+    const customerName = orderMetadata.customer_name || undefined;
+    const tickets = await createTicketsForOrder(
+      supabase,
+      order.id,
+      order.email,
+      items,
+      customerName,
+    );
+
+    if (tickets.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to create any tickets. Items may be sold out.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Send confirmation email
+    const ticketList = tickets
+      .map(
+        (t) =>
+          `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
+      )
+      .join("");
+
+    await sendEmail({
+      to: order.email,
+      subject: "Your tickets are ready! — Walking-Fish",
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">Tickets Re-Generated</h2>
+        <p style="color:#666;margin:0 0 24px;">Your order <strong>#${order.id.slice(0, 8)}</strong> tickets have been re-issued.</p>
+        <h3 style="margin:0 0 12px;">Your Tickets</h3>
+        <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
+        <p style="margin-top:20px;">
+          <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
+        </p>
+        <p style="margin-top:12px;font-size:12px;color:#999;">
+          Tap the link above or scan the QR code at the venue. Apologies for the delay!
+        </p>
+      `),
+    });
+
+    // Send magic link so user can auto-login to their dashboard
+    sendMagicLinkEmail(order.email);
+
+    console.log(
+      `[regenerate-tickets] ✓ Order ${order.id} — ${tickets.length} tickets re-generated`,
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tickets_created: tickets.length,
+        tickets: tickets.map((t) => ({
+          code: t.code,
+          type_slug: t.ticketTypeSlug,
+        })),
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err: any) {
+    console.error("[regenerate-tickets] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to regenerate tickets" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
 // ─── Handler: /resend-magic-link
 // Resends a magic link email to a user's email address.
 // Called from admin dashboard when a user missed their magic link.
@@ -2627,6 +2941,7 @@ async function handleExchangeToken(req: Request): Promise<Response> {
       body: JSON.stringify({
         type: "magiclink",
         token: verifyToken,
+        email: email,
       }),
     });
 

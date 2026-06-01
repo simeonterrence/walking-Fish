@@ -930,7 +930,7 @@
     );
 
     /* Poll for order to be marked as paid (webhook may still be processing) */
-    var maxAttempts = 30;
+    var maxAttempts = 60;
     for (var i = 0; i < maxAttempts; i++) {
       try {
         var res = await fetch(TICKET_FN + "/check-order", {
@@ -941,6 +941,29 @@
         var data = await res.json();
 
         if (data.success && data.status === "paid") {
+          if (data.tickets_count === 0) {
+            /* Paid but no tickets — webhook failed during ticket creation.
+               Show warning and point user to email/contact support. */
+            showPaymentView(
+              '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\u2705</div>' +
+                '<h2 style="text-align:center;margin-bottom:8px;">Payment Confirmed!</h2>' +
+                '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">' +
+                "Your payment of <strong>D" +
+                (amount || data.total).toLocaleString() +
+                "</strong> was successful." +
+                "</p>" +
+                '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin:16px 0;font-size:14px;">' +
+                '<strong style="display:block;margin-bottom:4px;">\u26A0\uFE0F Tickets Being Generated</strong>' +
+                '<p style="margin:0;color:#5d4037;">We received your payment but are still creating your tickets. This usually takes a moment. Check your email shortly — your tickets and QR codes will arrive there. If you don\u2019t see them within 15 minutes, contact us or visit the info desk at the venue.</p>' +
+                "</div>" +
+                '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
+                '<button class="btn btn-primary" onclick="location.reload()">Check Again</button>' +
+                '<a href="/tickets" class="btn btn-secondary">Go to My Tickets</a>' +
+                "</div>",
+            );
+            return;
+          }
+
           var ticketWord = data.tickets_count === 1 ? "ticket" : "tickets";
           showPaymentView(
             '<div style="font-size:48px;text-align:center;margin-bottom:16px;">\u2705</div>' +
@@ -976,6 +999,9 @@
         '<h2 style="text-align:center;margin-bottom:8px;">Payment Received</h2>' +
         '<p style="text-align:center;color:var(--muted);margin:8px 0 20px;">' +
         "Your payment was successful but we\u2019re still processing. Tickets will arrive by email shortly." +
+        "</p>" +
+        '<p style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;">' +
+        "If your tickets don\u2019t appear within 15 minutes, please contact us at the venue info desk or email <a href=\"mailto:support@walkingfish.gm\" style=\"color:var(--accent);\">support@walkingfish.gm</a>." +
         "</p>" +
         '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
         '<button class="btn btn-primary" onclick="location.reload()">Check Again</button>' +
