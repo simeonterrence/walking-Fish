@@ -1088,26 +1088,14 @@
 
       var data = await res.json();
 
-      if (res.ok && data.success && data.access_token) {
-        sessionStorage.setItem(
-          "wf_ticket_session",
-          JSON.stringify({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-          }),
-        );
-
-        /* Clean the ticket_token from the URL */
-        window.history.replaceState({}, document.title, "/tickets");
-
-        /* Extract email from JWT */
-        try {
-          var payload = JSON.parse(atob(data.access_token.split(".")[1]));
-          userEmail = payload.email;
-        } catch (_) {}
-
-        /* Load the ticket dashboard (dashboard view is already visible) */
-        loadDashboard();
+      if (res.ok && data.success && data.action_link) {
+        /* Redirect the browser to the action_link URL.
+         * Supabase Auth will process the magic link (GET redirect),
+         * create a session, and redirect back to /tickets#access_token=xxx
+         * The checkLoginHash() function in init() will parse the tokens
+         * from the URL hash and load the dashboard. */
+        window.location.href = data.action_link;
+        return;
       } else {
         /* Token exchange failed — show error with login form retry */
         rebuildLoginForm(data.error || "Link expired. Please request a new one.");
