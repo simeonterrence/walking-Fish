@@ -2104,7 +2104,7 @@
     if (!select) return;
 
     supabaseGet(
-      "/rest/v1/ticket_types?select=id,name,price,sort_order&type=eq.activity_credit&is_active=eq.true&order=sort_order.asc",
+      "/rest/v1/ticket_types?select=id,name,price,sort_order&is_active=eq.true&order=sort_order.asc",
     )
       .then(function (types) {
         if (!types || types.length === 0) {
