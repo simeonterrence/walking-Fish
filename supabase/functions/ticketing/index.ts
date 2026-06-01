@@ -161,9 +161,13 @@ async function sendMagicLinkEmail(email) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        type: "magiclink",
+        type: "signup",
         email,
-        redirect_to: `${siteUrl}/tickets`,
+        options: {
+          data: {
+            skip_smtp: true,
+          },
+        },
       }),
     });
     if (res.ok) {
@@ -3221,18 +3225,20 @@ async function handleExchangeToken(req) {
         },
       );
     }
-    // Token is valid — create a session via magic link OTP verification.
-    // Uses the Supabase JS SDK's admin.generateLink() to get a verification token,
-    // then verifyOtp() to create a session — no browser redirect needed.
-    // This works reliably on mobile and in-app browsers where redirect chains break.
+    // Token is valid — create a session via password grant.
+    // Uses the admin API to set a temporary password, then signs in
+    // with email + password. Bypasses magic link OTP issues (expired/invalid
+    // tokens) and works on all browsers including iOS Safari in-app browsers.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const siteUrl = "https://www.walkingfish.gm";
     try {
-      // 1. Create admin client and generate a magic link to get the verification token
+      // 1. Create admin client to manage the user
       const adminSupabase = createClient(supabaseUrl, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
+
+      // 2. Ensure user exists in Auth (creates if not, returns user ID)
       const { data: linkData, error: linkError } =
         await adminSupabase.auth.admin.generateLink({
           type: "magiclink",
@@ -3241,13 +3247,13 @@ async function handleExchangeToken(req) {
             redirect_to: `${siteUrl}/tickets`,
           },
         });
-      if (linkError || !linkData?.properties?.action_link) {
+      if (linkError || !linkData?.id) {
         console.error(
-          `[exchange-token] Generate link failed for ${email}: ${linkError?.message || "No action_link"}`,
+          `[exchange-token] User ensure failed for ${email}: ${linkError?.message || "No user ID"}`,
         );
         return new Response(
           JSON.stringify({
-            error: "Unable to sign you in. Please request a new link.",
+            error: "Unable to sign you in. Please try again.",
           }),
           {
             status: 500,
@@ -3258,16 +3264,24 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      // 2. Extract the verification token from the action link URL
-      const actionLink = linkData.properties.action_link;
-      const verificationToken = new URL(actionLink).searchParams.get("token");
-      if (!verificationToken) {
+
+      const userId = linkData.id;
+
+      // 3. Generate a strong temporary password
+      const tempPassword = crypto.randomUUID().replace(/-/g, "") + "Aa1!";
+
+      // 4. Update the user's password via admin API
+      const { error: updateError } =
+        await adminSupabase.auth.admin.updateUserById(userId, {
+          password: tempPassword,
+        });
+      if (updateError) {
         console.error(
-          `[exchange-token] No verification token in action_link for ${email}`,
+          `[exchange-token] Password update failed for ${email}: ${updateError.message}`,
         );
         return new Response(
           JSON.stringify({
-            error: "Unable to sign you in. Please request a new link.",
+            error: "Unable to sign you in. Please try again.",
           }),
           {
             status: 500,
@@ -3278,24 +3292,27 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      // 3. Create an anon client and verify the OTP to get a session
-      const anonSupabase = createClient(supabaseUrl, anonKey, {
+
+      // 5. Brief delay for password propagation
+      await new Promise((r) => setTimeout(r, 500));
+
+      // 6. Sign in with password grant using the anon key
+      const anonClient = createClient(supabaseUrl, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
-      const { data: sessionData, error: verifyError } =
-        await anonSupabase.auth.verifyOtp({
-          type: "magiclink",
-          email: email,
-          token: verificationToken,
-          redirect_to: `${siteUrl}/tickets`,
+      const { data: signInData, error: signInError } =
+        await anonClient.auth.signInWithPassword({
+          email,
+          password: tempPassword,
         });
-      if (verifyError || !sessionData?.session) {
+
+      if (signInError || !signInData?.session) {
         console.error(
-          `[exchange-token] OTP verify failed for ${email}: ${verifyError?.message || "No session"}`,
+          `[exchange-token] Sign-in failed for ${email}: ${signInError?.message || "No session"}`,
         );
         return new Response(
           JSON.stringify({
-            error: "Unable to sign you in. Please request a new link.",
+            error: "Unable to sign you in. Please try again.",
           }),
           {
             status: 500,
@@ -3306,15 +3323,16 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      // 4. Session obtained successfully
+
+      // 7. Session obtained successfully
       console.log(
-        `[exchange-token] ✓ Session obtained for ${email} (verifyOtp)`,
+        `[exchange-token] ✓ Session obtained for ${email} (password grant)`,
       );
       return new Response(
         JSON.stringify({
           success: true,
-          access_token: sessionData.session.access_token,
-          refresh_token: sessionData.session.refresh_token || "",
+          access_token: signInData.session.access_token,
+          refresh_token: signInData.session.refresh_token || "",
         }),
         {
           headers: {
