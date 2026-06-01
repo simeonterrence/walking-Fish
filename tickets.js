@@ -655,7 +655,7 @@
           SUPABASE_URL +
             "/rest/v1/tickets?customer_email=eq." +
             encEmail +
-            "&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types(name,slug,price)" +
+            "&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types!left(name,slug,price)" +
             "&order=created_at.desc",
           { headers: authH },
         ),
