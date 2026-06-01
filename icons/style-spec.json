@@ -8,7 +8,7 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 18,
+  "iconCount": 25,
   "icons": [
     "scan-lock",
     "scan-qr",
@@ -27,7 +27,14 @@
     "scan-undo",
     "scan-file-text",
     "scan-check-circle",
-    "scan-credit-card"
+    "scan-credit-card",
+    "alert-triangle",
+    "pencil",
+    "chevron-left",
+    "chevron-right",
+    "drag-handle",
+    "mail",
+    "download"
   ],
-  "generated": "2026-05-31"
+  "generated": "2026-06-01"
 }

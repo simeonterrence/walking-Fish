@@ -74,7 +74,7 @@ function renderPhotos() {
     var isExpanded = localStorage.getItem('photo-section-' + section) !== 'collapsed';
     html += '<div class="photo-section' + (isExpanded ? '' : ' collapsed') + '" data-section-name="' + escapeHtml(section) + '">';
     html += '<button class="photo-section-header" onclick="togglePhotoSection(this)" aria-expanded="' + (isExpanded ? 'true' : 'false') + '">';
-    html +=   '<span class="photo-section-title"><span class="section-icon">&#9654;</span> ' + escapeHtml(section) + '</span>';
+    html +=   '<span class="photo-section-title"><span class="section-icon"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span> ' + escapeHtml(section) + '</span>';
     html +=   '<span class="photo-section-count">' + photos.length + ' photo' + (photos.length !== 1 ? 's' : '') + '</span>';
     html += '</button>';
     html += '<div class="photo-section-body"' + (isExpanded ? '' : ' style="display:none;"') + '>';
@@ -90,11 +90,11 @@ function renderPhotos() {
 function renderPhotoItem(p, idx) {
   var url = SUPABASE_URL + '/storage/v1/object/public/' + STORAGE_BUCKET + '/' + p.file_path;
   return '<div class="photo-grid-item" draggable="true" data-photo-id="' + p.id + '" data-section="' + escapeHtml(p.section) + '" data-pos="' + p.position + '" data-idx="' + idx + '">' +
-    '<div class="photo-drag-handle" title="Drag to reorder">&#9776;</div>' +
+    '<div class="photo-drag-handle" title="Drag to reorder"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="6" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/></svg></div>' +
     '<img src="' + url + '" alt="' + escapeHtml(p.alt_text || '') + '" loading="lazy">' +
     '<div class="photo-item-overlay">' +
-      '<button class="photo-item-edit" data-id="' + p.id + '" title="Edit details">&#9998;</button>' +
-      '<button class="photo-item-del" data-id="' + p.id + '" title="Delete photo">&times;</button>' +
+      '<button class="photo-item-edit" data-id="' + p.id + '" title="Edit details"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
+      '<button class="photo-item-del" data-id="' + p.id + '" title="Delete photo"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '</div>' +
     '<div class="photo-item-footer">' +
       '<span class="photo-pos-badge">#' + p.position + '</span>' +
@@ -380,7 +380,7 @@ function showUndoToastUI(ids) {
   toast.className = 'photo-undo-toast';
   toast.innerHTML = '<span class="undo-toast-msg">Photo' + (ids.length > 1 ? 's' : '') + ' will be deleted <strong>soon</strong></span>' +
     '<button class="undo-toast-btn" onclick="undoDelete()">Undo</button>' +
-    '<button class="undo-toast-close" onclick="cancelUndoToast()">&times;</button>';
+    '<button class="undo-toast-close" onclick="cancelUndoToast()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
   document.body.appendChild(toast);
   // Trigger animation
   requestAnimationFrame(function() {

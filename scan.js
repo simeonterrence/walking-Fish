@@ -36,6 +36,27 @@
   };
 
   // ─── DOM Refs (cached on init) ────────────────────────────────────────────
+  // ─── SVG Icon Helpers ───────────────────────────────────────────────────────
+
+  var ICON_PATHS = {
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/>',
+    check: '<polyline points="4 13 9 18 20 6"/>',
+    checkcircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+    food: '<path d="M7 2v7a3 3 0 0 0 6 0V2"/><line x1="10" y1="9" x2="10" y2="22"/><path d="M17 2v20"/><line x1="17" y1="7" x2="15" y2="7"/>',
+    drink: '<path d="M6 2l1.5 14a4.5 4.5 0 0 0 9 0L18 2"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
+    print: '<rect x="6" y="10" width="12" height="8" rx="1.5"/><path d="M6 10V6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="8" y1="17" x2="16" y2="17"/>',
+    undo: '<path d="M3 10h13a5 5 0 0 1 0 10H11"/><polyline points="7 6 3 10 7 14"/>',
+    smartphone: '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/><circle cx="12" cy="16" r="2"/>',
+    download: '<line x1="12" y1="3" x2="12" y2="16"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/>',
+    filetext: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
+  };
+
+  function icon(name, size) {
+    size = size || 24;
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[name] || '') + '</svg>';
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   function escapeHtml(str) {
@@ -344,7 +365,7 @@
       }
       var logBtn = document.getElementById("bill-log-btn");
       if (logBtn) {
-        logBtn.textContent = "\u{1F4CB} Log";
+        logBtn.innerHTML = icon('filetext', 14) + ' Log';
         logBtn.classList.remove("active");
       }
     } else if (mode === "bulk") {
@@ -479,7 +500,7 @@
         var placeholder = document.getElementById("camera-placeholder");
         if (placeholder) {
           placeholder.innerHTML =
-            '<span class="cam-icon">&#128274;</span><p>Camera access denied.<br><span style="font-size:12px;">Use Manual Entry instead.</span></p>';
+            '<span class="cam-icon">' + icon('lock', 40) + '</span><p>Camera access denied.<br><span style="font-size:12px;">Use Manual Entry instead.</span></p>';
         }
       });
   }
@@ -811,16 +832,15 @@
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    });
+    });    var voucherEmoji = ticket.type === "food" ? icon('food', 40) : icon('drink', 40);
 
-    var voucherEmoji = ticket.type === "food" ? "&#127858;" : "&#127866;";
     var voucherLabel =
       ticket.type === "food" ? "Food Voucher" : "Drinks Voucher";
     var debitedAmt = ticket.debited_amount || 0;
 
     return (
       '<div class="bill-receipt" style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:12px;text-align:center;">' +
-      '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent-text);margin-bottom:4px;">&#10003; Redeemed</div>' +
+      '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent-text);margin-bottom:4px;">' + icon('checkcircle', 14) + ' Redeemed</div>' +
       '<div style="font-size:40px;line-height:1.2;margin:4px 0;">' +
       voucherEmoji +
       "</div>" +
@@ -846,7 +866,7 @@
       "</span>" +
       "</div>" +
       '<button class="btn btn-secondary" id="print-receipt-btn" style="margin-top:14px;width:100%;font-size:15px;font-weight:600;padding:14px;">' +
-      "&#128424; Print Receipt" +
+      icon('print', 18) + ' Print Receipt' +
       "</button>" +
       "</div>"
     );
@@ -939,9 +959,9 @@
 
     var logBtn = document.getElementById("bill-log-btn");
     if (logBtn) {
-      logBtn.textContent = state.billLogPanelVisible
+      logBtn.innerHTML = state.billLogPanelVisible
         ? "Close Log"
-        : "\u{1F4CB} Log";
+        : icon('filetext', 14) + ' Log';
       logBtn.classList.toggle("active", state.billLogPanelVisible);
     }
 
@@ -976,7 +996,7 @@
     if (state.billLog.length === 0) {
       logPanel.innerHTML =
         '<div class="bill-log-empty">' +
-        '<div style="font-size:36px;margin-bottom:8px;">&#128210;</div>' +
+        '<div style="font-size:36px;margin-bottom:8px;">' + icon('smartphone', 36) + '</div>' +
         "<p>No vouchers redeemed yet this session.</p>" +
         '<p style="font-size:12px;color:var(--muted);">Scan and redeem food &amp; drinks vouchers — they\'ll appear here.</p>' +
         "</div>";
@@ -999,10 +1019,10 @@
       "<span>Total: <strong>" +
       total +
       "</strong></span>" +
-      "<span>&#127858; <strong>" +
+      '<span>' + icon('food', 16) + ' <strong>' +
       foodCount +
       "</strong></span>" +
-      "<span>&#127866; <strong>" +
+      '<span>' + icon('drink', 16) + ' <strong>' +
       drinksCount +
       "</strong></span>" +
       '<span class="bill-log-total-amount">' +
@@ -1014,7 +1034,7 @@
     // Most recent first
     var logCopy = state.billLog.slice().reverse();
     logCopy.forEach(function (entry, idx) {
-      var emoji = entry.type === "food" ? "&#127858;" : "&#127866;";
+      var emoji = entry.type === "food" ? icon('food', 22) : icon('drink', 22);
       var label = entry.type === "food" ? "Food" : "Drinks";
       var originalIdx = state.billLog.length - 1 - idx;
 
@@ -1067,7 +1087,7 @@
           "</div>" +
           '<button class="bill-log-undo-btn" data-log-idx="' +
           originalIdx +
-          '" title="Undo redemption" aria-label="Undo">&#8634;</button>' +
+          '" title="Undo redemption" aria-label="Undo">' + icon('undo', 16) + '</button>' +
           "</div>";
       }
     });
@@ -1075,7 +1095,7 @@
     html +=
       "</div>" +
       '<div style="display:flex;gap:8px;margin-top:12px;">' +
-      '<button class="btn btn-secondary" id="bill-log-export-btn" style="flex:1;font-size:13px;">&#11015; Export CSV</button>' +
+      '<button class="btn btn-secondary" id="bill-log-export-btn" style="flex:1;font-size:13px;">' + icon('download', 14) + ' Export CSV</button>' +
       '<button class="btn btn-secondary" id="bill-log-clear-btn" style="flex:1;font-size:13px;color:#c53030;">Clear Log</button>' +
       "</div>";
 
@@ -1187,7 +1207,7 @@
 
     showResult(
       "success",
-      "&#11015; Exported <strong>" +
+      icon('download', 14) + ' Exported <strong>' +
         escapeHtml(filename) +
         "</strong> (" +
         totals.totalCount +
@@ -1293,7 +1313,7 @@
         var noteMsg = reason ? ' &#8212; "' + escapeHtml(reason) + '"' : "";
         showLogToast(
           "success",
-          "&#8634; Undone <strong>" +
+          icon('undo', 14) + ' Undone <strong>' +
             escapeHtml(entry.code) +
             "</strong>" +
             noteMsg,
@@ -1303,7 +1323,7 @@
         showLogToast("error", err.message || "Failed to undo redemption");
         if (undoBtn) {
           undoBtn.disabled = false;
-          undoBtn.innerHTML = "↺";
+          undoBtn.innerHTML = icon('undo', 16);
         }
       });
   }
@@ -1337,7 +1357,7 @@
       return;
     }
 
-    var voucherEmoji = ticket.type === "food" ? "&#127858;" : "&#127866;";
+    var voucherEmoji = ticket.type === "food" ? icon('food', 36) : icon('drink', 36);
     var voucherLabel =
       ticket.type === "food" ? "Food Ticket" : "Drinks Ticket";
 
@@ -1403,7 +1423,7 @@
 
     container.innerHTML =
       '<button class="action-btn success" id="gate-mark-used-btn">' +
-      "&#10003; Mark as Entered" +
+      icon('checkcircle', 16) + ' Mark as Entered' +
       "</button>" +
       '<div id="gate-error" class="error-message" style="display:none;margin-top:8px;"></div>';
   }
@@ -1447,7 +1467,7 @@
 
           showResult(
             "success",
-            "&#10003; Redeemed <strong>" +
+            icon('checkcircle', 16) + ' Redeemed <strong>' +
               escapeHtml(state.currentTicket.code) +
               "</strong> (" +
               (state.currentTicket.type === "food" ? "Food" : "Drinks") +
@@ -1489,7 +1509,7 @@
           // Gate / other: show success state
           showResult(
             "success",
-            "&#10003; Entry confirmed for <strong>" +
+            icon('checkcircle', 16) + ' Entry confirmed for <strong>' +
               escapeHtml(state.currentTicket.code) +
               "</strong>",
           );
@@ -1497,7 +1517,7 @@
           if (container) {
             container.innerHTML =
               '<div style="padding:16px;text-align:center;color:#2f855a;">' +
-              '<strong style="font-size:18px;">&#10003; Entered</strong><br>' +
+              '<strong style="font-size:18px;">' + icon('checkcircle', 18) + ' Entered</strong><br>' +
               '<span style="font-size:13px;color:var(--muted);">' +
               escapeHtml(state.currentTicket.code) +
               "</span>" +
@@ -1569,7 +1589,7 @@
 
         showResult(
           "success",
-          "&#10003; Debited <strong>" +
+          icon('checkcircle', 16) + ' Debited <strong>' +
             formatCurrency(amount) +
             "</strong>. Remaining: " +
             formatCurrency(data.new_balance),
@@ -1640,7 +1660,7 @@
 
         showResult(
           "success",
-          "&#10003; Debited <strong>" +
+          icon('checkcircle', 16) + ' Debited <strong>' +
             formatCurrency(amount) +
             "</strong> from " +
             escapeHtml(state.currentTicket.code) +
@@ -1945,7 +1965,7 @@
                 // Mark as completed
                 showResult(
                   "success",
-                  "&#10003; Payment received! Top-up of <strong>" +
+                  icon('checkcircle', 16) + ' Payment received! Top-up of <strong>' +
                     formatCurrency(amount) +
                     "</strong> confirmed.",
                 );
@@ -2039,7 +2059,7 @@
 
         showResult(
           "success",
-          "&#10003; Top-up of <strong>" +
+          icon('checkcircle', 16) + ' Top-up of <strong>' +
             formatCurrency(amount) +
             "</strong> complete. New balance: " +
             formatCurrency(newBalance),
@@ -2194,7 +2214,7 @@
           // Show result with ticket code for paper slip
           showResult(
             "success",
-            "&#10003; Created <strong>" +
+            icon('checkcircle', 16) + ' Created <strong>' +
               escapeHtml(data.ticket_code) +
               "</strong> for " +
               escapeHtml(customerName),
@@ -2240,7 +2260,7 @@
       '<td><input type="number" class="bulk-amount" placeholder="D" min="50" style="min-width:70px;"></td>' +
       '<td><select class="bulk-method"><option value="cash">Cash</option></select></td>' +
       '<td><input type="text" class="bulk-note" placeholder="Booth # / staff name"></td>' +
-      '<td><button class="del-btn" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
+      '<td><button class="del-btn" onclick="this.closest(\'tr\').remove()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>';
     tbody.appendChild(tr);
   }
 
@@ -2300,7 +2320,7 @@
           resultEl.className = "scanner-result success";
           var successCount = data.processed || entries.length;
           resultEl.innerHTML =
-            "&#10003; " +
+            icon('checkcircle', 16) + ' ' +
             successCount +
             " top-up" +
             (successCount !== 1 ? "s" : "") +
