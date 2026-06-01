@@ -3221,51 +3221,72 @@ async function handleExchangeToken(req) {
         },
       );
     }
-    // Token is valid — generate a fresh session via Supabase Auth
+    // Token is valid — create a session directly via password grant.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    // Step 1: Generate a fresh magic link via admin API
-    let linkData;
-    const linkRes = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${serviceKey}`,
-        apikey: serviceKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "magiclink",
-        email,
-        redirect_to: "https://www.walkingfish.gm/tickets",
-      }),
-    });
-    if (!linkRes.ok) {
-      // If magiclink fails, try signup (creates the user if first time)
-      console.log(
-        `[exchange-token] magiclink failed for ${email}, trying signup...`,
-      );
-      const signupRes = await fetch(
-        `${supabaseUrl}/auth/v1/admin/generate_link`,
+    // The magic link confirmation token from admin/generate_link can ONLY be
+    // verified via browser GET redirect (POST /auth/v1/verify with type="magiclink"
+    // rejects with "Only an email should be provided on verify").
+    // Since the redirect chain breaks on iOS Safari, we bypass it entirely by:
+    //   1. Look up the user in Supabase Auth
+    //   2. Set a temporary password
+    //   3. Get session tokens via password grant
+    //   4. Clear the temporary password
+    try {
+      // 2a. Look up the user by email
+      const userRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
         {
-          method: "POST",
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      const userData = await userRes.json();
+      const users = userData?.users || [];
+      if (!users.length) {
+        console.error(`[exchange-token] User not found for ${email}`);
+        return new Response(
+          JSON.stringify({
+            error: "Unable to sign you in. Please request a new link.",
+          }),
+          {
+            status: 404,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+      const userId = users[0].id;
+      // 2b. Generate a random temporary password
+      const tempPassword =
+        "tmp_" + crypto.randomUUID().replace(/-/g, "").substring(0, 24);
+      // 2c. Set the temporary password
+      const updateRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users/${userId}`,
+        {
+          method: "PUT",
           headers: {
             Authorization: `Bearer ${serviceKey}`,
             apikey: serviceKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            type: "signup",
-            email,
-            redirect_to: "https://www.walkingfish.gm/tickets",
+            password: tempPassword,
           }),
         },
       );
-      if (!signupRes.ok) {
+      if (!updateRes.ok) {
         console.error(
-          `[exchange-token] Failed to generate any link for ${email}`,
+          `[exchange-token] Failed to set temp password for ${email}: ${updateRes.status}`,
         );
         return new Response(
           JSON.stringify({
-            error: "Unable to sign you in. Please try requesting a new link.",
+            error: "Unable to sign you in. Please try again.",
           }),
           {
             status: 500,
@@ -3276,30 +3297,43 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      // Retry magiclink now that user exists
-      const retryRes = await fetch(
-        `${supabaseUrl}/auth/v1/admin/generate_link`,
+      // 2d. Get a session via password grant
+      const tokenRes = await fetch(
+        `${supabaseUrl}/auth/v1/token?grant_type=password`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${serviceKey}`,
             apikey: serviceKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            type: "magiclink",
-            email,
-            redirect_to: "https://www.walkingfish.gm/tickets",
+            email: email,
+            password: tempPassword,
           }),
         },
       );
-      if (!retryRes.ok) {
+      const tokenData = await tokenRes.json();
+      // 2e. Clear the temporary password (regardless of whether token exchange succeeded)
+      fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: "" }),
+      }).catch(() => {});
+      if (tokenRes.ok && tokenData.access_token) {
+        console.log(
+          `[exchange-token] ✓ Session obtained for ${email} (password grant)`,
+        );
         return new Response(
           JSON.stringify({
-            error: "Unable to sign you in. Please try requesting a new link.",
+            success: true,
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token || "",
           }),
           {
-            status: 500,
             headers: {
               ...corsHeaders,
               "Content-Type": "application/json",
@@ -3307,16 +3341,28 @@ async function handleExchangeToken(req) {
           },
         );
       }
-      linkData = await retryRes.json();
-    } else {
-      linkData = await linkRes.json();
-    }
-    const actionLink =
-      linkData?.data?.properties?.action_link || linkData?.action_link || null;
-    if (!actionLink) {
+      console.error(
+        `[exchange-token] Password grant failed for ${email}: ${tokenRes.status} ${JSON.stringify(tokenData)}`,
+      );
       return new Response(
         JSON.stringify({
-          error: "Failed to generate auth link",
+          error: "Unable to sign you in. Please request a new link.",
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    } catch (sessionErr) {
+      console.error(
+        `[exchange-token] Session creation error for ${email}: ${sessionErr.message}`,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "Unable to sign you in. Please try again.",
         }),
         {
           status: 500,
@@ -3327,70 +3373,6 @@ async function handleExchangeToken(req) {
         },
       );
     }
-    // Step 2: Exchange the confirmation token for a session server-side.
-    // Parse the `token` and `type` from the action_link URL, then call POST
-    // /auth/v1/verify to exchange them for session tokens.
-    // This avoids the browser redirect chain that breaks on mobile Safari/in-app browsers.
-    try {
-      const actionUrl = new URL(actionLink);
-      const verifyToken = actionUrl.searchParams.get("token");
-      const verifyType = actionUrl.searchParams.get("type") || "magiclink";
-      if (verifyToken) {
-        const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: verifyType,
-            token: verifyToken,
-            redirect_to: "https://www.walkingfish.gm/tickets",
-          }),
-        });
-        const verifyData = await verifyRes.json();
-        if (verifyRes.ok && verifyData.access_token) {
-          console.log(
-            `[exchange-token] ✓ Session obtained for ${email} (POST verify)`,
-          );
-          return new Response(
-            JSON.stringify({
-              success: true,
-              access_token: verifyData.access_token,
-              refresh_token: verifyData.refresh_token || "",
-            }),
-            {
-              headers: {
-                ...corsHeaders,
-                "Content-Type": "application/json",
-              },
-            },
-          );
-        } else {
-          console.warn(
-            `[exchange-token] POST verify returned ${verifyRes.status} for ${email}: ${JSON.stringify(verifyData)}`,
-          );
-        }
-      }
-    } catch (verifyErr) {
-      console.warn(
-        `[exchange-token] POST verify error for ${email}: ${verifyErr.message}`,
-      );
-    }
-    // Fallback: return action_link for browser redirect (legacy)
-    return new Response(
-      JSON.stringify({
-        success: true,
-        action_link: actionLink,
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      },
-    );
   } catch (err) {
     console.error("[exchange-token] Error:", err.message);
     return new Response(
