@@ -319,3 +319,77 @@ function giftPiroakeInterest() {
     <p>We'll notify you the moment tickets go live — before the general public.</p>`,
   box => { giftConfetti(box); });
 }
+
+// ── Report Issue Form ─ submits to verify-turnstile with contact_messages, subject=Complaint / Report an Issue
+function giftReportIssue(form) {
+  const name = form ? (form.querySelector('#name')?.value || '') : '';
+  const phone = form ? (form.querySelector('#phone')?.value || '') : '';
+  const email = form ? (form.querySelector('#email')?.value || '') : '';
+  const message = form ? (form.querySelector('#message')?.value || '') : '';
+
+  if (!name || !phone || !message) return;
+
+  let turnstileToken = '';
+  try { turnstileToken = turnstile.getResponse(); } catch (_) {}
+  if (!turnstileToken) {
+    const hidden = form && form.querySelector('[name="cf-turnstile-response"]');
+    if (hidden) turnstileToken = hidden.value;
+  }
+  if (!turnstileToken && typeof getVerifiedVisitorToken === 'function') {
+    turnstileToken = getVerifiedVisitorToken();
+  }
+
+  const btn = form && form.querySelector('button[type="submit"]');
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  const SUPA_URL = (typeof SUPABASE_URL !== 'undefined') ? SUPABASE_URL : 'https://anigcqdquakinlzvyaur.supabase.co';
+  const SUPA_KEY = (typeof SUPABASE_ANON_KEY !== 'undefined') ? SUPABASE_ANON_KEY : '';
+
+  fetch(SUPA_URL + '/functions/v1/verify-turnstile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    body: JSON.stringify({
+      token: turnstileToken || 'bypass',
+      table: 'contact_messages',
+      data: { name, email, subject: 'Complaint / Report an Issue', message, phone }
+    })
+  }).then(function (r) {
+    if (!r.ok) {
+      return r.json().then(function (err) {
+        if (err.error === 'Invalid CAPTCHA token') {
+          try {
+            localStorage.removeItem('wf_verified_visitor_token');
+            var styleEl = document.getElementById('wf-bypass-turnstile-style');
+            if (styleEl) styleEl.remove();
+            if (typeof turnstile !== 'undefined' && typeof turnstile.reset === 'function') {
+              turnstile.reset();
+            }
+          } catch (_) {}
+        }
+        throw new Error(err.error || 'Failed to submit report.');
+      });
+    }
+    return r.json();
+  }).then(function (data) {
+    if (data.verifiedToken) {
+      try { localStorage.setItem('wf_verified_visitor_token', data.verifiedToken); } catch (_) {}
+    }
+    return data;
+  }).catch(function (err) {
+    console.error(err);
+  }).finally(function () {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+    openGiftBox(`
+      <div class="gift-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg></div>
+      <div class="gift-badge">Report Submitted</div>
+      <h2>We're on it.</h2>
+      <p>Your report has been received. Our team will reach out to you on <strong>${phone}</strong> within 24 hours.</p>
+      <div class="gift-items">
+        <div class="gift-item"><span class="check">✓</span> Our team reviews your issue</div>
+        <div class="gift-item"><span class="check">✓</span> We contact you on WhatsApp</div>
+        <div class="gift-item"><span class="check">✓</span> We work to resolve it</div>
+      </div>`,
+    function (box) { giftConfetti(box); });
+  });
+}

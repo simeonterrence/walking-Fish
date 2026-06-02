@@ -39,6 +39,7 @@
     { "source": "/vendors", "destination": "/vendors.html" },
     { "source": "/partners", "destination": "/partners.html" },
     { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/report-issue", "destination": "/report-issue.html" },
     { "source": "/login", "destination": "/login.html" },
     { "source": "/admin-login", "destination": "/admin-login.html" },
     { "source": "/admin", "destination": "/admin.html" },
