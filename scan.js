@@ -2102,7 +2102,7 @@
     if (!select) return;
 
     supabaseGet(
-      "/rest/v1/ticket_types?select=id,name,price,sort_order&is_active=eq.true&order=sort_order.asc",
+      "/rest/v1/ticket_types?select=id,name,price,type,sort_order&is_active=eq.true&type=not.eq.entry&order=sort_order.asc",
     )
       .then(function (types) {
         if (!types || types.length === 0) {
