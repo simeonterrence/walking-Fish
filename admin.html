@@ -94,6 +94,18 @@
                 background: #fee2e2;
                 color: #991b1b;
             }
+            .status-in_progress {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+            .status-resolved {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            .status-closed {
+                background: #f3f4f6;
+                color: #6b7280;
+            }
             .action-btn {
                 padding: 6px 16px;
                 font-size: 13px;
@@ -595,6 +607,59 @@
                     </div>
                 </details>
             </div>
+            <!-- ════════════════════════════════════════════════════════════════ -->
+            <!-- COMPLAINTS MANAGEMENT -->
+            <!-- ════════════════════════════════════════════════════════════════ -->
+
+            <details
+                style="
+                    margin: 32px 0;
+                    border-top: 1px solid var(--border);
+                    padding-top: 24px;
+                "
+            >
+                <summary
+                    style="
+                        cursor: pointer;
+                        font-size: 14px;
+                        font-weight: 500;
+                        color: var(--muted);
+                    "
+                >
+                    Complaints &amp; Issue Reports
+                </summary>
+                <div style="margin-top: 16px">
+                    <div class="stats-grid" id="complaint-stats-grid">
+                        <div class="stat-card">
+                            <div class="num" id="comp-stat-total">0</div>
+                            <div class="lbl">Total</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="comp-stat-new">0</div>
+                            <div class="lbl">New</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="comp-stat-progress">0</div>
+                            <div class="lbl">In Progress</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="comp-stat-resolved">0</div>
+                            <div class="lbl">Resolved/Closed</div>
+                        </div>
+                    </div>
+                    <div id="complaints-container">
+                        <p
+                            style="
+                                color: var(--muted);
+                                font-size: 14px;
+                            "
+                        >
+                            Loading complaints...
+                        </p>
+                    </div>
+                </div>
+            </details>
+
             <!-- Photo Management (standalone page via iframe) -->
             <div
                 class="w"
@@ -1065,6 +1130,7 @@
                 loadTopUpBundles();
                 loadBalanceCap();
                 loadScannerCodes();
+                loadComplaints();
 
                 document
                     .getElementById("logout-btn")
@@ -1419,6 +1485,468 @@
 
                 document.getElementById("app-modal").classList.add("open");
             }
+
+            // ═════════════════════════════════════════════════════════════╗
+            // COMPLAINTS MANAGEMENT                                      ║
+            // ═════════════════════════════════════════════════════════════╝
+
+            function loadComplaints() {
+                var container = document.getElementById("complaints-container");
+                container.innerHTML =
+                    '<p style="color:var(--muted);font-size:14px;">Loading complaints...</p>';
+
+                function render(complaints) {
+                    var stats = {
+                        total: complaints.length,
+                        new: complaints.filter(function (c) {
+                            return c.status === "new";
+                        }).length,
+                        progress: complaints.filter(function (c) {
+                            return c.status === "in_progress";
+                        }).length,
+                        resolved: complaints.filter(function (c) {
+                            return c.status === "resolved" || c.status === "closed";
+                        }).length,
+                    };
+
+                    document.getElementById("comp-stat-total").textContent =
+                        stats.total;
+                    document.getElementById("comp-stat-new").textContent =
+                        stats.new;
+                    document.getElementById("comp-stat-progress").textContent =
+                        stats.progress;
+                    document.getElementById("comp-stat-resolved").textContent =
+                        stats.resolved;
+
+                    if (complaints.length === 0) {
+                        container.innerHTML =
+                            '<p style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">No complaints yet. Issues submitted through the contact form or Report an Issue page will appear here.</p>';
+                        return;
+                    }
+
+                    var html =
+                        '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+                        "<th>#</th>" +
+                        "<th>Name</th>" +
+                        "<th>WhatsApp</th>" +
+                        "<th>Status</th>" +
+                        "<th>Received</th>" +
+                        "<th>Actions</th>" +
+                        "</tr></thead><tbody>";
+
+                    complaints.forEach(function (c) {
+                        var statusClass = "status-" + c.status;
+                        var statusLabel = c.status.replace(/_/g, " ");
+                        var dateStr = "-";
+                        try {
+                            dateStr = new Date(
+                                c.created_at
+                            ).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                            });
+                        } catch (_) {}
+                        var msgPreview = (c.message || "")
+                            .substring(0, 60)
+                            .replace(/[
+
+]/g, " ");
+
+                        html +=
+                            "<tr>" +
+                            '<td><code style="font-size:12px;">#' +
+                            c.id.slice(0, 8) +
+                            "</code></td>" +
+                            "<td><strong>" +
+                            escapeHtml(c.name || "-") +
+                            '</strong><br><span style="font-size:12px;color:var(--muted);">' +
+                            escapeHtml(msgPreview) +
+                            "</span></td>" +
+                            "<td>" +
+                            (c.phone
+                                ? '<a href="https://wa.me/' +
+                                  c.phone.replace(/[^0-9]/g, "") +
+                                  '" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;text-decoration:underline;">' +
+                                  escapeHtml(c.phone) +
+                                  "</a>"
+                                : '<span style="color:var(--muted);font-size:13px;">-</span>') +
+                            "</td>" +
+                            '<td><span class="status-badge ' +
+                            statusClass +
+                            '" style="text-transform:capitalize;">' +
+                            statusLabel +
+                            "</span></td>" +
+                            '<td><span style="font-size:13px;color:var(--muted);">' +
+                            dateStr +
+                            "</span></td>" +
+                            '<td style="white-space:nowrap;">' +
+                            '<button class="action-btn complaint-view-btn" data-complaint="' +
+                            c.id +
+                            '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">View</button>' +
+                            (c.status === "new"
+                                ? '<button class="action-btn complaint-in-progress-btn" data-complaint="' +
+                                  c.id +
+                                  '" style="background:#1e40af;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Take</button>'
+                                : "") +
+                            (c.status === "in_progress"
+                                ? '<button class="action-btn complaint-resolve-btn" data-complaint="' +
+                                  c.id +
+                                  '" style="background:#065f46;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Resolve</button>'
+                                : "") +
+                            (c.status === "resolved"
+                                ? '<button class="action-btn complaint-close-btn" data-complaint="' +
+                                  c.id +
+                                  '" style="background:#6b7280;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Close</button>'
+                                : "") +
+                            (c.status === "new" || c.status === "in_progress"
+                                ? '<button class="action-btn action-reject complaint-close-quick-btn" data-complaint="' +
+                                  c.id +
+                                  '" style="min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;margin-left:4px;" title="Mark as closed">Close</button>'
+                                : "") +
+                            "</td>" +
+                            "</tr>";
+                    });
+
+                    html += "</tbody></table></div>";
+                    container.innerHTML = html;
+                }
+
+                function fetchComplaints() {
+                    return fetch(
+                        SUPABASE_URL +
+                            "/rest/v1/complaints?order=created_at.desc&select=*",
+                        {
+                            headers: authHeaders(),
+                        }
+                    ).then(function (r) {
+                        if (!r.ok) throw new Error("Failed to load complaints.");
+                        return r.json();
+                    });
+                }
+
+                fetchComplaints()
+                    .then(function (complaints) {
+                        window.cachedComplaints = complaints || [];
+                        render(window.cachedComplaints);
+                    })
+                    .catch(function (err) {
+                        container.innerHTML =
+                            '<p style="color:#DC2626;font-size:14px;">' +
+                            escapeHtml(err.message) +
+                            "</p>";
+                    });
+            }
+
+            function showComplaintModal(complaintId) {
+                var complaint = window.cachedComplaints.find(function (c) {
+                    return String(c.id) === String(complaintId);
+                });
+                if (!complaint) {
+                    alert("Complaint not found.");
+                    return;
+                }
+
+                var existing = document.getElementById(
+                    "complaint-detail-modal"
+                );
+                if (existing) existing.remove();
+
+                var overlay = document.createElement("div");
+                overlay.id = "complaint-detail-modal";
+                overlay.className = "gift-overlay";
+                overlay.style.cssText =
+                    "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;";
+
+                var statusLabel = complaint.status.replace(/_/g, " ");
+                var statusClass = "status-" + complaint.status;
+                var phoneClean = (complaint.phone || "").replace(
+                    /[^0-9]/g,
+                    ""
+                );
+                var emailSection =
+                    complaint.email && complaint.email.trim()
+                        ? '<div style="margin-bottom:12px;"><strong style="font-size:13px;color:var(--muted);">Email:</strong><br><span style="font-size:14px;">' +
+                          escapeHtml(complaint.email) +
+                          "</span></div>"
+                        : "";
+                var resolutionSection =
+                    complaint.resolution_notes
+                        ? '<div style="margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;"><strong style="font-size:13px;color:#065f46;">Resolution Notes:</strong><p style="font-size:14px;white-space:pre-wrap;margin-top:4px;">' +
+                          escapeHtml(complaint.resolution_notes) +
+                          "</p>" +
+                          (complaint.resolved_at
+                              ? '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Resolved: ' +
+                                new Date(
+                                    complaint.resolved_at
+                                ).toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                }) +
+                                "</p>"
+                              : "") +
+                          "</div>"
+                        : "";
+
+                overlay.innerHTML =
+                    '<div class="gift-box" style="text-align:left;max-width:560px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-height:85vh;overflow-y:auto;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+                    '<div><span class="status-badge ' +
+                    statusClass +
+                    '" style="text-transform:capitalize;">' +
+                    statusLabel +
+                    '</span></div>' +
+                    '<code style="font-size:12px;color:var(--muted);">#' +
+                    complaint.id.slice(0, 8) +
+                    "</code>" +
+                    "</div>" +
+                    '<h2 style="font-size:20px;margin-bottom:4px;">' +
+                    escapeHtml(complaint.name || "Anonymous") +
+                    "</h2>" +
+                    (phoneClean
+                        ? '<p style="margin-bottom:16px;"><a href="https://wa.me/' +
+                          phoneClean +
+                          '" target="_blank" rel="noopener" style="color:var(--accent);font-size:14px;text-decoration:underline;">' +
+                          escapeHtml(complaint.phone) +
+                          "</a></p>"
+                        : '<p style="color:var(--muted);font-size:14px;margin-bottom:16px;">No phone</p>') +
+                    emailSection +
+                    '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Message:</strong><div style="background:var(--accent-dim);padding:12px;border-radius:8px;font-size:14px;white-space:pre-wrap;margin-top:4px;">' +
+                    escapeHtml(complaint.message || "-") +
+                    "</div></div>" +
+                    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Submitted: ' +
+                    new Date(complaint.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    }) +
+                    "</div>" +
+                    resolutionSection +
+                    // Status update controls
+                    '<div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">' +
+                    '<strong style="font-size:14px;display:block;margin-bottom:12px;">Update Status</strong>' +
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
+                    (complaint.status === "new"
+                        ? '<button class="action-btn comp-update-btn" data-id="' +
+                          complaint.id +
+                          '" data-status="in_progress" style="background:#1e40af;color:white;min-width:auto;min-height:auto;padding:8px 16px;">Mark In Progress</button>'
+                        : "") +
+                    (complaint.status !== "resolved" &&
+                    complaint.status !== "closed"
+                        ? '<button class="action-btn comp-update-btn" data-id="' +
+                          complaint.id +
+                          '" data-status="resolved" style="background:#065f46;color:white;min-width:auto;min-height:auto;padding:8px 16px;">Resolve</button>'
+                        : "") +
+                    (complaint.status !== "closed"
+                        ? '<button class="action-btn comp-update-btn" data-id="' +
+                          complaint.id +
+                          '" data-status="closed" style="background:#6b7280;color:white;min-width:auto;min-height:auto;padding:8px 16px;">Close</button>'
+                        : "") +
+                    '<button class="action-btn" id="comp-modal-close-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 16px;">Close</button>' +
+                    "</div>" +
+                    // Resolution notes textarea (shown when resolving)
+                    '<div id="comp-resolution-field" style="display:none;margin-top:8px;">' +
+                    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Resolution Notes</label>' +
+                    '<textarea id="comp-resolution-notes" rows="3" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);resize:vertical;">' +
+                    (complaint.resolution_notes || "") +
+                    "</textarea>" +
+                    '<button class="action-btn comp-update-btn" data-id="' +
+                    complaint.id +
+                    '" data-status="resolved" style="background:#065f46;color:white;min-width:auto;min-height:auto;padding:8px 16px;margin-top:8px;">Save Resolution</button>' +
+                    "</div>" +
+                    "</div>" +
+                    "</div>";
+
+                document.body.appendChild(overlay);
+            }
+
+            function updateComplaintStatus(complaintId, newStatus, notes) {
+                var payload = { status: newStatus };
+                if (newStatus === "resolved") {
+                    payload.resolved_at = new Date().toISOString();
+                    if (notes) {
+                        payload.resolution_notes = notes;
+                    }
+                }
+
+                var hdrs = { "Content-Type": "application/json", Prefer: "return=minimal" };
+                var sess = getStoredSession();
+                if (sess && sess.access_token) {
+                    hdrs.Authorization = "Bearer " + sess.access_token;
+                }
+                return fetch(
+                    SUPABASE_URL +
+                        "/rest/v1/complaints?id=eq." +
+                        encodeURIComponent(complaintId),
+                    {
+                        method: "PATCH",
+                        headers: hdrs,
+                        body: JSON.stringify(payload),
+                    }
+                ).then(function (r) {
+                    if (r.ok || r.status === 204) return true;
+                    throw new Error("Failed to update complaint.");
+                });
+            }
+
+            // ── Event delegation for complaint buttons ──
+            document.addEventListener("click", function (e) {
+                // View complaint detail modal
+                if (e.target.classList.contains("complaint-view-btn")) {
+                    showComplaintModal(
+                        e.target.getAttribute("data-complaint")
+                    );
+                }
+
+                // Update complaint status (in-progress, resolve, close)
+                if (e.target.classList.contains("comp-update-btn")) {
+                    var btn = e.target;
+                    var complaintId = btn.getAttribute("data-id");
+                    var newStatus = btn.getAttribute("data-status");
+                    if (!complaintId || !newStatus) return;
+
+                    // If "Resolve" is clicked inside the modal, reveal the textarea instead of saving
+                    var modal = document.getElementById(
+                        "complaint-detail-modal"
+                    );
+                    if (
+                        newStatus === "resolved" &&
+                        modal &&
+                        modal.contains(btn) &&
+                        btn.textContent.indexOf("Save") === -1
+                    ) {
+                        var field = document.getElementById(
+                            "comp-resolution-field"
+                        );
+                        if (field) {
+                            field.style.display = "block";
+                            field.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.textContent = "Updating...";
+
+                    // If resolving, get notes from textarea
+                    var notes = null;
+                    if (newStatus === "resolved") {
+                        var notesEl = document.getElementById(
+                            "comp-resolution-notes"
+                        );
+                        if (notesEl && notesEl.value.trim()) {
+                            notes = notesEl.value.trim();
+                        } else {
+                            // If button is in the table view (not modal), prompt for notes
+                            if (!modal || !modal.contains(btn)) {
+                                notes =
+                                    prompt(
+                                        "Resolution notes (optional):",
+                                        ""
+                                    ) || null;
+                            }
+                        }
+                    }
+
+                    updateComplaintStatus(complaintId, newStatus, notes)
+                        .then(function () {
+                            // Close modal if it's open
+                            if (modal) modal.remove();
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                            btn.disabled = false;
+                            btn.textContent = newStatus.replace(/_/g, " ");
+                        });
+                }
+
+                // Quick close (from table view)
+                if (e.target.classList.contains("complaint-close-quick-btn")) {
+                    var complaintId = e.target.getAttribute("data-complaint");
+                    if (
+                        !confirm("Close this complaint without resolving it?")
+                    )
+                        return;
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateComplaintStatus(complaintId, "closed", null)
+                        .then(function () {
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                        });
+                })
+
+                // Take (mark in progress) from table view
+                if (e.target.classList.contains(
+                    "complaint-in-progress-btn"
+                )) {
+                    var complaintId = e.target.getAttribute("data-complaint");
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateComplaintStatus(complaintId, "in_progress", null)
+                        .then(function () {
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                        });
+                }
+
+                // Resolve from table view
+                if (e.target.classList.contains("complaint-resolve-btn")) {
+                    var complaintId = e.target.getAttribute("data-complaint");
+                    var notes = prompt(
+                        "Resolution notes (optional):",
+                        ""
+                    );
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateComplaintStatus(
+                        complaintId,
+                        "resolved",
+                        notes || null
+                    )
+                        .then(function () {
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                        });
+                }
+
+                // Close from table view
+                if (e.target.classList.contains("complaint-close-btn")) {
+                    var complaintId = e.target.getAttribute("data-complaint");
+                    if (!confirm("Close this complaint?")) return;
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateComplaintStatus(complaintId, "closed", null)
+                        .then(function () {
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                        });
+                }
+
+                // Close complaint detail modal
+                if (e.target.id === "comp-modal-close-btn") {
+                    var modal = document.getElementById(
+                        "complaint-detail-modal"
+                    );
+                    if (modal) modal.remove();
+                }
+
+                // Dismiss modal by clicking overlay background
+                if (e.target.id === "complaint-detail-modal") {
+                    e.target.remove();
+                }
+            });
         </script>
 
         <nav class="bottom-tabs" aria-label="Main navigation">
