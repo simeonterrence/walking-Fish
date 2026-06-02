@@ -176,7 +176,9 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
   const viewTicketsLink = `${siteUrl}/view-tickets`;
 
-  const hasAccessCode = tickets.some(function (t) { return t.accessCode; });
+  const hasAccessCode = tickets.some(function (t) {
+    return t.accessCode;
+  });
 
   let ticketCards = tickets
 
@@ -402,7 +404,7 @@ async function createTicketsForOrder(
 
       .from("ticket_types")
 
-      .select("id, name, slug, type, price")
+      .select("id, name, slug, type, price, max_uses")
 
       .eq("id", item.ticket_type_id)
 
@@ -526,6 +528,8 @@ async function createTicketsForOrder(
           code,
 
           balance: initialBalance,
+
+          uses_remaining: ticketType.max_uses > 1 ? ticketType.max_uses : null,
 
           customer_email: email,
 
@@ -2503,6 +2507,8 @@ async function handleLookupTicket(req) {
 
         balance,
 
+        uses_remaining,
+
         customer_name,
 
         customer_email,
@@ -2576,6 +2582,8 @@ async function handleLookupTicket(req) {
           status: ticket.status,
 
           balance: ticket.balance,
+
+          uses_remaining: ticket.uses_remaining,
 
           customer_name: ticket.customer_name,
 
@@ -3396,9 +3404,28 @@ async function handleMarkUsed(req) {
       `[mark-used] ✓ Ticket ${ticket_id} marked used (success=${success})`,
     );
 
+    // Fetch updated ticket state (status + uses_remaining) so the scanner UI can display remaining entries
+    let updatedStatus = null;
+    let updatedUsesRemaining = null;
+    try {
+      const { data: updated } = await supabase
+        .from("tickets")
+        .select("status, uses_remaining")
+        .eq("id", ticket_id)
+        .single();
+      if (updated) {
+        updatedStatus = updated.status;
+        updatedUsesRemaining = updated.uses_remaining;
+      }
+    } catch (_) {
+      // Non-critical - scanner can still proceed without this info
+    }
+
     return new Response(
       JSON.stringify({
         success: !!success,
+        status: updatedStatus,
+        uses_remaining: updatedUsesRemaining,
       }),
 
       {
@@ -4708,7 +4735,7 @@ async function handleViewTickets(req) {
       .from("tickets")
 
       .select(
-        "id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
+        "id, code, type, status, balance, uses_remaining, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
       )
 
       .eq("customer_email", email)
@@ -4763,7 +4790,7 @@ async function handleViewTickets(req) {
       .from("tickets")
 
       .select(
-        "id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
+        "id, code, type, status, balance, uses_remaining, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
       )
 
       .eq("customer_email", email)
@@ -4832,6 +4859,8 @@ async function handleViewTickets(req) {
 
         customer_name: t.customer_name,
 
+        uses_remaining: t.uses_remaining,
+
         qr_data_uri: qrDataUri,
 
         access_code: accessCode,
@@ -4886,7 +4915,6 @@ async function handleViewTickets(req) {
     );
   }
 }
-
 
 // ─── Handler: /resend-access-code ────────────────────────────────────
 
@@ -4949,7 +4977,9 @@ async function handleResendAccessCode(req) {
 
       .from("tickets")
 
-      .select("id, code, customer_email, customer_name, metadata, qr_url, ticket_types!left(name, slug)")
+      .select(
+        "id, code, customer_email, customer_name, metadata, qr_url, ticket_types!left(name, slug)",
+      )
 
       .eq("customer_email", email)
 
@@ -4974,10 +5004,7 @@ async function handleResendAccessCode(req) {
     }
 
     if (!tickets || tickets.length === 0) {
-      console.warn(
-        "[resend-access-code] No active tickets found for",
-        email,
-      );
+      console.warn("[resend-access-code] No active tickets found for", email);
 
       return new Response(
         JSON.stringify({
@@ -5006,7 +5033,8 @@ async function handleResendAccessCode(req) {
     let updatedCount = 0;
 
     for (const ticket of tickets) {
-      const existingMeta = (typeof ticket.metadata === "object" && ticket.metadata) || {};
+      const existingMeta =
+        (typeof ticket.metadata === "object" && ticket.metadata) || {};
 
       const updatedMeta = {
         ...existingMeta,
@@ -5103,14 +5131,13 @@ async function handleResendAccessCode(req) {
       },
     );
   } catch (err) {
-    console.error(
-      "[resend-access-code] Error:",
-      err.message,
-      err.stack || "",
-    );
+    console.error("[resend-access-code] Error:", err.message, err.stack || "");
 
     return new Response(
-      JSON.stringify({ success: false, error: "Failed to resend access code." }),
+      JSON.stringify({
+        success: false,
+        error: "Failed to resend access code.",
+      }),
 
       {
         status: 500,
@@ -5122,8 +5149,6 @@ async function handleResendAccessCode(req) {
     );
   }
 }
-
-
 
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -5359,7 +5384,6 @@ async function handleDebugTicket(req) {
   }
 }
 
-
 // ─── Handler: /staff-activity
 
 // Returns aggregated transaction stats for a specific staff scanner code.
@@ -5373,10 +5397,10 @@ async function handleStaffActivity(req) {
     const { staff_code } = await req.json();
 
     if (!staff_code) {
-      return new Response(
-        JSON.stringify({ error: "Missing staff_code" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Missing staff_code" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = getSupabaseClient();
@@ -5390,16 +5414,24 @@ async function handleStaffActivity(req) {
 
     if (txnsErr) {
       console.error("[staff-activity] DB error:", txnsErr);
-      return new Response(
-        JSON.stringify({ error: "Database error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Database error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    var debits = 0, debitCount = 0, topups = 0, topupCount = 0;
-    (txns || []).forEach(function(t) {
-      if (t.type === "debit") { debits += Math.abs(t.amount_delta); debitCount++; }
-      else if (t.type === "topup") { topups += Math.abs(t.amount_delta); topupCount++; }
+    var debits = 0,
+      debitCount = 0,
+      topups = 0,
+      topupCount = 0;
+    (txns || []).forEach(function (t) {
+      if (t.type === "debit") {
+        debits += Math.abs(t.amount_delta);
+        debitCount++;
+      } else if (t.type === "topup") {
+        topups += Math.abs(t.amount_delta);
+        topupCount++;
+      }
     });
 
     return new Response(
@@ -5416,10 +5448,10 @@ async function handleStaffActivity(req) {
     );
   } catch (err) {
     console.error("[staff-activity] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Failed to load activity" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: "Failed to load activity" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 

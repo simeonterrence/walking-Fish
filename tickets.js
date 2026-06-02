@@ -589,7 +589,7 @@
           SUPABASE_URL +
             "/rest/v1/tickets?customer_email=eq." +
             encEmail +
-            "&select=id,code,type,balance,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types!left(name,slug,price)" +
+            "&select=id,code,type,balance,uses_remaining,status,created_at,customer_name,metadata,qr_url,order_id,ticket_types!left(name,slug,price)" +
             "&order=created_at.desc",
           { headers: authH },
         ),
@@ -679,11 +679,17 @@
         fmtDate(t.created_at) +
         "</div>" +
         "</div>" +
-        (hasBalance
-          ? '<div class="ticket-db-balance"><div class="amt">D' +
-            balance.toLocaleString() +
-            '</div><div class="lbl">Balance</div></div>'
-          : "") +
+        (t.uses_remaining != null
+          ? '<div class="ticket-db-balance"><div class="amt">' +
+            t.uses_remaining +
+            '</div><div class="lbl">entr' +
+            (t.uses_remaining === 1 ? "y" : "ies") +
+            " remaining</div></div>"
+          : hasBalance
+            ? '<div class="ticket-db-balance"><div class="amt">D' +
+              balance.toLocaleString() +
+              '</div><div class="lbl">Balance</div></div>'
+            : "") +
         '<div class="ticket-db-actions">' +
         '<button class="btn btn-secondary" style="font-size:13px;" data-qr-id="' +
         t.id +

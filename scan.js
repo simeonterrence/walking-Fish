@@ -317,26 +317,47 @@
         if (!data.success) throw new Error(data.error || "Failed to load");
         var html = "";
         html += '<div class="stat-row">';
-        html += '<div class="stat-card"><div class="num" style="color:#991B1B;">D' + Number(data.total_debits || 0).toLocaleString() + '</div><div class="lbl">Total Debited</div></div>';
-        html += '<div class="stat-card"><div class="num">' + (data.debit_count || 0) + '</div><div class="lbl">Debit Txn</div></div>';
-        html += '<div class="stat-card"><div class="num" style="color:#065F46;">D' + Number(data.total_topups || 0).toLocaleString() + '</div><div class="lbl">Total Top-Ups</div></div>';
-        html += '<div class="stat-card"><div class="num">' + (data.topup_count || 0) + '</div><div class="lbl">Top-Up Txn</div></div>';
-        html += '<div class="stat-card"><div class="num" style="color:var(--accent-text);">' + (data.total_transactions || 0) + '</div><div class="lbl">All Txn</div></div>';
-        html += '</div>';
-        html += '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Your scanner code: <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(state.scannerCode || "") + '</code></p>';
+        html +=
+          '<div class="stat-card"><div class="num" style="color:#991B1B;">D' +
+          Number(data.total_debits || 0).toLocaleString() +
+          '</div><div class="lbl">Total Debited</div></div>';
+        html +=
+          '<div class="stat-card"><div class="num">' +
+          (data.debit_count || 0) +
+          '</div><div class="lbl">Debit Txn</div></div>';
+        html +=
+          '<div class="stat-card"><div class="num" style="color:#065F46;">D' +
+          Number(data.total_topups || 0).toLocaleString() +
+          '</div><div class="lbl">Total Top-Ups</div></div>';
+        html +=
+          '<div class="stat-card"><div class="num">' +
+          (data.topup_count || 0) +
+          '</div><div class="lbl">Top-Up Txn</div></div>';
+        html +=
+          '<div class="stat-card"><div class="num" style="color:var(--accent-text);">' +
+          (data.total_transactions || 0) +
+          '</div><div class="lbl">All Txn</div></div>';
+        html += "</div>";
+        html +=
+          '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Your scanner code: <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">' +
+          escapeHtml(state.scannerCode || "") +
+          "</code></p>";
         content.innerHTML = html;
       })
       .catch(function (err) {
-        content.innerHTML = '<p style="color:#DC2626;">' + escapeHtml(err.message || "Failed to load activity") + '</p>';
+        content.innerHTML =
+          '<p style="color:#DC2626;">' +
+          escapeHtml(err.message || "Failed to load activity") +
+          "</p>";
       });
-}
+  }
 
-function hideStaffActivity() {
-  hide("staff-activity-view");
-  show("scanner-modes");
-}
+  function hideStaffActivity() {
+    hide("staff-activity-view");
+    show("scanner-modes");
+  }
 
-function lockScanner() {
+  function lockScanner() {
     state.authenticated = false;
     state.scannerCode = null;
     state.scannerId = null;
@@ -857,6 +878,13 @@ function lockScanner() {
       escapeHtml(typeName) +
       (hasBalance
         ? " &middot; Balance: " + formatCurrency(ticket.balance)
+        : "") +
+      (ticket.uses_remaining != null
+        ? " &middot; " +
+          ticket.uses_remaining +
+          " entr" +
+          (ticket.uses_remaining === 1 ? "y" : "ies") +
+          " remaining"
         : "") +
       "</div>" +
       "</div>" +
@@ -1516,7 +1544,21 @@ function lockScanner() {
       return;
     }
 
+    // Show remaining entries for multi-use tickets (e.g. Group Entry 5 Pax)
+    var remainingInfo = "";
+    if (ticket.uses_remaining != null) {
+      remainingInfo =
+        '<div style="text-align:center;font-size:14px;color:var(--fg);margin-bottom:12px;padding:8px 12px;background:var(--accent-dim);border-radius:8px;">' +
+        "<strong>" +
+        ticket.uses_remaining +
+        "</strong> entr" +
+        (ticket.uses_remaining === 1 ? "y" : "ies") +
+        " remaining on this group ticket" +
+        "</div>";
+    }
+
     container.innerHTML =
+      remainingInfo +
       '<button class="action-btn success" id="gate-mark-used-btn">' +
       icon("checkcircle", 16) +
       " Mark as Entered" +
@@ -1604,29 +1646,51 @@ function lockScanner() {
           }, 2000);
         } else {
           // Gate / other: show success state
-          showResult(
-            "success",
+          var remaining = data.uses_remaining;
+          var successMsg =
             icon("checkcircle", 16) +
-              " Entry confirmed for <strong>" +
-              escapeHtml(state.currentTicket.code) +
-              "</strong>",
-          );
+            " Entry confirmed for <strong>" +
+            escapeHtml(state.currentTicket.code) +
+            "</strong>";
+
+          // Update local ticket state from response
+          if (state.currentTicket) {
+            if (data.status) state.currentTicket.status = data.status;
+            if (data.uses_remaining != null)
+              state.currentTicket.uses_remaining = data.uses_remaining;
+          }
+
+          // For group tickets with remaining entries, show the count
+          if (remaining != null && remaining > 0) {
+            successMsg +=
+              '<br><span style="font-size:13px;color:var(--muted);">' +
+              remaining +
+              " entr" +
+              (remaining === 1 ? "y" : "ies") +
+              " remaining</span>";
+          }
+
+          showResult("success", successMsg);
+
           var container = document.getElementById("scanner-actions");
           if (container) {
-            container.innerHTML =
-              '<div style="padding:16px;text-align:center;color:#2f855a;">' +
-              '<strong style="font-size:18px;">' +
-              icon("checkcircle", 18) +
-              " Entered</strong><br>" +
-              '<span style="font-size:13px;color:var(--muted);">' +
-              escapeHtml(state.currentTicket.code) +
-              "</span>" +
-              "</div>";
+            if (remaining != null && remaining > 0) {
+              // Re-render the ticket card and actions so scanner can scan the next person
+              renderScannerTicket(state.currentTicket);
+              showGateActions(state.currentTicket, container);
+            } else {
+              container.innerHTML =
+                '<div style="padding:16px;text-align:center;color:#2f855a;">' +
+                '<strong style="font-size:18px;">' +
+                icon("checkcircle", 18) +
+                " Entered</strong><br>" +
+                '<span style="font-size:13px;color:var(--muted);">' +
+                escapeHtml(state.currentTicket.code) +
+                "</span>" +
+                "</div>";
+            }
           }
         }
-
-        // Update ticket status locally
-        if (state.currentTicket) state.currentTicket.status = "used";
       })
       .catch(function (err) {
         showError(

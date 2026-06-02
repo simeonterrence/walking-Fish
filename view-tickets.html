@@ -493,8 +493,9 @@
                                         font-size: 13px;
                                         padding: 0;
                                     "
-                                    >Resend it</button
                                 >
+                                    Resend it
+                                </button>
                             </p>
 
                             <!-- Resend access code section -->
@@ -516,8 +517,7 @@
                                     "
                                 >
                                     Enter your email and we'll send you a new
-                                    access code. Your old one will stop
-                                    working.
+                                    access code. Your old one will stop working.
                                 </p>
                                 <form id="resend-form">
                                     <div class="form-group">
@@ -921,11 +921,17 @@
                             statusLabel +
                             "</span>" +
                             "</div>" +
-                            (hasBalance
-                                ? '<div class="balance-col"><div class="amt">D' +
-                                  Number(balance).toLocaleString() +
-                                  '</div><div class="lbl">Balance</div></div>'
-                                : '<div class="balance-col"></div>') +
+                            (t.uses_remaining != null
+                                ? '<div class="balance-col"><div class="amt">' +
+                                  t.uses_remaining +
+                                  '</div><div class="lbl">entr' +
+                                  (t.uses_remaining === 1 ? "y" : "ies") +
+                                  " remaining</div></div>"
+                                : hasBalance
+                                  ? '<div class="balance-col"><div class="amt">D' +
+                                    Number(balance).toLocaleString() +
+                                    '</div><div class="lbl">Balance</div></div>'
+                                  : '<div class="balance-col"></div>') +
                             "</div>" +
                             // QR section
                             '<div class="qr-row" id="qr-' +
@@ -1020,9 +1026,8 @@
                 var resendSection = document.getElementById("resend-section");
                 var resendForm = document.getElementById("resend-form");
                 var resendEmail = document.getElementById("resend-email");
-                var resendSubmitBtn = document.getElementById(
-                    "resend-submit-btn",
-                );
+                var resendSubmitBtn =
+                    document.getElementById("resend-submit-btn");
                 var resendError = document.getElementById("resend-error");
                 var resendSuccess = document.getElementById("resend-success");
 
@@ -1099,7 +1104,7 @@
 
                         // Success
                         resendSuccess.innerHTML =
-                            '<strong>Access code sent!</strong> Check your email for a new 6-digit code. Your old code is no longer valid.';
+                            "<strong>Access code sent!</strong> Check your email for a new 6-digit code. Your old code is no longer valid.";
                         resendSuccess.style.display = "block";
                         resendForm.style.display = "none";
                         resendSubmitBtn.disabled = false;

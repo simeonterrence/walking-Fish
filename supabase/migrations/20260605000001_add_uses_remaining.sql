@@ -12,14 +12,14 @@
 -- ============================================
 -- 1. Add max_uses to ticket_types
 -- ============================================
-ALTER TABLE public.ticket_types ADD COLUMN max_uses integer NOT NULL DEFAULT 1 CHECK (max_uses >= 1);
+ALTER TABLE public.ticket_types ADD COLUMN IF NOT EXISTS max_uses integer NOT NULL DEFAULT 1 CHECK (max_uses >= 1);
 
 -- ============================================
 -- 2. Add uses_remaining to tickets
 -- ============================================
 -- NULL = single-use (existing regular entry/parking tickets)
 -- > 0 = multi-use (group entry tickets)
-ALTER TABLE public.tickets ADD COLUMN uses_remaining integer CHECK (uses_remaining >= 0);
+ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS uses_remaining integer CHECK (uses_remaining >= 0);
 
 -- ============================================
 -- 3. Update mark_ticket_used RPC
