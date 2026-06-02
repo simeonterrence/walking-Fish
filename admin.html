@@ -221,7 +221,7 @@
                                 <a href="/blog">Blog</a>
                                 <a href="/partners">Partners</a>
                                 <a href="/contact">Contact</a>
-        <a href="/report-issue">Report Issue</a>
+                                <a href="/report-issue">Report Issue</a>
                             </div>
                         </details>
                         <a
@@ -235,7 +235,22 @@
                         class="nav-toggle"
                         aria-label="Toggle navigation menu"
                     >
-                        <span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+                        <span aria-hidden="true"
+                            ><svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" /></svg
+                        ></span>
                     </button>
                 </div>
             </nav>
@@ -607,59 +622,54 @@
                         </div>
                     </div>
                 </details>
-            </div>
-            <!-- ════════════════════════════════════════════════════════════════ -->
-            <!-- COMPLAINTS MANAGEMENT -->
-            <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- COMPLAINTS MANAGEMENT -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
 
-            <details
-                style="
-                    margin: 32px 0;
-                    border-top: 1px solid var(--border);
-                    padding-top: 24px;
-                "
-            >
-                <summary
+                <details
                     style="
-                        cursor: pointer;
-                        font-size: 14px;
-                        font-weight: 500;
-                        color: var(--muted);
+                        margin: 32px 0;
+                        border-top: 1px solid var(--border);
+                        padding-top: 24px;
                     "
                 >
-                    Complaints &amp; Issue Reports
-                </summary>
-                <div style="margin-top: 16px">
-                    <div class="stats-grid" id="complaint-stats-grid">
-                        <div class="stat-card">
-                            <div class="num" id="comp-stat-total">0</div>
-                            <div class="lbl">Total</div>
+                    <summary
+                        style="
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: var(--muted);
+                        "
+                    >
+                        Complaints &amp; Issue Reports
+                    </summary>
+                    <div style="margin-top: 16px">
+                        <div class="stats-grid" id="complaint-stats-grid">
+                            <div class="stat-card">
+                                <div class="num" id="comp-stat-total">0</div>
+                                <div class="lbl">Total</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="num" id="comp-stat-new">0</div>
+                                <div class="lbl">New</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="num" id="comp-stat-progress">0</div>
+                                <div class="lbl">In Progress</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="num" id="comp-stat-resolved">0</div>
+                                <div class="lbl">Resolved/Closed</div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="num" id="comp-stat-new">0</div>
-                            <div class="lbl">New</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="num" id="comp-stat-progress">0</div>
-                            <div class="lbl">In Progress</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="num" id="comp-stat-resolved">0</div>
-                            <div class="lbl">Resolved/Closed</div>
+                        <div id="complaints-container">
+                            <p style="color: var(--muted); font-size: 14px">
+                                Loading complaints...
+                            </p>
                         </div>
                     </div>
-                    <div id="complaints-container">
-                        <p
-                            style="
-                                color: var(--muted);
-                                font-size: 14px;
-                            "
-                        >
-                            Loading complaints...
-                        </p>
-                    </div>
-                </div>
-            </details>
+                </details>
+            </div>
 
             <!-- Photo Management (standalone page via iframe) -->
             <div
@@ -686,8 +696,25 @@
                             color: var(--accent);
                             text-decoration: underline;
                         "
-                        >Open full page <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-left:4px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a
-                    >
+                        >Open full page
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            style="
+                                display: inline;
+                                vertical-align: middle;
+                                margin-left: 4px;
+                            "
+                        >
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" /></svg
+                    ></a>
                 </p>
                 <iframe
                     src="/admin-photos"
@@ -1272,7 +1299,7 @@
             function loadVendors() {
                 fetchWithAuth(
                     SUPABASE_URL +
-                        "/rest/v1/vendor_profiles?order=created_at.desc"
+                        "/rest/v1/vendor_profiles?order=created_at.desc",
                 )
                     .then(function (r) {
                         if (!r.ok) throw new Error("Failed to load vendors.");
@@ -1503,7 +1530,9 @@
                             return c.status === "in_progress";
                         }).length,
                         resolved: complaints.filter(function (c) {
-                            return c.status === "resolved" || c.status === "closed";
+                            return (
+                                c.status === "resolved" || c.status === "closed"
+                            );
                         }).length,
                     };
 
@@ -1537,12 +1566,13 @@
                         var statusLabel = c.status.replace(/_/g, " ");
                         var dateStr = "-";
                         try {
-                            dateStr = new Date(
-                                c.created_at
-                            ).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                            });
+                            dateStr = new Date(c.created_at).toLocaleDateString(
+                                "en-GB",
+                                {
+                                    day: "numeric",
+                                    month: "short",
+                                },
+                            );
                         } catch (_) {}
                         var msgPreview = (c.message || "")
                             .substring(0, 60)
@@ -1610,9 +1640,10 @@
                 function fetchComplaints() {
                     return fetchWithAuth(
                         SUPABASE_URL +
-                            "/rest/v1/complaints?order=created_at.desc&select=*"
+                            "/rest/v1/complaints?order=created_at.desc&select=*",
                     ).then(function (r) {
-                        if (!r.ok) throw new Error("Failed to load complaints.");
+                        if (!r.ok)
+                            throw new Error("Failed to load complaints.");
                         return r.json();
                     });
                 }
@@ -1640,7 +1671,7 @@
                 }
 
                 var existing = document.getElementById(
-                    "complaint-detail-modal"
+                    "complaint-detail-modal",
                 );
                 if (existing) existing.remove();
 
@@ -1652,34 +1683,31 @@
 
                 var statusLabel = complaint.status.replace(/_/g, " ");
                 var statusClass = "status-" + complaint.status;
-                var phoneClean = (complaint.phone || "").replace(
-                    /[^0-9]/g,
-                    ""
-                );
+                var phoneClean = (complaint.phone || "").replace(/[^0-9]/g, "");
                 var emailSection =
                     complaint.email && complaint.email.trim()
                         ? '<div style="margin-bottom:12px;"><strong style="font-size:13px;color:var(--muted);">Email:</strong><br><span style="font-size:14px;">' +
                           escapeHtml(complaint.email) +
                           "</span></div>"
                         : "";
-                var resolutionSection =
-                    complaint.resolution_notes
-                        ? '<div style="margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;"><strong style="font-size:13px;color:#065f46;">Resolution Notes:</strong><p style="font-size:14px;white-space:pre-wrap;margin-top:4px;">' +
-                          escapeHtml(complaint.resolution_notes) +
-                          "</p>" +
-                          (complaint.resolved_at
-                              ? '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Resolved: ' +
-                                new Date(
-                                    complaint.resolved_at
-                                ).toLocaleDateString("en-GB", {
+                var resolutionSection = complaint.resolution_notes
+                    ? '<div style="margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;"><strong style="font-size:13px;color:#065f46;">Resolution Notes:</strong><p style="font-size:14px;white-space:pre-wrap;margin-top:4px;">' +
+                      escapeHtml(complaint.resolution_notes) +
+                      "</p>" +
+                      (complaint.resolved_at
+                          ? '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Resolved: ' +
+                            new Date(complaint.resolved_at).toLocaleDateString(
+                                "en-GB",
+                                {
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
-                                }) +
-                                "</p>"
-                              : "") +
-                          "</div>"
-                        : "";
+                                },
+                            ) +
+                            "</p>"
+                          : "") +
+                      "</div>"
+                    : "";
 
                 overlay.innerHTML =
                     '<div class="gift-box" style="text-align:left;max-width:560px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-height:85vh;overflow-y:auto;">' +
@@ -1688,7 +1716,7 @@
                     statusClass +
                     '" style="text-transform:capitalize;">' +
                     statusLabel +
-                    '</span></div>' +
+                    "</span></div>" +
                     '<code style="font-size:12px;color:var(--muted);">#' +
                     complaint.id.slice(0, 8) +
                     "</code>" +
@@ -1775,7 +1803,7 @@
                             Prefer: "return=minimal",
                         },
                         body: JSON.stringify(payload),
-                    }
+                    },
                 ).then(function (r) {
                     if (r.ok || r.status === 204) return true;
                     throw new Error("Failed to update complaint.");
@@ -1786,9 +1814,7 @@
             document.addEventListener("click", function (e) {
                 // View complaint detail modal
                 if (e.target.classList.contains("complaint-view-btn")) {
-                    showComplaintModal(
-                        e.target.getAttribute("data-complaint")
-                    );
+                    showComplaintModal(e.target.getAttribute("data-complaint"));
                 }
 
                 // Update complaint status (in-progress, resolve, close)
@@ -1800,7 +1826,7 @@
 
                     // If "Resolve" is clicked inside the modal, reveal the textarea instead of saving
                     var modal = document.getElementById(
-                        "complaint-detail-modal"
+                        "complaint-detail-modal",
                     );
                     if (
                         newStatus === "resolved" &&
@@ -1809,11 +1835,14 @@
                         btn.textContent.indexOf("Save") === -1
                     ) {
                         var field = document.getElementById(
-                            "comp-resolution-field"
+                            "comp-resolution-field",
                         );
                         if (field) {
                             field.style.display = "block";
-                            field.scrollIntoView({ behavior: "smooth", block: "center" });
+                            field.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                            });
                         }
                         return;
                     }
@@ -1825,7 +1854,7 @@
                     var notes = null;
                     if (newStatus === "resolved") {
                         var notesEl = document.getElementById(
-                            "comp-resolution-notes"
+                            "comp-resolution-notes",
                         );
                         if (notesEl && notesEl.value.trim()) {
                             notes = notesEl.value.trim();
@@ -1835,7 +1864,7 @@
                                 notes =
                                     prompt(
                                         "Resolution notes (optional):",
-                                        ""
+                                        "",
                                     ) || null;
                             }
                         }
@@ -1857,9 +1886,7 @@
                 // Quick close (from table view)
                 if (e.target.classList.contains("complaint-close-quick-btn")) {
                     var complaintId = e.target.getAttribute("data-complaint");
-                    if (
-                        !confirm("Close this complaint without resolving it?")
-                    )
+                    if (!confirm("Close this complaint without resolving it?"))
                         return;
                     e.target.disabled = true;
                     e.target.textContent = "...";
@@ -1873,9 +1900,7 @@
                 }
 
                 // Take (mark in progress) from table view
-                if (e.target.classList.contains(
-                    "complaint-in-progress-btn"
-                )) {
+                if (e.target.classList.contains("complaint-in-progress-btn")) {
                     var complaintId = e.target.getAttribute("data-complaint");
                     e.target.disabled = true;
                     e.target.textContent = "...";
@@ -1891,16 +1916,13 @@
                 // Resolve from table view
                 if (e.target.classList.contains("complaint-resolve-btn")) {
                     var complaintId = e.target.getAttribute("data-complaint");
-                    var notes = prompt(
-                        "Resolution notes (optional):",
-                        ""
-                    );
+                    var notes = prompt("Resolution notes (optional):", "");
                     e.target.disabled = true;
                     e.target.textContent = "...";
                     updateComplaintStatus(
                         complaintId,
                         "resolved",
-                        notes || null
+                        notes || null,
                     )
                         .then(function () {
                             loadComplaints();
@@ -1928,7 +1950,7 @@
                 // Close complaint detail modal
                 if (e.target.id === "comp-modal-close-btn") {
                     var modal = document.getElementById(
-                        "complaint-detail-modal"
+                        "complaint-detail-modal",
                     );
                     if (modal) modal.remove();
                 }
