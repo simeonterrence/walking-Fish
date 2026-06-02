@@ -3304,7 +3304,10 @@ async function handleSendMagicLink(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 async function handleExchangeToken(req) {
   try {
+    console.log("[exchange-token] Handler entered");
+
     const { ticket_token } = await req.json();
+    console.log(`[exchange-token] Parsed ticket_token, length: ${(ticket_token || "").length}`);
     if (!ticket_token) {
       return new Response(
         JSON.stringify({
