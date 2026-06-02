@@ -3678,6 +3678,8 @@ async function handleViewTickets(req) {
       );
     }
 
+    const supabase = getSupabaseClient();
+
     // Step 1: Find a ticket with matching access_code in metadata for this email
     // We use the metadata->>access_code JSONB filter to find the ticket
     const { data: tickets, error: ticketsErr } = await supabase
