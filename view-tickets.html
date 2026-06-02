@@ -480,17 +480,91 @@
                                     border-top: 1px solid var(--border);
                                 "
                             >
-                                Having trouble?
-                                <a
-                                    href="/contact"
+                                Lost your access code?
+                                <button
+                                    id="show-resend-btn"
                                     style="
+                                        background: none;
+                                        border: none;
                                         color: var(--accent);
                                         text-decoration: underline;
+                                        cursor: pointer;
+                                        font-family: var(--font-body);
+                                        font-size: 13px;
+                                        padding: 0;
                                     "
-                                    >Contact us</a
+                                    >Resend it</button
                                 >
-                                for help.
                             </p>
+
+                            <!-- Resend access code section -->
+                            <div
+                                id="resend-section"
+                                style="
+                                    display: none;
+                                    margin-top: 20px;
+                                    padding-top: 20px;
+                                    border-top: 1px solid var(--border);
+                                "
+                            >
+                                <p
+                                    style="
+                                        font-size: 13px;
+                                        color: var(--muted);
+                                        text-align: center;
+                                        margin-bottom: 16px;
+                                    "
+                                >
+                                    Enter your email and we'll send you a new
+                                    access code. Your old one will stop
+                                    working.
+                                </p>
+                                <form id="resend-form">
+                                    <div class="form-group">
+                                        <label for="resend-email"
+                                            >Email Address</label
+                                        >
+                                        <input
+                                            type="email"
+                                            id="resend-email"
+                                            placeholder="you@example.com"
+                                            required
+                                            autocomplete="email"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        class="btn btn-secondary"
+                                        id="resend-submit-btn"
+                                        style="
+                                            width: 100%;
+                                            justify-content: center;
+                                            padding: 12px;
+                                            font-size: 15px;
+                                        "
+                                    >
+                                        Send New Access Code
+                                    </button>
+                                    <div
+                                        class="error-msg"
+                                        id="resend-error"
+                                    ></div>
+                                    <div
+                                        class="success-msg"
+                                        id="resend-success"
+                                        style="
+                                            background: #f0fdf4;
+                                            border: 1px solid #86efac;
+                                            color: #166534;
+                                            padding: 12px 16px;
+                                            border-radius: 10px;
+                                            font-size: 14px;
+                                            margin-top: 16px;
+                                            display: none;
+                                        "
+                                    ></div>
+                                </form>
+                            </div>
                         </div>
                     </div>
 
@@ -940,6 +1014,104 @@
                     d.appendChild(document.createTextNode(s));
                     return d.innerHTML;
                 }
+
+                // ─── Resend Access Code ────────────────────────────────────
+                var showResendBtn = document.getElementById("show-resend-btn");
+                var resendSection = document.getElementById("resend-section");
+                var resendForm = document.getElementById("resend-form");
+                var resendEmail = document.getElementById("resend-email");
+                var resendSubmitBtn = document.getElementById(
+                    "resend-submit-btn",
+                );
+                var resendError = document.getElementById("resend-error");
+                var resendSuccess = document.getElementById("resend-success");
+
+                showResendBtn.addEventListener("click", function () {
+                    var isVisible = resendSection.style.display !== "none";
+                    if (isVisible) {
+                        resendSection.style.display = "none";
+                    } else {
+                        resendSection.style.display = "block";
+                        resendEmail.focus();
+                        // Pre-fill email from main form if available
+                        if (emailInput.value.trim()) {
+                            resendEmail.value = emailInput.value.trim();
+                        }
+                    }
+                });
+
+                resendForm.addEventListener("submit", async function (e) {
+                    e.preventDefault();
+                    resendError.style.display = "none";
+                    resendSuccess.style.display = "none";
+
+                    var email = resendEmail.value.trim().toLowerCase();
+
+                    if (!email) {
+                        resendError.textContent =
+                            "Please enter your email address.";
+                        resendError.style.display = "block";
+                        resendEmail.focus();
+                        return;
+                    }
+
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        resendError.textContent =
+                            "Please enter a valid email address.";
+                        resendError.style.display = "block";
+                        resendEmail.focus();
+                        return;
+                    }
+
+                    resendSubmitBtn.disabled = true;
+                    resendSubmitBtn.textContent = "Sending\u2026";
+
+                    try {
+                        var res = await fetch(
+                            TICKET_FN + "/resend-access-code",
+                            {
+                                method: "POST",
+                                headers: {
+                                    apikey: SUPA_ANON,
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ email: email }),
+                            },
+                        );
+
+                        var data;
+                        try {
+                            data = await res.json();
+                        } catch (_) {
+                            data = {};
+                        }
+
+                        if (!res.ok || !data.success) {
+                            resendError.textContent =
+                                data.error ||
+                                "Could not resend access code. Make sure you used the right email.";
+                            resendError.style.display = "block";
+                            resendSubmitBtn.disabled = false;
+                            resendSubmitBtn.textContent =
+                                "Send New Access Code";
+                            return;
+                        }
+
+                        // Success
+                        resendSuccess.innerHTML =
+                            '<strong>Access code sent!</strong> Check your email for a new 6-digit code. Your old code is no longer valid.';
+                        resendSuccess.style.display = "block";
+                        resendForm.style.display = "none";
+                        resendSubmitBtn.disabled = false;
+                        resendSubmitBtn.textContent = "Send New Access Code";
+                    } catch (err) {
+                        resendError.textContent =
+                            "Network error. Please check your connection and try again.";
+                        resendError.style.display = "block";
+                        resendSubmitBtn.disabled = false;
+                        resendSubmitBtn.textContent = "Send New Access Code";
+                    }
+                });
             })();
         </script>
     </body>

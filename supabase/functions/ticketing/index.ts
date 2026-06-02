@@ -23,50 +23,6 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-// ─── Helper: HMAC-SHA256 sign a message (used for persistent ticket tokens) ──
-
-async function signMessage(secret, message) {
-  const encoder = new TextEncoder();
-
-  const keyData = encoder.encode(secret);
-
-  const messageData = encoder.encode(message);
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-
-    keyData,
-
-    {
-      name: "HMAC",
-
-      hash: "SHA-256",
-    },
-
-    false,
-
-    ["sign"],
-  );
-
-  const signature = await crypto.subtle.sign("HMAC", key, messageData);
-
-  return Array.from(new Uint8Array(signature))
-
-    .map((b) => b.toString(16).padStart(2, "0"))
-
-    .join("");
-}
-
-// ─── Helper: URL-safe base64 encode/decode ───────────────────────────────────
-
-function base64UrlEncode(str) {
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64UrlDecode(str) {
-  return atob(str.replace(/-/g, "+").replace(/_/g, "/"));
-}
-
 // ─── Request routing ─────────────────────────────────────────────────────────
 
 async function routeRequest(req, pathname) {
@@ -110,9 +66,6 @@ async function routeRequest(req, pathname) {
     case "/reverse-debit":
       return handleReverseDebit(req);
 
-    case "/exchange-token":
-      return handleExchangeToken(req);
-
     case "/admin-query":
       return handleAdminQuery(req);
 
@@ -121,6 +74,9 @@ async function routeRequest(req, pathname) {
 
     case "/view-tickets":
       return handleViewTickets(req);
+
+    case "/resend-access-code":
+      return handleResendAccessCode(req);
 
     case "/debug-ticket":
       return handleDebugTicket(req);
@@ -209,10 +165,18 @@ async function sendEmail(payload) {
 
 // Used for purchase confirmations, top-ups, and debit notifications.
 
+// Only shows access code information (yellow banner + per-ticket code) when at
+
+// least one ticket in the array has an accessCode set. Purchase emails include
+
+// the access code; top-up, debit, and other notification emails do not.
+
 function renderTicketEmailHtml(tickets, title, subtitle) {
   const siteUrl = "https://www.walkingfish.gm";
 
   const viewTicketsLink = `${siteUrl}/view-tickets`;
+
+  const hasAccessCode = tickets.some(function (t) { return t.accessCode; });
 
   let ticketCards = tickets
 
@@ -253,13 +217,8 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
     .join("");
 
-  return `
-
-    <h2 style="margin:0 0 8px;">${title}</h2>
-
-    <p style="color:#666;margin:0 0 24px;font-size:14px;">${subtitle}</p>
-
-    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-bottom:20px;">
+  const accessCodeBanner = hasAccessCode
+    ? `<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-bottom:20px;">
 
       <p style="margin:0;font-size:14px;color:#5d4037;text-align:center;">
 
@@ -271,11 +230,11 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
       </p>
 
-    </div>
+    </div>`
+    : "";
 
-    ${ticketCards}
-
-    <p style="text-align:center;margin:24px 0;">
+  const viewTicketsCta = hasAccessCode
+    ? `<p style="text-align:center;margin:24px 0;">
 
       <a href="${viewTicketsLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View My Tickets</a>
 
@@ -285,7 +244,24 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
       Show the QR code at the venue gate. Your access code lets you log in at walkingfish.gm/view-tickets.
 
+    </p>`
+    : `<p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
+
+      Show the QR code at the venue gate.
+
     </p>`;
+
+  return `
+
+    <h2 style="margin:0 0 8px;">${title}</h2>
+
+    <p style="color:#666;margin:0 0 24px;font-size:14px;">${subtitle}</p>
+
+    ${accessCodeBanner}
+
+    ${ticketCards}
+
+    ${viewTicketsCta}`;
 }
 
 async function sendTicketsEmail(options) {
@@ -2004,6 +1980,8 @@ async function handleWebhook(req) {
             qrImageUrl: t.qrImageUrl,
 
             ticketTypeName: t.ticketTypeSlug,
+
+            accessCode: t.accessCode,
           };
         });
 
@@ -4580,6 +4558,8 @@ async function handleRegenerateTickets(req) {
         qrImageUrl: t.qrImageUrl,
 
         ticketTypeName: t.ticketTypeSlug,
+
+        accessCode: t.accessCode,
       };
     });
 
@@ -4626,390 +4606,6 @@ async function handleRegenerateTickets(req) {
     return new Response(
       JSON.stringify({
         error: "Failed to regenerate tickets",
-      }),
-
-      {
-        status: 500,
-
-        headers: {
-          ...corsHeaders,
-
-          "Content-Type": "application/json",
-        },
-      },
-    );
-  }
-}
-
-// ─── Handler: /exchange-token
-
-// Exchanges a persistent ticket token for a fresh Supabase Auth session.
-
-// The token is an HMAC-signed payload containing email + expiry.
-
-// Each click generates a FRESH magic link + session — the token is never consumed.
-
-// ──────────────────────────────────────────────────────────────────────────────
-
-async function handleExchangeToken(req) {
-  try {
-    console.log("[exchange-token] Handler entered");
-
-    const { ticket_token } = await req.json();
-
-    console.log(
-      `[exchange-token] Parsed ticket_token, length: ${(ticket_token || "").length}`,
-    );
-
-    if (!ticket_token) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing ticket_token",
-        }),
-
-        {
-          status: 400,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    // Parse token: v1.{expiresAt}.{base64url(email)}.{hexSig}
-
-    const parts = ticket_token.split(".");
-
-    if (parts.length !== 4 || parts[0] !== "v1") {
-      console.warn(
-        `[exchange-token] Bad token format: ${parts.length} parts, token length=${ticket_token.length}`,
-      );
-
-      return new Response(
-        JSON.stringify({
-          error:
-            "This link appears to be broken or incomplete. Please request a new sign-in link.",
-
-          reason: "invalid_format",
-
-          parts_count: parts.length,
-        }),
-
-        {
-          status: 400,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    const expiresAt = parseInt(parts[1], 10);
-
-    const encodedEmail = parts[2];
-
-    const sig = parts[3];
-
-    // Attempt to decode email early for better error messages
-
-    let emailFromToken = "";
-
-    try {
-      emailFromToken = base64UrlDecode(encodedEmail).toLowerCase();
-    } catch (_) {}
-
-    // Check expiry
-
-    if (isNaN(expiresAt)) {
-      console.warn(
-        `[exchange-token] NaN expiresAt — token likely truncated. Length=${ticket_token.length}`,
-      );
-
-      return new Response(
-        JSON.stringify({
-          error:
-            "This link appears to be broken or truncated. Please request a new sign-in link.",
-
-          reason: "invalid_expiry",
-
-          email: emailFromToken || undefined,
-        }),
-
-        {
-          status: 400,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    if (expiresAt < Date.now()) {
-      const expiredAgo = Math.round((Date.now() - expiresAt) / 1000 / 60);
-
-      console.warn(
-        `[exchange-token] Token expired ${expiredAgo}m ago for ${emailFromToken || "(unknown email)"}`,
-      );
-
-      return new Response(
-        JSON.stringify({
-          error:
-            "This link has expired. Please request a new sign-in link below.",
-
-          reason: "expired",
-
-          email: emailFromToken || undefined,
-        }),
-
-        {
-          status: 401,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    // Decode email
-
-    const email = base64UrlDecode(encodedEmail).toLowerCase();
-
-    if (!email || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({
-          error: "Invalid email in token",
-        }),
-
-        {
-          status: 400,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    // Verify HMAC signature
-
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    const tokenSecret = Deno.env.get("TICKET_TOKEN_SECRET") ?? serviceKey;
-
-    const message = email + ":" + expiresAt;
-
-    const expectedSig = await signMessage(tokenSecret, message);
-
-    if (sig !== expectedSig) {
-      console.warn(`[exchange-token] Invalid signature for ${email}`);
-
-      return new Response(
-        JSON.stringify({
-          error: "Invalid token signature",
-        }),
-
-        {
-          status: 401,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    // Token is valid — create a session via verifyOtp (no password grant, no race condition).
-
-    // Uses admin.generateLink() to get a fresh OTP token_hash, then exchanges it
-
-    // for a session via verifyOtp(). This avoids the password grant race condition
-
-    // and eliminates all writes to the Auth user table.
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-
-    const siteUrl = "https://www.walkingfish.gm";
-
-    try {
-      // 1. Create admin client to manage the user
-
-      const adminSupabase = createClient(supabaseUrl, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      // 2. Generate a fresh action_link OTP via admin API
-
-      const { data: linkData, error: linkError } =
-        await adminSupabase.auth.admin.generateLink({
-          type: "magiclink",
-
-          email: email,
-
-          options: {
-            redirect_to: `${siteUrl}/tickets`,
-            email_confirm: true,
-          },
-        });
-
-      if (linkError || !linkData?.properties?.action_link) {
-        console.error(
-          `[exchange-token] generateLink failed for ${email}: ${linkError?.message || "No action_link"}`,
-        );
-
-        return new Response(
-          JSON.stringify({
-            error: "Unable to sign you in. Please try again.",
-          }),
-
-          {
-            status: 500,
-
-            headers: {
-              ...corsHeaders,
-
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
-
-      // 3. Extract token_hash from the action_link URL
-
-      const actionUrl = new URL(linkData.properties.action_link);
-
-      const tokenHash =
-        actionUrl.searchParams.get("token") ||
-        actionUrl.searchParams.get("token_hash");
-
-      if (!tokenHash) {
-        console.error(
-          `[exchange-token] No token_hash in action_link for ${email}`,
-        );
-
-        return new Response(
-          JSON.stringify({
-            error: "Unable to sign you in. Please try again.",
-          }),
-
-          {
-            status: 500,
-
-            headers: {
-              ...corsHeaders,
-
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
-
-      // 4. Exchange token_hash for a session via verifyOtp
-
-      // Uses anon key (same as client-side verifyOtp). No writes to user table.
-
-      const anonClient = createClient(supabaseUrl, anonKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      const { data: otpData, error: otpError } =
-        await anonClient.auth.verifyOtp({
-          token_hash: tokenHash,
-
-          type: "magiclink",
-        });
-
-      if (otpError || !otpData?.session) {
-        console.error(
-          `[exchange-token] verifyOtp failed for ${email}: ${otpError?.message || "No session"}`,
-        );
-
-        return new Response(
-          JSON.stringify({
-            error: "Unable to sign you in. Please try again.",
-
-            reason: "otp_verify_failed",
-          }),
-
-          {
-            status: 401,
-
-            headers: {
-              ...corsHeaders,
-
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
-
-      // 5. Session obtained successfully
-
-      console.log(
-        `[exchange-token] ✓ Session obtained for ${email} (verifyOtp)`,
-      );
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-
-          access_token: otpData.session.access_token,
-
-          refresh_token: otpData.session.refresh_token || "",
-        }),
-
-        {
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    } catch (sessionErr) {
-      console.error(
-        `[exchange-token] Session creation error for ${email}: ${sessionErr.message}`,
-      );
-
-      return new Response(
-        JSON.stringify({
-          error: "Unable to sign you in. Please try again.",
-        }),
-
-        {
-          status: 500,
-
-          headers: {
-            ...corsHeaders,
-
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-  } catch (err) {
-    console.error("[exchange-token] Error:", err.message, err.stack || "");
-
-    return new Response(
-      JSON.stringify({
-        error: "Failed to exchange token. Please try again.",
       }),
 
       {
@@ -5290,6 +4886,246 @@ async function handleViewTickets(req) {
     );
   }
 }
+
+
+// ─── Handler: /resend-access-code ────────────────────────────────────
+
+// Public endpoint: generates a new 6-digit access code for ALL tickets belonging
+
+// to the given email, updates them in the database, and sends an email with the
+
+// new code. Old access codes become invalid immediately.
+
+async function handleResendAccessCode(req) {
+  try {
+    const clientIp = getClientIp(req);
+
+    const rateCheck = checkRateLimit(clientIp);
+
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Too many attempts. Please wait before trying again.",
+          retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
+        }),
+
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
+    }
+
+    const { email: rawEmail } = await req.json();
+
+    const email = (rawEmail || "").trim().toLowerCase();
+
+    if (!email) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Email is required." }),
+
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        },
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Find all active tickets for this email
+
+    const { data: tickets, error: ticketsErr } = await supabase
+
+      .from("tickets")
+
+      .select("id, code, customer_email, customer_name, metadata, qr_url, ticket_types!left(name, slug)")
+
+      .eq("customer_email", email)
+
+      .eq("status", "active")
+
+      .order("created_at", { ascending: false });
+
+    if (ticketsErr) {
+      console.error("[resend-access-code] DB error:", ticketsErr);
+
+      return new Response(
+        JSON.stringify({ success: false, error: "Database error." }),
+
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
+    if (!tickets || tickets.length === 0) {
+      console.warn(
+        "[resend-access-code] No active tickets found for",
+        email,
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "No active tickets found for this email address. Check the email you used when purchasing.",
+        }),
+
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        },
+      );
+    }
+
+    // Generate a single new 6-digit access code for all tickets
+
+    // This invalidates any old codes instantly since we update all tickets
+
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let updatedCount = 0;
+
+    for (const ticket of tickets) {
+      const existingMeta = (typeof ticket.metadata === "object" && ticket.metadata) || {};
+
+      const updatedMeta = {
+        ...existingMeta,
+        access_code: newCode,
+        access_code_resent_at: new Date().toISOString(),
+      };
+
+      const { error: updateErr } = await supabase
+
+        .from("tickets")
+
+        .update({ metadata: updatedMeta })
+
+        .eq("id", ticket.id);
+
+      if (!updateErr) {
+        updatedCount++;
+      }
+    }
+
+    console.log(
+      `[resend-access-code] Updated ${updatedCount}/${tickets.length} tickets for ${email} with new code ${newCode}`,
+    );
+
+    // Send email with the new access code prominently displayed
+
+    const siteUrl = "https://www.walkingfish.gm";
+
+    const viewTicketsLink = `${siteUrl}/view-tickets`;
+
+    // Only show at most 5 tickets in the list inside the email
+
+    const displayedTickets = tickets.slice(0, 5);
+
+    const ticketListHtml = displayedTickets
+      .map(function (t) {
+        const typeName = t.ticket_types?.name || "Ticket";
+
+        return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:14px;margin-bottom:10px;text-align:center;font-size:14px;">
+          <strong>${typeName}</strong>
+          <div style="font-family:monospace;font-size:13px;color:#666;margin-top:4px;">${t.code}</div>
+        </div>`;
+      })
+      .join("");
+
+    const moreLine =
+      tickets.length > 5
+        ? `<p style="text-align:center;font-size:13px;color:#999;">...and ${tickets.length - 5} more ticket(s)</p>`
+        : "";
+
+    const emailHtml = `
+      <h2 style="margin:0 0 8px;">Your Access Code Has Been Reset</h2>
+      <p style="color:#666;margin:0 0 24px;font-size:14px;">
+        A new access code was requested for your tickets.
+      </p>
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:24px;text-align:center;margin-bottom:20px;">
+        <p style="margin:0 0 6px;font-size:13px;color:#5d4037;">Your New Access Code</p>
+        <p style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:0.1em;color:#111;margin:0 0 4px;">${newCode}</p>
+        <p style="margin:0;font-size:12px;color:#999;">Use this code to log in at <a href="${viewTicketsLink}" style="color:#e85d3a;">walkingfish.gm/view-tickets</a></p>
+      </div>
+      <p style="font-size:13px;color:#666;text-align:center;margin-bottom:16px;">This code works for all your tickets:</p>
+      ${ticketListHtml}
+      ${moreLine}
+      <p style="text-align:center;margin:24px 0;">
+        <a href="${viewTicketsLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View My Tickets</a>
+      </p>
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;font-size:13px;color:#991b1b;margin-top:16px;">
+        <strong>Note:</strong> Your previous access code is no longer valid. Only this new code will work.
+      </div>`;
+
+    // Use sendEmail directly instead of sendTicketsEmail since we have a custom HTML template
+
+    await sendEmail({
+      to: email,
+      subject: "Your New Access Code — Walking-Fish",
+      html: emailShell(emailHtml),
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        code: newCode,
+        tickets_count: tickets.length,
+        message: `A new access code has been sent to ${email}. Your old code is no longer valid.`,
+      }),
+
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": String(rateCheck.remaining),
+        },
+      },
+    );
+  } catch (err) {
+    console.error(
+      "[resend-access-code] Error:",
+      err.message,
+      err.stack || "",
+    );
+
+    return new Response(
+      JSON.stringify({ success: false, error: "Failed to resend access code." }),
+
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }
+}
+
+
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 // ─── Handler: /debug-ticket
 
