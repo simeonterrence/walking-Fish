@@ -4,8 +4,8 @@
 // ─── Helper: escape HTML entities to prevent XSS ─────────────────────────────
 
 function escapeHtml(str) {
-  if (str == null) return '';
-  var div = document.createElement('div');
+  if (str == null) return "";
+  var div = document.createElement("div");
   div.appendChild(document.createTextNode(String(str)));
   return div.innerHTML;
 }
@@ -15,88 +15,207 @@ function escapeHtml(str) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadInventory() {
-  var container = document.getElementById('inventory-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading inventory...</p>';
+  var container = document.getElementById("inventory-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading inventory...</p>';
 
-  adminQuery('/rest/v1/ticket_types?order=sort_order.asc&select=*').then(function(types) {
+  adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
+    .then(function (types) {
       if (!types || types.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
       }
 
-      var totalCap = 0, totalSold = 0;
-      types.forEach(function(t) { totalCap += t.capacity; totalSold += t.sold; });
+      var totalCap = 0,
+        totalSold = 0;
+      types.forEach(function (t) {
+        totalCap += t.capacity;
+        totalSold += t.sold;
+      });
 
-      var html = '';
+      var html = "";
       // Overall stats
-      html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">' +
-        '<div class="stat-card"><div class="num">' + totalSold + '</div><div class="lbl">Total Sold</div></div>' +
-        '<div class="stat-card"><div class="num">' + totalCap + '</div><div class="lbl">Total Capacity</div></div>' +
-        '<div class="stat-card"><div class="num" style="color:' + (totalCap - totalSold <= 50 ? '#991B1B' : '#065F46') + ';">' + (totalCap - totalSold) + '</div><div class="lbl">Remaining</div></div>' +
-        '<div class="stat-card"><div class="num">' + (totalCap > 0 ? Math.round(totalSold / totalCap * 100) : 0) + '%</div><div class="lbl">Fill Rate</div></div>' +
-        '</div>';
+      html +=
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">' +
+        '<div class="stat-card"><div class="num">' +
+        totalSold +
+        '</div><div class="lbl">Total Sold</div></div>' +
+        '<div class="stat-card"><div class="num">' +
+        totalCap +
+        '</div><div class="lbl">Total Capacity</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:' +
+        (totalCap - totalSold <= 50 ? "#991B1B" : "#065F46") +
+        ';">' +
+        (totalCap - totalSold) +
+        '</div><div class="lbl">Remaining</div></div>' +
+        '<div class="stat-card"><div class="num">' +
+        (totalCap > 0 ? Math.round((totalSold / totalCap) * 100) : 0) +
+        '%</div><div class="lbl">Fill Rate</div></div>' +
+        "</div>";
 
       // Per-type table
-      html += '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-        '<th>Ticket Type</th><th>Type</th><th>Price</th><th>Sold</th><th>Capacity</th><th>Fill</th><th>Status</th>' +
-        '</tr></thead><tbody>';
-      types.forEach(function(t) {
-        var fillPct = t.capacity > 0 ? Math.round(t.sold / t.capacity * 100) : 0;
-        var fillColor = fillPct >= 90 ? '#991B1B' : fillPct >= 70 ? '#92400E' : '#065F46';
-        var statusClass = t.is_active ? 'status-approved' : 'status-rejected';
-        var statusText = t.is_active ? 'Active' : 'Inactive';
-        html += '<tr>' +
-          '<td><strong>' + escapeHtml(t.name) + '</strong></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);text-transform:capitalize;">' + t.type.replace('_', ' ') + '</span></td>' +
-          '<td><strong>D' + t.price + '</strong></td>' +
-          '<td><span style="font-weight:600;">' + t.sold + '</span></td>' +
-          '<td>' + t.capacity + '</td>' +
-          '<td><span style="font-weight:600;color:' + fillColor + ';">' + fillPct + '%</span></td>' +
-          '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
-          '</tr>';
+      html +=
+        '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+        "<th>Ticket Type</th><th>Type</th><th>Price</th><th>Sold</th><th>Capacity</th><th>Fill</th><th>Status</th>" +
+        "</tr></thead><tbody>";
+      types.forEach(function (t) {
+        var fillPct =
+          t.capacity > 0 ? Math.round((t.sold / t.capacity) * 100) : 0;
+        var fillColor =
+          fillPct >= 90 ? "#991B1B" : fillPct >= 70 ? "#92400E" : "#065F46";
+        var statusClass = t.is_active ? "status-approved" : "status-rejected";
+        var statusText = t.is_active ? "Active" : "Inactive";
+        html +=
+          "<tr>" +
+          "<td><strong>" +
+          escapeHtml(t.name) +
+          "</strong></td>" +
+          '<td><span style="font-size:13px;color:var(--muted);text-transform:capitalize;">' +
+          t.type.replace("_", " ") +
+          "</span></td>" +
+          "<td><strong>D" +
+          t.price +
+          "</strong></td>" +
+          '<td><span style="font-weight:600;">' +
+          t.sold +
+          "</span></td>" +
+          "<td>" +
+          t.capacity +
+          "</td>" +
+          '<td><span style="font-weight:600;color:' +
+          fillColor +
+          ';">' +
+          fillPct +
+          "%</span></td>" +
+          '<td><span class="status-badge ' +
+          statusClass +
+          '">' +
+          statusText +
+          "</span></td>" +
+          "</tr>";
       });
-      html += '</tbody></table></div>';
+      html += "</tbody></table></div>";
+      container.innerHTML = html;
+    })
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load inventory: ' +
+        escapeHtml(err.message) +
+        "</p>";
+    });
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   1b. REDEMPTION STATS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function loadRedemptionStats() {
+  var container = document.getElementById('redemption-container');
+  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading redemption stats...</p>';
+
+  // Fetch all debit transactions from balance_transactions
+  adminQuery('/rest/v1/balance_transactions?select=type,amount_delta,source,created_at&order=created_at.desc')
+    .then(function(txns) {
+      if (!txns || txns.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No debit transactions yet.</p>';
+        return;
+      }
+
+      // Filter only debits (negative amount_delta means money out)
+      var debits = txns.filter(function(t) { return t.type === 'debit'; });
+      var totalRedeemed = 0;
+      var totalTxns = debits.length;
+
+      debits.forEach(function(t) {
+        totalRedeemed += Math.abs(t.amount_delta);
+      });
+
+      // Group by source
+      var sourceGroups = {};
+      debits.forEach(function(t) {
+        var src = t.source || 'unknown';
+        if (!sourceGroups[src]) sourceGroups[src] = { count: 0, total: 0 };
+        sourceGroups[src].count++;
+        sourceGroups[src].total += Math.abs(t.amount_delta);
+      });
+
+      var html = '';
+      // Summary stats
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">' +
+        '<div class="stat-card"><div class="num" style="color:#991B1B;">D' + totalRedeemed.toLocaleString() + '</div><div class="lbl">Total Redeemed</div></div>' +
+        '<div class="stat-card"><div class="num">' + totalTxns + '</div><div class="lbl">Debit Transactions</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:' + (totalTxns > 0 ? '#065F46' : 'var(--muted)') + ';">' + (totalTxns > 0 ? 'D' + Math.round(totalRedeemed / totalTxns).toLocaleString() : '-') + '</div><div class="lbl">Avg per Debit</div></div>' +
+        '</div>';
+
+      // Breakdown by source
+      if (Object.keys(sourceGroups).length > 1) {
+        html += '<div style="overflow-x:auto;margin-bottom:12px;"><table class="app-table"><thead><tr>' +
+          '<th>Source</th><th>Transactions</th><th>Total Redeemed</th>' +
+          '</tr></thead><tbody>';
+        Object.keys(sourceGroups).sort().forEach(function(src) {
+          var g = sourceGroups[src];
+          html += '<tr>' +
+            '<td><span style="text-transform:capitalize;">' + escapeHtml(src.replace(/_/g, ' ')) + '</span></td>' +
+            '<td>' + g.count + '</td>' +
+            '<td><strong>D' + g.total.toLocaleString() + '</strong></td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      html += '<p style="font-size:12px;color:var(--muted);text-align:center;">Last updated: ' + new Date().toLocaleString() + '</p>';
+
       container.innerHTML = html;
     })
     .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load inventory: ' + escapeHtml(err.message) + '</p>';
+      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load redemption stats: ' + escapeHtml(err.message) + '</p>';
     });
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    2. ORDER MANAGEMENT
    ═══════════════════════════════════════════════════════════════════════════ */
 
-var currentOrderFilter = 'all';
+var currentOrderFilter = "all";
 
 function setOrderFilter(status) {
   currentOrderFilter = status;
-  document.querySelectorAll('.order-filter-btn').forEach(function(b) {
-    b.classList.toggle('order-filter-active', b.getAttribute('data-status') === status);
+  document.querySelectorAll(".order-filter-btn").forEach(function (b) {
+    b.classList.toggle(
+      "order-filter-active",
+      b.getAttribute("data-status") === status,
+    );
   });
   loadOrders();
 }
 
 function loadOrders() {
-  var container = document.getElementById('orders-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading orders...</p>';
+  var container = document.getElementById("orders-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading orders...</p>';
 
-  var path = '/rest/v1/orders?order=created_at.desc&select=*';
-  if (currentOrderFilter !== 'all') {
-    path += '&status=eq.' + currentOrderFilter;
+  var path = "/rest/v1/orders?order=created_at.desc&select=*";
+  if (currentOrderFilter !== "all") {
+    path += "&status=eq." + currentOrderFilter;
   }
 
-  adminQuery(path).then(function(orders) {
+  adminQuery(path)
+    .then(function (orders) {
       if (!orders || orders.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No orders found' +
-          (currentOrderFilter !== 'all' ? ' with this status' : '') + '.</p>';
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No orders found' +
+          (currentOrderFilter !== "all" ? " with this status" : "") +
+          ".</p>";
         return;
       }
 
       // Collect unique emails to fetch magic link send counts
       var emails = [];
       var emailMap = {};
-      orders.forEach(function(o) {
+      orders.forEach(function (o) {
         if (o.email && !emailMap[o.email]) {
           emailMap[o.email] = true;
           emails.push(o.email);
@@ -104,150 +223,330 @@ function loadOrders() {
       });
 
       // Fetch magic link logs for these emails
-      var logQuery = '/rest/v1/magic_link_logs?select=email,created_at&order=created_at.desc';
+      var logQuery =
+        "/rest/v1/magic_link_logs?select=email,created_at&order=created_at.desc";
       if (emails.length > 0) {
-        logQuery += '&email=in.(' + emails.map(function(e) { return encodeURIComponent('"' + e + '"'); }).join(',') + ')';
+        logQuery +=
+          "&email=in.(" +
+          emails
+            .map(function (e) {
+              return encodeURIComponent('"' + e + '"');
+            })
+            .join(",") +
+          ")";
       }
 
-      adminQuery(logQuery).then(function(logs) {
-        // Build send count map: email -> { count, last_sent_at }
-        var sendCounts = {};
-        if (logs && logs.length > 0) {
-          logs.forEach(function(l) {
-            if (!sendCounts[l.email]) {
-              sendCounts[l.email] = { count: 0, last_sent_at: l.created_at };
-            }
-            sendCounts[l.email].count++;
-            // First entry is most recent because of order=created_at.desc
-          });
-        }
+      adminQuery(logQuery)
+        .then(function (logs) {
+          // Build send count map: email -> { count, last_sent_at }
+          var sendCounts = {};
+          if (logs && logs.length > 0) {
+            logs.forEach(function (l) {
+              if (!sendCounts[l.email]) {
+                sendCounts[l.email] = { count: 0, last_sent_at: l.created_at };
+              }
+              sendCounts[l.email].count++;
+              // First entry is most recent because of order=created_at.desc
+            });
+          }
 
-        var html = '';
-        html += '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-          '<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>' +
-          '</tr></thead><tbody>';
-        orders.forEach(function(o) {
-          var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
-          var payMethod = o.payment_method === 'modempay' ? 'ModemPay' : o.payment_method === 'wave_transfer' ? 'Wave' : '-';
-          var sendInfo = sendCounts[o.email];
-          var sendBadge = sendInfo
-            ? '<span style="font-size:11px;color:var(--muted);display:block;margin-top:2px;">Sent ' + sendInfo.count + 'x' +
-              (sendInfo.last_sent_at ? ' · last ' + new Date(sendInfo.last_sent_at).toLocaleDateString() : '') +
-              '</span>'
-            : '';
-          var isPaid = o.status === 'paid';
-          var isUnpaid = o.status === 'unpaid' || o.status === 'pending_verification';
-          html += '<tr>' +
-            '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
-            '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
-            '<td><strong>D' + o.total + '</strong></td>' +
-            '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
-            '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
-            '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
-            '<td style="vertical-align:middle;">' +
-              '<button class="action-btn order-expand-btn" data-order="' + o.id + '" data-status="' + o.status + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
-              (isUnpaid ? '<button class="action-btn mark-paid-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>' : '') +
-              (isPaid ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>' : '') +
-              '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
+          var html = "";
+          html +=
+            '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+            "<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>" +
+            "</tr></thead><tbody>";
+          orders.forEach(function (o) {
+            var statusClass =
+              "status-" +
+              (o.status === "paid"
+                ? "approved"
+                : o.status === "unpaid"
+                  ? "pending"
+                  : o.status === "cancelled" || o.status === "refunded"
+                    ? "rejected"
+                    : "pending");
+            var payMethod =
+              o.payment_method === "modempay"
+                ? "ModemPay"
+                : o.payment_method === "wave_transfer"
+                  ? "Wave"
+                  : "-";
+            var sendInfo = sendCounts[o.email];
+            var sendBadge = sendInfo
+              ? '<span style="font-size:11px;color:var(--muted);display:block;margin-top:2px;">Sent ' +
+                sendInfo.count +
+                "x" +
+                (sendInfo.last_sent_at
+                  ? " · last " +
+                    new Date(sendInfo.last_sent_at).toLocaleDateString()
+                  : "") +
+                "</span>"
+              : "";
+            var isPaid = o.status === "paid";
+            var isUnpaid =
+              o.status === "unpaid" || o.status === "pending_verification";
+            html +=
+              "<tr>" +
+              '<td><code style="font-size:12px;">#' +
+              o.id.slice(0, 8) +
+              "</code></td>" +
+              '<td><span style="font-size:13px;">' +
+              escapeHtml(o.email) +
+              "</span></td>" +
+              "<td><strong>D" +
+              o.total +
+              "</strong></td>" +
+              '<td><span style="font-size:13px;color:var(--muted);">' +
+              payMethod +
+              "</span></td>" +
+              '<td><span class="status-badge ' +
+              statusClass +
+              '">' +
+              o.status.replace("_", " ") +
+              "</span></td>" +
+              '<td><span style="font-size:13px;color:var(--muted);">' +
+              new Date(o.created_at).toLocaleDateString() +
+              "</span></td>" +
+              '<td style="vertical-align:middle;">' +
+              '<button class="action-btn order-expand-btn" data-order="' +
+              o.id +
+              '" data-status="' +
+              o.status +
+              '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+              (isUnpaid
+                ? '<button class="action-btn mark-paid-btn" data-order-id="' +
+                  o.id +
+                  '" data-email="' +
+                  escapeHtml(o.email) +
+                  '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>'
+                : "") +
+              (isPaid
+                ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' +
+                  o.id +
+                  '" data-email="' +
+                  escapeHtml(o.email) +
+                  '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>'
+                : "") +
+              '<button class="action-btn resend-magic-link-btn" data-email="' +
+              escapeHtml(o.email) +
+              '" data-order-id="' +
+              o.id +
+              '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
               sendBadge +
-            '</td>' +
-            '</tr>';
-          // Hidden ticket row — expanded on click
-          html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+              "</td>" +
+              "</tr>";
+            // Hidden ticket row — expanded on click
+            html +=
+              '<tr id="order-tickets-' +
+              o.id +
+              '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+          });
+          html += "</tbody></table></div>";
+          container.innerHTML = html;
+        })
+        .catch(function () {
+          // Fallback: render orders without send counts if log fetch fails
+          renderOrders(orders);
         });
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
-      }).catch(function() {
-        // Fallback: render orders without send counts if log fetch fails
-        renderOrders(orders);
-      });
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load orders: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load orders: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
 // ─── Fallback: render orders without send counts (if log fetch fails) ────
 
 function renderOrders(orders) {
-  var container = document.getElementById('orders-container');
-  var html = '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-    '<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>' +
-    '</tr></thead><tbody>';
-  orders.forEach(function(o) {
-    var statusClass = 'status-' + (o.status === 'paid' ? 'approved' : o.status === 'unpaid' ? 'pending' : o.status === 'cancelled' || o.status === 'refunded' ? 'rejected' : 'pending');
-    var isPaid = o.status === 'paid';
-    var isUnpaid = o.status === 'unpaid' || o.status === 'pending_verification';
-      html += '<tr>' +
-      '<td><code style="font-size:12px;">#' + o.id.slice(0, 8) + '</code></td>' +
-      '<td><span style="font-size:13px;">' + escapeHtml(o.email) + '</span></td>' +
-      '<td><strong>D' + o.total + '</strong></td>' +
-      '<td><span style="font-size:13px;color:var(--muted);">' + payMethod + '</span></td>' +
-      '<td><span class="status-badge ' + statusClass + '">' + o.status.replace('_', ' ') + '</span></td>' +
-      '<td><span style="font-size:13px;color:var(--muted);">' + new Date(o.created_at).toLocaleDateString() + '</span></td>' +
+  var container = document.getElementById("orders-container");
+  var html =
+    '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
+    "<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>" +
+    "</tr></thead><tbody>";
+  orders.forEach(function (o) {
+    var statusClass =
+      "status-" +
+      (o.status === "paid"
+        ? "approved"
+        : o.status === "unpaid"
+          ? "pending"
+          : o.status === "cancelled" || o.status === "refunded"
+            ? "rejected"
+            : "pending");
+    var isPaid = o.status === "paid";
+    var isUnpaid = o.status === "unpaid" || o.status === "pending_verification";
+    html +=
+      "<tr>" +
+      '<td><code style="font-size:12px;">#' +
+      o.id.slice(0, 8) +
+      "</code></td>" +
+      '<td><span style="font-size:13px;">' +
+      escapeHtml(o.email) +
+      "</span></td>" +
+      "<td><strong>D" +
+      o.total +
+      "</strong></td>" +
+      '<td><span style="font-size:13px;color:var(--muted);">' +
+      payMethod +
+      "</span></td>" +
+      '<td><span class="status-badge ' +
+      statusClass +
+      '">' +
+      o.status.replace("_", " ") +
+      "</span></td>" +
+      '<td><span style="font-size:13px;color:var(--muted);">' +
+      new Date(o.created_at).toLocaleDateString() +
+      "</span></td>" +
       '<td style="vertical-align:middle;">' +
-        '<button class="action-btn order-expand-btn" data-order="' + o.id + '" data-status="' + o.status + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
-        (isUnpaid ? '<button class="action-btn mark-paid-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>' : '') +
-        (isPaid ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' + o.id + '" data-email="' + escapeHtml(o.email) + '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>' : '') +
-        '<button class="action-btn resend-magic-link-btn" data-email="' + escapeHtml(o.email) + '" data-order-id="' + o.id + '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
-      '</td>' +
-      '</tr>';
-    html += '<tr id="order-tickets-' + o.id + '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+      '<button class="action-btn order-expand-btn" data-order="' +
+      o.id +
+      '" data-status="' +
+      o.status +
+      '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:6px;margin-bottom:4px;">View Tickets</button>' +
+      (isUnpaid
+        ? '<button class="action-btn mark-paid-btn" data-order-id="' +
+          o.id +
+          '" data-email="' +
+          escapeHtml(o.email) +
+          '" title="Mark as paid and create tickets — customer will receive QR codes by email" style="background:#065F46;color:white;margin-right:6px;margin-bottom:4px;">Mark Paid</button>'
+        : "") +
+      (isPaid
+        ? '<button class="action-btn regenerate-tickets-btn" data-order-id="' +
+          o.id +
+          '" data-email="' +
+          escapeHtml(o.email) +
+          '" title="Re-create tickets if this paid order has none" style="background:#92400E;color:white;margin-right:6px;margin-bottom:4px;">Regenerate</button>'
+        : "") +
+      '<button class="action-btn resend-magic-link-btn" data-email="' +
+      escapeHtml(o.email) +
+      '" data-order-id="' +
+      o.id +
+      '" style="background:#065F46;color:white;margin-bottom:4px;">Send Login Link</button>' +
+      "</td>" +
+      "</tr>";
+    html +=
+      '<tr id="order-tickets-' +
+      o.id +
+      '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
   });
-  html += '</tbody></table></div>';
+  html += "</tbody></table></div>";
   container.innerHTML = html;
 }
 
 function toggleOrderTickets(orderId) {
-  var row = document.getElementById('order-tickets-' + orderId);
+  var row = document.getElementById("order-tickets-" + orderId);
   if (!row) return;
 
-  if (row.style.display !== 'none') {
-    row.style.display = 'none';
+  if (row.style.display !== "none") {
+    row.style.display = "none";
     return;
   }
 
-  row.style.display = 'table-row';
-  var detail = row.querySelector('.order-tickets-detail');
+  row.style.display = "table-row";
+  var detail = row.querySelector(".order-tickets-detail");
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?order_id=eq.' + orderId + '&select=id,code,type,status,balance,customer_name,customer_email,ticket_types!inner(name,slug,price)')
-    .then(function(res) {
-      if (!res.ok) throw new Error('Failed to load tickets.');
+  fetchWithAuth(
+    SUPABASE_URL +
+      "/rest/v1/tickets?order_id=eq." +
+      orderId +
+      "&select=id,code,type,status,balance,customer_name,customer_email,ticket_types!inner(name,slug,price)",
+  )
+    .then(function (res) {
+      if (!res.ok) throw new Error("Failed to load tickets.");
       return res.json();
     })
-    .then(function(tickets) {
+    .then(function (tickets) {
       if (!tickets || tickets.length === 0) {
-        detail.innerHTML = '<p style="padding:16px;color:var(--muted);font-size:13px;">No tickets found for this order.</p>';
+        detail.innerHTML =
+          '<p style="padding:16px;color:var(--muted);font-size:13px;">No tickets found for this order.</p>';
         return;
       }
-      var h = '<div style="padding:12px 16px;background:var(--accent-dim);border-radius:8px;margin:8px;">';
-      h += '<table style="width:100%;font-size:13px;border-collapse:collapse;"><thead><tr>' +
+      var h =
+        '<div style="padding:12px 16px;background:var(--accent-dim);border-radius:8px;margin:8px;">';
+      h +=
+        '<table style="width:100%;font-size:13px;border-collapse:collapse;"><thead><tr>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Code</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Type</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Name</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Status</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Balance</th>' +
         '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Actions</th>' +
-        '</tr></thead><tbody>';
-      tickets.forEach(function(t) {
-        var statusClass = 'status-' + (t.status === 'active' ? 'approved' : t.status === 'used' ? 'pending' : 'rejected');
-        var isRevocable = t.status === 'active' || t.status === 'used';
-        h += '<tr><td style="padding:6px 8px;font-family:var(--font-mono);font-size:12px;">' + escapeHtml(t.code) + '</td>' +
-          '<td style="padding:6px 8px;">' + escapeHtml(t.ticket_types.name) + '</td>' +
-          '<td style="padding:6px 8px;font-size:13px;">' + escapeHtml(t.customer_name || '-') + '</td>' +
-          '<td style="padding:6px 8px;"><span class="status-badge ' + statusClass + '">' + t.status + '</span></td>' +
-          '<td style="padding:6px 8px;font-weight:600;">' + (t.type === 'activity_credit' || t.type === 'food' || t.type === 'drinks' ? 'D' + t.balance : '-') + '</td>' +
+        "</tr></thead><tbody>";
+      tickets.forEach(function (t) {
+        var statusClass =
+          "status-" +
+          (t.status === "active"
+            ? "approved"
+            : t.status === "used"
+              ? "pending"
+              : "rejected");
+        var isRevocable = t.status === "active" || t.status === "used";
+        h +=
+          '<tr><td style="padding:6px 8px;font-family:var(--font-mono);font-size:12px;">' +
+          escapeHtml(t.code) +
+          "</td>" +
+          '<td style="padding:6px 8px;">' +
+          escapeHtml(t.ticket_types.name) +
+          "</td>" +
+          '<td style="padding:6px 8px;font-size:13px;">' +
+          escapeHtml(t.customer_name || "-") +
+          "</td>" +
+          '<td style="padding:6px 8px;"><span class="status-badge ' +
+          statusClass +
+          '">' +
+          t.status +
+          "</span></td>" +
+          '<td style="padding:6px 8px;font-weight:600;">' +
+          (t.type === "activity_credit" ||
+          t.type === "food" ||
+          t.type === "drinks"
+            ? "D" + t.balance
+            : "-") +
+          "</td>" +
           '<td style="padding:6px 8px;white-space:nowrap;">' +
-            '<button class="action-btn ticket-edit-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-status="' + t.status + '" data-name="' + escapeHtml(t.customer_name || '') + '" data-email="' + escapeHtml(t.customer_email || '') + '" data-balance="' + t.balance + '" data-type="' + t.type + '" data-order="' + orderId + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
-            (isRevocable ? '<button class="action-btn ticket-revoke-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" data-order="' + orderId + '" style="background:#92400E;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Revoke</button>' : '') +
-            '<button class="action-btn ticket-delete-btn" data-id="' + t.id + '" data-code="' + escapeHtml(t.code) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Delete</button>' +
-          '</td></tr>';
+          '<button class="action-btn ticket-edit-btn" data-id="' +
+          t.id +
+          '" data-code="' +
+          escapeHtml(t.code) +
+          '" data-status="' +
+          t.status +
+          '" data-name="' +
+          escapeHtml(t.customer_name || "") +
+          '" data-email="' +
+          escapeHtml(t.customer_email || "") +
+          '" data-balance="' +
+          t.balance +
+          '" data-type="' +
+          t.type +
+          '" data-order="' +
+          orderId +
+          '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
+          (isRevocable
+            ? '<button class="action-btn ticket-revoke-btn" data-id="' +
+              t.id +
+              '" data-code="' +
+              escapeHtml(t.code) +
+              '" data-order="' +
+              orderId +
+              '" style="background:#92400E;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Revoke</button>'
+            : "") +
+          '<button class="action-btn ticket-delete-btn" data-id="' +
+          t.id +
+          '" data-code="' +
+          escapeHtml(t.code) +
+          '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Delete</button>' +
+          "</td></tr>";
       });
-      h += '</tbody></table></div>';
+      h += "</tbody></table></div>";
       detail.innerHTML = h;
     })
-    .catch(function(err) {
-      detail.innerHTML = '<p style="padding:16px;color:#DC2626;font-size:13px;">' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      detail.innerHTML =
+        '<p style="padding:16px;color:#DC2626;font-size:13px;">' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
@@ -257,52 +556,76 @@ function toggleOrderTickets(orderId) {
 
 function showTicketEditModal(ticketData) {
   // Remove any existing edit modal
-  var existing = document.getElementById('ticket-edit-modal');
+  var existing = document.getElementById("ticket-edit-modal");
   if (existing) existing.remove();
 
-  var overlay = document.createElement('div');
-  overlay.id = 'ticket-edit-modal';
-  overlay.className = 'gift-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;';
+  var overlay = document.createElement("div");
+  overlay.id = "ticket-edit-modal";
+  overlay.className = "gift-overlay";
+  overlay.style.cssText =
+    "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;";
 
-  overlay.innerHTML = '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
+  overlay.innerHTML =
+    '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
     '<div class="gift-badge" style="margin-bottom:12px;">Edit Ticket</div>' +
     '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' +
-      'Ticket <code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(ticketData.code) + '</code>' +
-    '</p>' +
+    'Ticket <code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' +
+    escapeHtml(ticketData.code) +
+    "</code>" +
+    "</p>" +
     '<form id="ticket-edit-form">' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Name</label>' +
-        '<input type="text" id="edit-ticket-name" value="' + escapeHtml(ticketData.name || '') + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Email</label>' +
-        '<input type="email" id="edit-ticket-email" value="' + escapeHtml(ticketData.email || '') + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Status</label>' +
-        '<select id="edit-ticket-status" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-          '<option value="active"' + (ticketData.status === 'active' ? ' selected' : '') + '>Active</option>' +
-          '<option value="used"' + (ticketData.status === 'used' ? ' selected' : '') + '>Used</option>' +
-          '<option value="exhausted"' + (ticketData.status === 'exhausted' ? ' selected' : '') + '>Exhausted</option>' +
-          '<option value="revoked"' + (ticketData.status === 'revoked' ? ' selected' : '') + '>Revoked</option>' +
-        '</select>' +
-      '</div>' +
-      '<div style="margin-bottom:16px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Balance (D) <span style="color:var(--muted);font-weight:400;">— only for activity credit tickets</span></label>' +
-        '<input type="number" id="edit-ticket-balance" value="' + ticketData.balance + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
-        '<button type="button" id="ticket-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
-        '<button type="button" id="ticket-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-ticket-id="' + ticketData.id + '" data-order-id="' + (ticketData.orderId || '') + '">Save Changes</button>' +
-      '</div>' +
-    '</form>' +
-    '</div>';
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Name</label>' +
+    '<input type="text" id="edit-ticket-name" value="' +
+    escapeHtml(ticketData.name || "") +
+    '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Customer Email</label>' +
+    '<input type="email" id="edit-ticket-email" value="' +
+    escapeHtml(ticketData.email || "") +
+    '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Status</label>' +
+    '<select id="edit-ticket-status" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    '<option value="active"' +
+    (ticketData.status === "active" ? " selected" : "") +
+    ">Active</option>" +
+    '<option value="used"' +
+    (ticketData.status === "used" ? " selected" : "") +
+    ">Used</option>" +
+    '<option value="exhausted"' +
+    (ticketData.status === "exhausted" ? " selected" : "") +
+    ">Exhausted</option>" +
+    '<option value="revoked"' +
+    (ticketData.status === "revoked" ? " selected" : "") +
+    ">Revoked</option>" +
+    "</select>" +
+    "</div>" +
+    '<div style="margin-bottom:16px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Balance (D) <span style="color:var(--muted);font-weight:400;">— only for activity credit tickets</span></label>' +
+    '<input type="number" id="edit-ticket-balance" value="' +
+    ticketData.balance +
+    '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button type="button" id="ticket-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
+    '<button type="button" id="ticket-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-ticket-id="' +
+    ticketData.id +
+    '" data-order-id="' +
+    (ticketData.orderId || "") +
+    '">Save Changes</button>' +
+    "</div>" +
+    "</form>" +
+    "</div>";
 
   document.body.appendChild(overlay);
 
   // Focus first input
-  setTimeout(function() { document.getElementById('edit-ticket-name').focus(); }, 100);
+  setTimeout(function () {
+    document.getElementById("edit-ticket-name").focus();
+  }, 100);
 
   return overlay;
 }
@@ -314,77 +637,132 @@ function saveTicketEdit(ticketId, data) {
   if (data.status !== undefined) payload.status = data.status;
   if (data.balance !== undefined) payload.balance = parseInt(data.balance);
 
-  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify(payload)
-  }).then(function(res) {
+  return fetchWithAuth(
+    SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
+    },
+  ).then(function (res) {
     if (res.ok || res.status === 204) return true;
     if (res.status === 401 || res.status === 403) {
       // JWT RLS may not cover all fields — fall back to service key
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Permission denied. Service key required.');
-      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-        method: 'PATCH',
-        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      }).then(function(r) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied. Service key required.");
+      return fetch(
+        SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: "Bearer " + svcKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify(payload),
+        },
+      ).then(function (r) {
         if (r.ok || r.status === 204) return true;
-        throw new Error('Failed to update ticket.');
+        throw new Error("Failed to update ticket.");
       });
     }
-    throw new Error('Failed to update ticket.');
+    throw new Error("Failed to update ticket.");
   });
 }
 
 function revokeTicket(ticketId, ticketCode) {
-  if (!confirm('Revoke ticket ' + ticketCode + '? The ticket will no longer be valid for entry or top-ups.')) return;
+  if (
+    !confirm(
+      "Revoke ticket " +
+        ticketCode +
+        "? The ticket will no longer be valid for entry or top-ups.",
+    )
+  )
+    return;
 
-  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ status: 'revoked' })
-  }).then(function(res) {
+  return fetchWithAuth(
+    SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "revoked" }),
+    },
+  ).then(function (res) {
     if (res.ok || res.status === 204) return true;
     if (res.status === 401 || res.status === 403) {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Permission denied. Service key required.');
-      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-        method: 'PATCH',
-        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ status: 'revoked' })
-      }).then(function(r) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied. Service key required.");
+      return fetch(
+        SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: "Bearer " + svcKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ status: "revoked" }),
+        },
+      ).then(function (r) {
         if (r.ok || r.status === 204) return true;
-        throw new Error('Failed to revoke ticket.');
+        throw new Error("Failed to revoke ticket.");
       });
     }
-    throw new Error('Failed to revoke ticket.');
+    throw new Error("Failed to revoke ticket.");
   });
 }
 
 function deleteTicket(ticketId, ticketCode) {
-  if (!confirm('Permanently delete ticket ' + ticketCode + '? This action cannot be undone. All balance transaction history will also be deleted.')) return;
+  if (
+    !confirm(
+      "Permanently delete ticket " +
+        ticketCode +
+        "? This action cannot be undone. All balance transaction history will also be deleted.",
+    )
+  )
+    return;
 
-  return fetchWithAuth(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-    method: 'DELETE',
-    headers: { 'Prefer': 'return=minimal' }
-  }).then(function(res) {
+  return fetchWithAuth(
+    SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    },
+  ).then(function (res) {
     if (res.ok || res.status === 204) return true;
     if (res.status === 401 || res.status === 403) {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Permission denied. Service key required.');
-      return fetch(SUPABASE_URL + '/rest/v1/tickets?id=eq.' + encodeURIComponent(ticketId), {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
-      }).then(function(r) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied. Service key required.");
+      return fetch(
+        SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer " + svcKey,
+            Prefer: "return=minimal",
+          },
+        },
+      ).then(function (r) {
         if (r.ok || r.status === 204) return true;
-        throw new Error('Failed to delete ticket.');
+        throw new Error("Failed to delete ticket.");
       });
     }
-    throw new Error('Failed to delete ticket.');
+    throw new Error("Failed to delete ticket.");
   });
 }
 
@@ -393,138 +771,249 @@ function deleteTicket(ticketId, ticketCode) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadTicketTypes() {
-  var container = document.getElementById('ticket-types-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>';
+  var container = document.getElementById("ticket-types-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading ticket types...</p>';
 
-  adminQuery('/rest/v1/ticket_types?order=sort_order.asc&select=*').then(function(types) {
+  adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
+    .then(function (types) {
       if (!types || types.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
         return;
       }
 
-      var html = '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
-        '<th>Name</th><th>Slug</th><th>Type</th><th>Price</th><th>Capacity</th><th>Sold</th><th>Status</th><th>Actions</th>' +
-        '</tr></thead><tbody>';
-      types.forEach(function(t) {
-        var statusClass = t.is_active ? 'status-approved' : 'status-rejected';
-        var statusText = t.is_active ? 'Active' : 'Inactive';
-        html += '<tr>' +
-          '<td><strong>' + escapeHtml(t.name) + '</strong></td>' +
-          '<td><code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(t.slug) + '</code></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);text-transform:capitalize;">' + t.type.replace('_', ' ') + '</span></td>' +
-          '<td><strong>D' + t.price + '</strong></td>' +
-          '<td>' + t.capacity + '</td>' +
-          '<td>' + t.sold + '</td>' +
-          '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+      var html =
+        '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
+        "<th>Name</th><th>Slug</th><th>Type</th><th>Price</th><th>Capacity</th><th>Sold</th><th>Status</th><th>Actions</th>" +
+        "</tr></thead><tbody>";
+      types.forEach(function (t) {
+        var statusClass = t.is_active ? "status-approved" : "status-rejected";
+        var statusText = t.is_active ? "Active" : "Inactive";
+        html +=
+          "<tr>" +
+          "<td><strong>" +
+          escapeHtml(t.name) +
+          "</strong></td>" +
+          '<td><code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' +
+          escapeHtml(t.slug) +
+          "</code></td>" +
+          '<td><span style="font-size:13px;color:var(--muted);text-transform:capitalize;">' +
+          t.type.replace("_", " ") +
+          "</span></td>" +
+          "<td><strong>D" +
+          t.price +
+          "</strong></td>" +
+          "<td>" +
+          t.capacity +
+          "</td>" +
+          "<td>" +
+          t.sold +
+          "</td>" +
+          '<td><span class="status-badge ' +
+          statusClass +
+          '">' +
+          statusText +
+          "</span></td>" +
           '<td style="white-space:nowrap;">' +
-            '<button class="action-btn ticket-type-edit-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" data-slug="' + escapeHtml(t.slug) + '" data-type="' + t.type + '" data-price="' + t.price + '" data-capacity="' + t.capacity + '" data-sort="' + t.sort_order + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
-            '<button class="action-btn ticket-type-toggle-btn" data-id="' + t.id + '" data-active="' + t.is_active + '" style="background:#065F46;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' + (t.is_active ? '' : 'opacity:0.5;') + '">' + (t.is_active ? 'Deactivate' : 'Activate') + '</button>' +
-            '<button class="action-btn ticket-type-delete-btn" data-id="' + t.id + '" data-name="' + escapeHtml(t.name) + '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' + (t.sold > 0 ? 'opacity:0.4;cursor:not-allowed;' : '') + '" title="' + (t.sold > 0 ? 'Cannot delete: ' + t.sold + ' ticket(s) sold' : 'Delete this ticket type') + '">Delete</button>' +
-          '</td>' +
-          '</tr>';
+          '<button class="action-btn ticket-type-edit-btn" data-id="' +
+          t.id +
+          '" data-name="' +
+          escapeHtml(t.name) +
+          '" data-slug="' +
+          escapeHtml(t.slug) +
+          '" data-type="' +
+          t.type +
+          '" data-price="' +
+          t.price +
+          '" data-capacity="' +
+          t.capacity +
+          '" data-sort="' +
+          t.sort_order +
+          '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit</button>' +
+          '<button class="action-btn ticket-type-toggle-btn" data-id="' +
+          t.id +
+          '" data-active="' +
+          t.is_active +
+          '" style="background:#065F46;color:white;margin-right:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' +
+          (t.is_active ? "" : "opacity:0.5;") +
+          '">' +
+          (t.is_active ? "Deactivate" : "Activate") +
+          "</button>" +
+          '<button class="action-btn ticket-type-delete-btn" data-id="' +
+          t.id +
+          '" data-name="' +
+          escapeHtml(t.name) +
+          '" style="background:#991B1B;color:white;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;' +
+          (t.sold > 0 ? "opacity:0.4;cursor:not-allowed;" : "") +
+          '" title="' +
+          (t.sold > 0
+            ? "Cannot delete: " + t.sold + " ticket(s) sold"
+            : "Delete this ticket type") +
+          '">Delete</button>' +
+          "</td>" +
+          "</tr>";
       });
-      html += '</tbody></table></div>';
+      html += "</tbody></table></div>";
 
       // Add new ticket type form
-      html += '<h4 style="font-size:15px;margin-bottom:12px;">Add New Ticket Type</h4>' +
+      html +=
+        '<h4 style="font-size:15px;margin-bottom:12px;">Add New Ticket Type</h4>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Name</label><input type="text" id="new-ticket-name" placeholder="e.g. VIP Entry" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Slug</label><input type="text" id="new-ticket-slug" placeholder="e.g. vip-entry" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Type</label>' +
         '<select id="new-ticket-type" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-                '<option value="entry">Entry</option><option value="kids_zone">Kids Zone</option><option value="activity_credit">Activity Credit</option><option value="parking">Parking</option><option value="food">Food</option><option value="drinks">Drinks</option></select></div>' +
+        '<option value="entry">Entry</option><option value="kids_zone">Kids Zone</option><option value="activity_credit">Activity Credit</option><option value="parking">Parking</option><option value="food">Food</option><option value="drinks">Drinks</option></select></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label><input type="number" id="new-ticket-price" value="0" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label><input type="number" id="new-ticket-capacity" value="100" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label><input type="number" id="new-ticket-sort" value="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div style="display:flex;align-items:end;"><button id="add-ticket-type-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Add Ticket Type</button></div>' +
-        '</div>';
+        "</div>";
 
       container.innerHTML = html;
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load ticket types: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load ticket types: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
 function toggleTicketTypeActive(id, currentlyActive) {
-  var btn = document.querySelector('.ticket-type-toggle-btn[data-id="' + id + '"]');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  var btn = document.querySelector(
+    '.ticket-type-toggle-btn[data-id="' + id + '"]',
+  );
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "...";
+  }
 
   // Try RPC first (works with ticketing_role JWT), fall back to service key
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/toggle_ticket_type_active', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_id: id, p_active: !currentlyActive })
-  }).then(function(res) {
-    if (res.ok) { loadTicketTypes(); return; }
-    // RPC may fail if the DB hasn't been migrated — fall back to service key
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { throw new Error('Permission denied or service key required.'); }
-    return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ is_active: !currentlyActive })
-    }).then(function(r) { if (!r.ok) throw new Error('Failed to update.'); loadTicketTypes(); });
-  }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
-  });
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/toggle_ticket_type_active", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_id: id, p_active: !currentlyActive }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        loadTicketTypes();
+        return;
+      }
+      // RPC may fail if the DB hasn't been migrated — fall back to service key
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        throw new Error("Permission denied or service key required.");
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/ticket_types?id=eq." + id, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ is_active: !currentlyActive }),
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Failed to update.");
+        loadTicketTypes();
+      });
+    })
+    .catch(function (err) {
+      alert("Error: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = currentlyActive ? "Deactivate" : "Activate";
+      }
+    });
 }
 
 function showTicketTypeEditModal(typeData) {
   // Remove any existing edit modal
-  var existing = document.getElementById('ticket-type-edit-modal');
+  var existing = document.getElementById("ticket-type-edit-modal");
   if (existing) existing.remove();
 
-  var overlay = document.createElement('div');
-  overlay.id = 'ticket-type-edit-modal';
-  overlay.className = 'gift-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;';
+  var overlay = document.createElement("div");
+  overlay.id = "ticket-type-edit-modal";
+  overlay.className = "gift-overlay";
+  overlay.style.cssText =
+    "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;";
 
-  overlay.innerHTML = '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
+  overlay.innerHTML =
+    '<div class="gift-box" style="text-align:left;max-width:480px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
     '<div class="gift-badge" style="margin-bottom:12px;">Edit Ticket Type</div>' +
     '<form id="ticket-type-edit-form">' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Name</label>' +
-        '<input type="text" id="edit-type-name" value="' + escapeHtml(typeData.name) + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Slug</label>' +
-        '<input type="text" id="edit-type-slug" value="' + escapeHtml(typeData.slug) + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Type</label>' +
-        '<select id="edit-type-select" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-          '<option value="entry"' + (typeData.type === 'entry' ? ' selected' : '') + '>Entry</option>' +
-          '<option value="kids_zone"' + (typeData.type === 'kids_zone' ? ' selected' : '') + '>Kids Zone</option>' +
-          '<option value="activity_credit"' + (typeData.type === 'activity_credit' ? ' selected' : '') + '>Activity Credit</option>' +
-          '<option value="parking"' + (typeData.type === 'parking' ? ' selected' : '') + '>Parking</option>' +
-          '<option value="food"' + (typeData.type === 'food' ? ' selected' : '') + '>Food</option>' +
-          '<option value="drinks"' + (typeData.type === 'drinks' ? ' selected' : '') + '>Drinks</option>' +
-        '</select>' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label>' +
-        '<input type="number" id="edit-type-price" value="' + typeData.price + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label>' +
-        '<input type="number" id="edit-type-capacity" value="' + typeData.capacity + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="margin-bottom:16px;">' +
-        '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label>' +
-        '<input type="number" id="edit-type-sort" value="' + typeData.sort + '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
-      '</div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
-        '<button type="button" id="ticket-type-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
-        '<button type="button" id="ticket-type-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-type-id="' + typeData.id + '">Save Changes</button>' +
-      '</div>' +
-    '</form>' +
-    '</div>';
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Name</label>' +
+    '<input type="text" id="edit-type-name" value="' +
+    escapeHtml(typeData.name) +
+    '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Slug</label>' +
+    '<input type="text" id="edit-type-slug" value="' +
+    escapeHtml(typeData.slug) +
+    '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Type</label>' +
+    '<select id="edit-type-select" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    '<option value="entry"' +
+    (typeData.type === "entry" ? " selected" : "") +
+    ">Entry</option>" +
+    '<option value="kids_zone"' +
+    (typeData.type === "kids_zone" ? " selected" : "") +
+    ">Kids Zone</option>" +
+    '<option value="activity_credit"' +
+    (typeData.type === "activity_credit" ? " selected" : "") +
+    ">Activity Credit</option>" +
+    '<option value="parking"' +
+    (typeData.type === "parking" ? " selected" : "") +
+    ">Parking</option>" +
+    '<option value="food"' +
+    (typeData.type === "food" ? " selected" : "") +
+    ">Food</option>" +
+    '<option value="drinks"' +
+    (typeData.type === "drinks" ? " selected" : "") +
+    ">Drinks</option>" +
+    "</select>" +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label>' +
+    '<input type="number" id="edit-type-price" value="' +
+    typeData.price +
+    '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label>' +
+    '<input type="number" id="edit-type-capacity" value="' +
+    typeData.capacity +
+    '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="margin-bottom:16px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label>' +
+    '<input type="number" id="edit-type-sort" value="' +
+    typeData.sort +
+    '" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button type="button" id="ticket-type-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
+    '<button type="button" id="ticket-type-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-type-id="' +
+    typeData.id +
+    '">Save Changes</button>' +
+    "</div>" +
+    "</form>" +
+    "</div>";
 
   document.body.appendChild(overlay);
-  setTimeout(function() { document.getElementById('edit-type-name').focus(); }, 100);
+  setTimeout(function () {
+    document.getElementById("edit-type-name").focus();
+  }, 100);
   return overlay;
 }
 
@@ -537,106 +1026,201 @@ function saveTicketTypeEdit(typeId, data) {
   if (data.capacity !== undefined) payload.capacity = parseInt(data.capacity);
   if (data.sort !== undefined) payload.sort_order = parseInt(data.sort);
 
-  return fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify(payload)
-  }).then(function(res) {
+  return fetchWithAuth(
+    SUPABASE_URL + "/rest/v1/ticket_types?id=eq." + encodeURIComponent(typeId),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
+    },
+  ).then(function (res) {
     if (res.ok || res.status === 204) return true;
     if (res.status === 401 || res.status === 403) {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Permission denied. Service key required.');
-      return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
-        method: 'PATCH',
-        headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      }).then(function(r) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied. Service key required.");
+      return fetch(
+        SUPABASE_URL +
+          "/rest/v1/ticket_types?id=eq." +
+          encodeURIComponent(typeId),
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: "Bearer " + svcKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify(payload),
+        },
+      ).then(function (r) {
         if (r.ok || r.status === 204) return true;
-        throw new Error('Failed to update ticket type.');
+        throw new Error("Failed to update ticket type.");
       });
     }
-    throw new Error('Failed to update ticket type.');
+    throw new Error("Failed to update ticket type.");
   });
 }
 
 function deleteTicketType(typeId, typeName) {
-  if (!confirm('Delete "' + typeName + '"? This cannot be undone. If tickets have already been sold for this type, the delete will fail — deactivate it instead.')) return;
+  if (
+    !confirm(
+      'Delete "' +
+        typeName +
+        '"? This cannot be undone. If tickets have already been sold for this type, the delete will fail — deactivate it instead.',
+    )
+  )
+    return;
 
-  return fetchWithAuth(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
-    method: 'DELETE',
-    headers: { 'Prefer': 'return=minimal' }
-  }).then(function(res) {
+  return fetchWithAuth(
+    SUPABASE_URL + "/rest/v1/ticket_types?id=eq." + encodeURIComponent(typeId),
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    },
+  ).then(function (res) {
     if (res.ok || res.status === 204) return true;
     if (res.status === 401 || res.status === 403) {
-      var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-      if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-      if (!svcKey) throw new Error('Permission denied. Service key required.');
-      return fetch(SUPABASE_URL + '/rest/v1/ticket_types?id=eq.' + encodeURIComponent(typeId), {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
-      }).then(function(r) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied. Service key required.");
+      return fetch(
+        SUPABASE_URL +
+          "/rest/v1/ticket_types?id=eq." +
+          encodeURIComponent(typeId),
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer " + svcKey,
+            Prefer: "return=minimal",
+          },
+        },
+      ).then(function (r) {
         if (r.ok || r.status === 204) return true;
-        if (r.status === 409) throw new Error('Cannot delete: tickets exist for this type. Deactivate it instead.');
-        throw new Error('Failed to delete ticket type.');
+        if (r.status === 409)
+          throw new Error(
+            "Cannot delete: tickets exist for this type. Deactivate it instead.",
+          );
+        throw new Error("Failed to delete ticket type.");
       });
     }
-    if (res.status === 409) throw new Error('Cannot delete: tickets exist for this type. Deactivate it instead.');
-    throw new Error('Failed to delete ticket type.');
+    if (res.status === 409)
+      throw new Error(
+        "Cannot delete: tickets exist for this type. Deactivate it instead.",
+      );
+    throw new Error("Failed to delete ticket type.");
   });
 }
 
 function addTicketType() {
-  var name = document.getElementById('new-ticket-name').value.trim();
-  var slug = document.getElementById('new-ticket-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
-  var type = document.getElementById('new-ticket-type').value;
-  var price = parseInt(document.getElementById('new-ticket-price').value) || 0;
-  var capacity = parseInt(document.getElementById('new-ticket-capacity').value) || 0;
-  var sortOrder = parseInt(document.getElementById('new-ticket-sort').value) || 0;
+  var name = document.getElementById("new-ticket-name").value.trim();
+  var slug = document
+    .getElementById("new-ticket-slug")
+    .value.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-");
+  var type = document.getElementById("new-ticket-type").value;
+  var price = parseInt(document.getElementById("new-ticket-price").value) || 0;
+  var capacity =
+    parseInt(document.getElementById("new-ticket-capacity").value) || 0;
+  var sortOrder =
+    parseInt(document.getElementById("new-ticket-sort").value) || 0;
 
-  if (!name || !slug) { alert('Name and slug are required.'); return; }
+  if (!name || !slug) {
+    alert("Name and slug are required.");
+    return;
+  }
 
-  var btn = document.getElementById('add-ticket-type-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+  var btn = document.getElementById("add-ticket-type-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Adding...";
+  }
 
   function clearForm() {
-    document.getElementById('new-ticket-name').value = '';
-    document.getElementById('new-ticket-slug').value = '';
-    document.getElementById('new-ticket-price').value = '0';
-    document.getElementById('new-ticket-capacity').value = '100';
-    document.getElementById('new-ticket-sort').value = '0';
+    document.getElementById("new-ticket-name").value = "";
+    document.getElementById("new-ticket-slug").value = "";
+    document.getElementById("new-ticket-price").value = "0";
+    document.getElementById("new-ticket-capacity").value = "100";
+    document.getElementById("new-ticket-sort").value = "0";
   }
 
   // Try RPC first (works with ticketing_role JWT), fall back to service key
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/add_ticket_type', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/add_ticket_type", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      p_name: name, p_slug: slug, p_type: type,
-      p_price: price, p_capacity: capacity, p_sort_order: sortOrder
+      p_name: name,
+      p_slug: slug,
+      p_type: type,
+      p_price: price,
+      p_capacity: capacity,
+      p_sort_order: sortOrder,
+    }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        clearForm();
+        loadTicketTypes();
+        return;
+      }
+      throw new Error("RPC failed.");
     })
-  }).then(function(res) {
-    if (res.ok) { clearForm(); loadTicketTypes(); return; }
-    throw new Error('RPC failed.');
-  }).catch(function(err) {
-    // Fall back to service key method
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; } return; }
+    .catch(function (err) {
+      // Fall back to service key method
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Add Ticket Type";
+        }
+        return;
+      }
 
-    return fetch(SUPABASE_URL + '/rest/v1/ticket_types', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ name: name, slug: slug, type: type, price: price, capacity: capacity, sold: 0, is_active: true, sort_order: sortOrder })
-    }).then(function(r) {
-      if (!r.ok) throw new Error('Failed to add ticket type.');
-      clearForm();
-      loadTicketTypes();
-    }).catch(function(e2) {
-      alert('Error: ' + e2.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Add Ticket Type'; }
+      return fetch(SUPABASE_URL + "/rest/v1/ticket_types", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          name: name,
+          slug: slug,
+          type: type,
+          price: price,
+          capacity: capacity,
+          sold: 0,
+          is_active: true,
+          sort_order: sortOrder,
+        }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to add ticket type.");
+          clearForm();
+          loadTicketTypes();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Add Ticket Type";
+          }
+        });
     });
-  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -644,137 +1228,242 @@ function addTicketType() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadTopUpBundles() {
-  var container = document.getElementById('bundles-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading top-up bundles...</p>';
+  var container = document.getElementById("bundles-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading top-up bundles...</p>';
 
-  adminQuery('/rest/v1/top_up_bundles?order=sort_order.asc&select=*')
-    .then(function(bundles) {
-      if (!bundles) throw new Error('Failed to load bundles.');
+  adminQuery("/rest/v1/top_up_bundles?order=sort_order.asc&select=*")
+    .then(function (bundles) {
+      if (!bundles) throw new Error("Failed to load bundles.");
       if (!bundles || bundles.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No top-up bundles configured.</p>';
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No top-up bundles configured.</p>';
         return;
       }
 
-      var html = '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
-        '<th>Amount</th><th>Status</th><th>Sort Order</th><th>Actions</th>' +
-        '</tr></thead><tbody>';
-      bundles.forEach(function(b) {
-        var statusClass = b.is_active ? 'status-approved' : 'status-rejected';
-        var statusText = b.is_active ? 'Active' : 'Inactive';
-        html += '<tr>' +
-          '<td><strong>D' + b.amount + '</strong></td>' +
-          '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);">' + b.sort_order + '</span></td>' +
-          '<td>' +
-            '<button class="action-btn bundle-toggle-btn" data-id="' + b.id + '" data-active="' + b.is_active + '" style="background:#065F46;color:white;margin-right:6px;">' + (b.is_active ? 'Deactivate' : 'Activate') + '</button>' +
-            '<button class="action-btn action-reject bundle-delete-btn" data-id="' + b.id + '">Delete</button>' +
-          '</td>' +
-          '</tr>';
+      var html =
+        '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
+        "<th>Amount</th><th>Status</th><th>Sort Order</th><th>Actions</th>" +
+        "</tr></thead><tbody>";
+      bundles.forEach(function (b) {
+        var statusClass = b.is_active ? "status-approved" : "status-rejected";
+        var statusText = b.is_active ? "Active" : "Inactive";
+        html +=
+          "<tr>" +
+          "<td><strong>D" +
+          b.amount +
+          "</strong></td>" +
+          '<td><span class="status-badge ' +
+          statusClass +
+          '">' +
+          statusText +
+          "</span></td>" +
+          '<td><span style="font-size:13px;color:var(--muted);">' +
+          b.sort_order +
+          "</span></td>" +
+          "<td>" +
+          '<button class="action-btn bundle-toggle-btn" data-id="' +
+          b.id +
+          '" data-active="' +
+          b.is_active +
+          '" style="background:#065F46;color:white;margin-right:6px;">' +
+          (b.is_active ? "Deactivate" : "Activate") +
+          "</button>" +
+          '<button class="action-btn action-reject bundle-delete-btn" data-id="' +
+          b.id +
+          '">Delete</button>' +
+          "</td>" +
+          "</tr>";
       });
-      html += '</tbody></table></div>';
+      html += "</tbody></table></div>";
 
       // Add new bundle form
-      html += '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+      html +=
+        '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Amount (D)</label><input type="number" id="new-bundle-amount" value="100" min="50" step="50" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label><input type="number" id="new-bundle-sort" value="0" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<button id="add-bundle-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Add Bundle</button>' +
-        '</div>';
+        "</div>";
 
       container.innerHTML = html;
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load bundles: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load bundles: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
 function toggleBundleActive(id, currentlyActive) {
   var btn = document.querySelector('.bundle-toggle-btn[data-id="' + id + '"]');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "...";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/toggle_bundle_active', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_id: id, p_active: !currentlyActive })
-  }).then(function(res) {
-    if (res.ok) { loadTopUpBundles(); return; }
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { throw new Error('Permission denied.'); }
-    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ is_active: !currentlyActive })
-    }).then(function(r) { if (!r.ok) throw new Error('Failed to update.'); loadTopUpBundles(); });
-  }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = currentlyActive ? 'Deactivate' : 'Activate'; }
-  });
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/toggle_bundle_active", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_id: id, p_active: !currentlyActive }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        loadTopUpBundles();
+        return;
+      }
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        throw new Error("Permission denied.");
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/top_up_bundles?id=eq." + id, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ is_active: !currentlyActive }),
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Failed to update.");
+        loadTopUpBundles();
+      });
+    })
+    .catch(function (err) {
+      alert("Error: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = currentlyActive ? "Deactivate" : "Activate";
+      }
+    });
 }
 
 function deleteBundle(id) {
-  if (!confirm('Delete this top-up bundle?')) return;
+  if (!confirm("Delete this top-up bundle?")) return;
 
   var btn = document.querySelector('.bundle-delete-btn[data-id="' + id + '"]');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "...";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/delete_top_up_bundle', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_id: id })
-  }).then(function(res) {
-    if (res.ok) { loadTopUpBundles(); return; }
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { throw new Error('Permission denied.'); }
-    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles?id=eq.' + id, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Prefer': 'return=minimal' }
-    }).then(function(r) { if (!r.ok) throw new Error('Failed to delete.'); loadTopUpBundles(); });
-  }).catch(function(err) {
-    alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
-  });
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/delete_top_up_bundle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_id: id }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        loadTopUpBundles();
+        return;
+      }
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        throw new Error("Permission denied.");
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/top_up_bundles?id=eq." + id, {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          Prefer: "return=minimal",
+        },
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Failed to delete.");
+        loadTopUpBundles();
+      });
+    })
+    .catch(function (err) {
+      alert("Error: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Delete";
+      }
+    });
 }
 
 function addBundle() {
-  var amount = parseInt(document.getElementById('new-bundle-amount').value) || 0;
-  var sortOrder = parseInt(document.getElementById('new-bundle-sort').value) || 0;
+  var amount =
+    parseInt(document.getElementById("new-bundle-amount").value) || 0;
+  var sortOrder =
+    parseInt(document.getElementById("new-bundle-sort").value) || 0;
 
-  if (amount < 50) { alert('Minimum bundle amount is D50.'); return; }
+  if (amount < 50) {
+    alert("Minimum bundle amount is D50.");
+    return;
+  }
 
-  var btn = document.getElementById('add-bundle-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+  var btn = document.getElementById("add-bundle-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Adding...";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/add_top_up_bundle', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_amount: amount, p_sort_order: sortOrder })
-  }).then(function(res) {
-    if (res.ok) {
-      document.getElementById('new-bundle-amount').value = '100';
-      document.getElementById('new-bundle-sort').value = '0';
-      loadTopUpBundles();
-      return;
-    }
-    throw new Error('RPC failed.');
-  }).catch(function(err) {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; } return; }
-    return fetch(SUPABASE_URL + '/rest/v1/top_up_bundles', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ amount: amount, sort_order: sortOrder, is_active: true })
-    }).then(function(r) {
-      if (!r.ok) throw new Error('Failed to add bundle.');
-      document.getElementById('new-bundle-amount').value = '100';
-      document.getElementById('new-bundle-sort').value = '0';
-      loadTopUpBundles();
-    }).catch(function(e2) {
-      alert('Error: ' + e2.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Add Bundle'; }
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/add_top_up_bundle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_amount: amount, p_sort_order: sortOrder }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        document.getElementById("new-bundle-amount").value = "100";
+        document.getElementById("new-bundle-sort").value = "0";
+        loadTopUpBundles();
+        return;
+      }
+      throw new Error("RPC failed.");
+    })
+    .catch(function (err) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Add Bundle";
+        }
+        return;
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/top_up_bundles", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          amount: amount,
+          sort_order: sortOrder,
+          is_active: true,
+        }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to add bundle.");
+          document.getElementById("new-bundle-amount").value = "100";
+          document.getElementById("new-bundle-sort").value = "0";
+          loadTopUpBundles();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Add Bundle";
+          }
+        });
     });
-  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -782,81 +1471,145 @@ function addBundle() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadBalanceCap() {
-  var container = document.getElementById('balance-cap-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading setting...</p>';
+  var container = document.getElementById("balance-cap-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading setting...</p>';
 
-  adminQuery('/rest/v1/system_config?key=eq.balance_cap&select=value')
-    .then(function(configs) {
-      var cap = '5000';
+  adminQuery("/rest/v1/system_config?key=eq.balance_cap&select=value")
+    .then(function (configs) {
+      var cap = "5000";
       if (configs && configs.length > 0) {
-        cap = configs[0].value || '5000';
+        cap = configs[0].value || "5000";
       }
       container.innerHTML =
         '<p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Maximum balance per activity credit ticket. Changes apply to all subsequent top-ups.</p>' +
         '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<label style="font-size:14px;font-weight:500;">Balance Cap: D</label>' +
-        '<input type="number" id="balance-cap-input" value="' + cap + '" min="100" max="50000" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+        '<input type="number" id="balance-cap-input" value="' +
+        cap +
+        '" min="100" max="50000" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
         '<button id="save-balance-cap-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Save</button>' +
         '<span id="balance-cap-status" style="font-size:13px;color:#065F46;display:none;">Saved!</span>' +
-        '</div>';
+        "</div>";
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
 function saveBalanceCap() {
-  var value = document.getElementById('balance-cap-input').value.trim();
-  if (!value || parseInt(value) < 100) { alert('Minimum cap is D100.'); return; }
+  var value = document.getElementById("balance-cap-input").value.trim();
+  if (!value || parseInt(value) < 100) {
+    alert("Minimum cap is D100.");
+    return;
+  }
 
-  var btn = document.getElementById('save-balance-cap-btn');
-  var statusEl = document.getElementById('balance-cap-status');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  if (statusEl) { statusEl.style.display = 'none'; }
+  var btn = document.getElementById("save-balance-cap-btn");
+  var statusEl = document.getElementById("balance-cap-status");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+  if (statusEl) {
+    statusEl.style.display = "none";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/upsert_balance_cap', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_value: String(value) })
-  }).then(function(res) {
-    if (res.ok) {
-      if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
-      return;
-    }
-    throw new Error('RPC failed.');
-  }).catch(function(err) {
-    // Fall back to service key method
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }
-
-    // Upsert: try update first, then insert
-    fetch(SUPABASE_URL + '/rest/v1/system_config?key=eq.balance_cap', {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ value: value })
-    }).then(function(res) {
-      if (res.ok || res.status === 404) {
-        if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
-      } else {
-        return fetch(SUPABASE_URL + '/rest/v1/system_config', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ key: 'balance_cap', value: value, description: 'Maximum balance per activity credit ticket (in GMD)' })
-        }).then(function(res2) {
-          if (!res2.ok) throw new Error('Failed to save.');
-          if (statusEl) { statusEl.style.display = 'inline'; setTimeout(function() { statusEl.style.display = 'none'; }, 3000); }
-        });
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/upsert_balance_cap", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_value: String(value) }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        if (statusEl) {
+          statusEl.style.display = "inline";
+          setTimeout(function () {
+            statusEl.style.display = "none";
+          }, 3000);
+        }
+        return;
       }
-    }).catch(function(err2) {
-      alert('Error: ' + err2.message);
-    }).then(function() {
-      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+      throw new Error("RPC failed.");
+    })
+    .catch(function (err) {
+      // Fall back to service key method
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Save";
+        }
+        return;
+      }
+
+      // Upsert: try update first, then insert
+      fetch(SUPABASE_URL + "/rest/v1/system_config?key=eq.balance_cap", {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ value: value }),
+      })
+        .then(function (res) {
+          if (res.ok || res.status === 404) {
+            if (statusEl) {
+              statusEl.style.display = "inline";
+              setTimeout(function () {
+                statusEl.style.display = "none";
+              }, 3000);
+            }
+          } else {
+            return fetch(SUPABASE_URL + "/rest/v1/system_config", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + svcKey,
+                "Content-Type": "application/json",
+                Prefer: "return=minimal",
+              },
+              body: JSON.stringify({
+                key: "balance_cap",
+                value: value,
+                description:
+                  "Maximum balance per activity credit ticket (in GMD)",
+              }),
+            }).then(function (res2) {
+              if (!res2.ok) throw new Error("Failed to save.");
+              if (statusEl) {
+                statusEl.style.display = "inline";
+                setTimeout(function () {
+                  statusEl.style.display = "none";
+                }, 3000);
+              }
+            });
+          }
+        })
+        .catch(function (err2) {
+          alert("Error: " + err2.message);
+        })
+        .then(function () {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Save";
+          }
+        });
     });
-  });
   // Ensure button re-enables even if fetchWithAuth path has no .then after success
-  setTimeout(function() {
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  setTimeout(function () {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Save";
+    }
   }, 5000);
 }
 
@@ -865,515 +1618,699 @@ function saveBalanceCap() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadScannerCodes() {
-  var container = document.getElementById('scanner-codes-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading scanner codes...</p>';
+  var container = document.getElementById("scanner-codes-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading scanner codes...</p>';
 
-  adminQuery('/rest/v1/staff_scanner_codes?order=created_at.desc&select=*')
-    .then(function(codes) {
-      if (!codes) throw new Error('Failed to load scanner codes.');
+  adminQuery("/rest/v1/staff_scanner_codes?order=created_at.desc&select=*")
+    .then(function (codes) {
+      if (!codes) throw new Error("Failed to load scanner codes.");
       if (!codes || codes.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No scanner codes issued yet.</p>' +
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No scanner codes issued yet.</p>' +
           '<div style="text-align:center;margin-top:12px;"><button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue New Code</button></div>';
         return;
       }
 
-      var html = '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
-        '<th>Code</th><th>Label</th><th>Status</th><th>Last Used</th><th>Created</th><th>Actions</th>' +
-        '</tr></thead><tbody>';
-      codes.forEach(function(c) {
-        var statusClass = c.is_active ? 'status-approved' : 'status-rejected';
-        var statusText = c.is_active ? 'Active' : 'Revoked';
-        var lastUsed = c.last_used_at ? new Date(c.last_used_at).toLocaleDateString() : '-';
-        html += '<tr>' +
-          '<td><code style="font-size:13px;background:#f0f0f0;padding:2px 8px;border-radius:4px;">' + escapeHtml(c.code) + '</code></td>' +
-          '<td>' + escapeHtml(c.label || '-') + '</td>' +
-          '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);">' + lastUsed + '</span></td>' +
-          '<td><span style="font-size:13px;color:var(--muted);">' + new Date(c.created_at).toLocaleDateString() + '</span></td>' +
-          '<td>' +
-            (c.is_active
-              ? '<button class="action-btn action-reject revoke-code-btn" data-id="' + c.id + '">Revoke</button>'
-              : '<span style="font-size:13px;color:var(--muted);">Revoked</span>') +
-          '</td>' +
-          '</tr>';
+      var html =
+        '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
+        "<th>Code</th><th>Label</th><th>Status</th><th>Last Used</th><th>Created</th><th>Actions</th>" +
+        "</tr></thead><tbody>";
+      codes.forEach(function (c) {
+        var statusClass = c.is_active ? "status-approved" : "status-rejected";
+        var statusText = c.is_active ? "Active" : "Revoked";
+        var lastUsed = c.last_used_at
+          ? new Date(c.last_used_at).toLocaleDateString()
+          : "-";
+        html +=
+          "<tr>" +
+          '<td><code style="font-size:13px;background:#f0f0f0;padding:2px 8px;border-radius:4px;">' +
+          escapeHtml(c.code) +
+          "</code></td>" +
+          "<td>" +
+          escapeHtml(c.label || "-") +
+          "</td>" +
+          '<td><span class="status-badge ' +
+          statusClass +
+          '">' +
+          statusText +
+          "</span></td>" +
+          '<td><span style="font-size:13px;color:var(--muted);">' +
+          lastUsed +
+          "</span></td>" +
+          '<td><span style="font-size:13px;color:var(--muted);">' +
+          new Date(c.created_at).toLocaleDateString() +
+          "</span></td>" +
+          "<td>" +
+          (c.is_active
+            ? '<button class="action-btn action-reject revoke-code-btn" data-id="' +
+              c.id +
+              '">Revoke</button>'
+            : '<span style="font-size:13px;color:var(--muted);">Revoked</span>') +
+          "</td>" +
+          "</tr>";
       });
-      html += '</tbody></table></div>';
+      html += "</tbody></table></div>";
 
       // Issue new code form
-      html += '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+      html +=
+        '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Staff Label/Name</label><input type="text" id="new-scanner-label" placeholder="e.g. Gate Alpha" style="width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue Code</button>' +
-        '</div>';
+        "</div>";
 
       container.innerHTML = html;
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load scanner codes: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load scanner codes: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
 
 function issueScannerCode() {
-  var label = document.getElementById('new-scanner-label').value.trim();
+  var label = document.getElementById("new-scanner-label").value.trim();
 
   // Generate a random 6-char alphanumeric code
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  var code = '';
+  var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  var code = "";
   for (var i = 0; i < 6; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
 
-  var btn = document.getElementById('issue-scanner-code-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Issuing...'; }
+  var btn = document.getElementById("issue-scanner-code-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Issuing...";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/issue_scanner_code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_code: code, p_label: label || 'Staff' })
-  }).then(function(res) {
-    if (res.ok) {
-      document.getElementById('new-scanner-label').value = '';
-      alert('New staff code issued: ' + code);
-      loadScannerCodes();
-      return;
-    }
-    throw new Error('RPC failed.');
-  }).catch(function(err) {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; } return; }
-    return fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ code: code, label: label || 'Staff', is_active: true })
-    }).then(function(r) {
-      if (!r.ok) throw new Error('Failed to issue code.');
-      document.getElementById('new-scanner-label').value = '';
-      alert('New staff code issued: ' + code);
-      loadScannerCodes();
-    }).catch(function(e2) {
-      alert('Error: ' + e2.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Issue Code'; }
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/issue_scanner_code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_code: code, p_label: label || "Staff" }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        document.getElementById("new-scanner-label").value = "";
+        alert("New staff code issued: " + code);
+        loadScannerCodes();
+        return;
+      }
+      throw new Error("RPC failed.");
+    })
+    .catch(function (err) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Issue Code";
+        }
+        return;
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/staff_scanner_codes", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          code: code,
+          label: label || "Staff",
+          is_active: true,
+        }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to issue code.");
+          document.getElementById("new-scanner-label").value = "";
+          alert("New staff code issued: " + code);
+          loadScannerCodes();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Issue Code";
+          }
+        });
     });
-  });
 }
 
 function revokeScannerCode(id) {
-  if (!confirm('Revoke this scanner code? The staff member will no longer be able to access the scanner page.')) return;
+  if (
+    !confirm(
+      "Revoke this scanner code? The staff member will no longer be able to access the scanner page.",
+    )
+  )
+    return;
 
   var btn = document.querySelector('.revoke-code-btn[data-id="' + id + '"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Revoking...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Revoking...";
+  }
 
-  fetchWithAuth(SUPABASE_URL + '/rest/v1/rpc/revoke_scanner_code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_id: id })
-  }).then(function(res) {
-    if (res.ok) { loadScannerCodes(); return; }
-    throw new Error('RPC failed.');
-  }).catch(function(err) {
-    var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-    if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-    if (!svcKey) { alert('Permission denied. Contact admin.'); if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; } return; }
-    return fetch(SUPABASE_URL + '/rest/v1/staff_scanner_codes?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + svcKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ is_active: false })
-    }).then(function(r) {
-      if (!r.ok) throw new Error('Failed to revoke code.');
-      loadScannerCodes();
-    }).catch(function(e2) {
-      alert('Error: ' + e2.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; }
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/revoke_scanner_code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_id: id }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        loadScannerCodes();
+        return;
+      }
+      throw new Error("RPC failed.");
+    })
+    .catch(function (err) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Revoke";
+        }
+        return;
+      }
+      return fetch(SUPABASE_URL + "/rest/v1/staff_scanner_codes?id=eq." + id, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ is_active: false }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to revoke code.");
+          loadScannerCodes();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Revoke";
+          }
+        });
     });
-  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
    ═══════════════════════════════════════════════════════════════════════════ */
 
-document.addEventListener('click', function(e) {
+document.addEventListener("click", function (e) {
   // Order filter buttons
-  if (e.target.classList.contains('order-filter-btn')) {
-    setOrderFilter(e.target.getAttribute('data-status') || 'all');
+  if (e.target.classList.contains("order-filter-btn")) {
+    setOrderFilter(e.target.getAttribute("data-status") || "all");
   }
 
   // Order expand/collapse
-  if (e.target.classList.contains('order-expand-btn')) {
-    toggleOrderTickets(e.target.getAttribute('data-order'));
+  if (e.target.classList.contains("order-expand-btn")) {
+    toggleOrderTickets(e.target.getAttribute("data-order"));
   }
 
   // Ticket type toggle
-  if (e.target.classList.contains('ticket-type-toggle-btn')) {
-    toggleTicketTypeActive(e.target.getAttribute('data-id'), e.target.getAttribute('data-active') === 'true');
+  if (e.target.classList.contains("ticket-type-toggle-btn")) {
+    toggleTicketTypeActive(
+      e.target.getAttribute("data-id"),
+      e.target.getAttribute("data-active") === "true",
+    );
   }
 
   // Ticket type edit — open modal
-  if (e.target.classList.contains('ticket-type-edit-btn')) {
+  if (e.target.classList.contains("ticket-type-edit-btn")) {
     var btn = e.target;
     showTicketTypeEditModal({
-      id: btn.getAttribute('data-id'),
-      name: btn.getAttribute('data-name'),
-      slug: btn.getAttribute('data-slug'),
-      type: btn.getAttribute('data-type'),
-      price: btn.getAttribute('data-price'),
-      capacity: btn.getAttribute('data-capacity'),
-      sort: btn.getAttribute('data-sort')
+      id: btn.getAttribute("data-id"),
+      name: btn.getAttribute("data-name"),
+      slug: btn.getAttribute("data-slug"),
+      type: btn.getAttribute("data-type"),
+      price: btn.getAttribute("data-price"),
+      capacity: btn.getAttribute("data-capacity"),
+      sort: btn.getAttribute("data-sort"),
     });
   }
 
   // Save ticket type edit
-  if (e.target.id === 'ticket-type-edit-save-btn') {
+  if (e.target.id === "ticket-type-edit-save-btn") {
     var saveBtn = e.target;
-    var typeId = saveBtn.getAttribute('data-type-id');
+    var typeId = saveBtn.getAttribute("data-type-id");
     if (!typeId) return;
 
     var data = {
-      name: document.getElementById('edit-type-name').value.trim(),
-      slug: document.getElementById('edit-type-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-      type: document.getElementById('edit-type-select').value,
-      price: document.getElementById('edit-type-price').value,
-      capacity: document.getElementById('edit-type-capacity').value,
-      sort: document.getElementById('edit-type-sort').value
+      name: document.getElementById("edit-type-name").value.trim(),
+      slug: document
+        .getElementById("edit-type-slug")
+        .value.trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-"),
+      type: document.getElementById("edit-type-select").value,
+      price: document.getElementById("edit-type-price").value,
+      capacity: document.getElementById("edit-type-capacity").value,
+      sort: document.getElementById("edit-type-sort").value,
     };
 
-    if (!data.name || !data.slug) { alert('Name and slug are required.'); return; }
+    if (!data.name || !data.slug) {
+      alert("Name and slug are required.");
+      return;
+    }
 
-    var modal = document.getElementById('ticket-type-edit-modal');
+    var modal = document.getElementById("ticket-type-edit-modal");
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    saveBtn.textContent = "Saving...";
 
-    saveTicketTypeEdit(typeId, data).then(function(success) {
-      if (success) {
-        if (modal) modal.remove();
-        loadTicketTypes();
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Save Changes';
-    });
+    saveTicketTypeEdit(typeId, data)
+      .then(function (success) {
+        if (success) {
+          if (modal) modal.remove();
+          loadTicketTypes();
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save Changes";
+      });
   }
 
   // Cancel ticket type edit modal
-  if (e.target.id === 'ticket-type-edit-cancel-btn') {
-    var modal = document.getElementById('ticket-type-edit-modal');
+  if (e.target.id === "ticket-type-edit-cancel-btn") {
+    var modal = document.getElementById("ticket-type-edit-modal");
     if (modal) modal.remove();
   }
 
   // Dismiss edit modal by clicking overlay
-  if (e.target.id === 'ticket-type-edit-modal') {
+  if (e.target.id === "ticket-type-edit-modal") {
     e.target.remove();
   }
 
   // Delete ticket type
-  if (e.target.classList.contains('ticket-type-delete-btn')) {
+  if (e.target.classList.contains("ticket-type-delete-btn")) {
     var btn = e.target;
-    var typeId = btn.getAttribute('data-id');
-    var typeName = btn.getAttribute('data-name');
+    var typeId = btn.getAttribute("data-id");
+    var typeName = btn.getAttribute("data-name");
     if (!typeId) return;
 
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = "...";
 
-    deleteTicketType(typeId, typeName).then(function(success) {
-      if (success === true) {
-        loadTicketTypes();
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = 'Delete';
-    });
+    deleteTicketType(typeId, typeName)
+      .then(function (success) {
+        if (success === true) {
+          loadTicketTypes();
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        btn.disabled = false;
+        btn.textContent = "Delete";
+      });
   }
 
   // Bundle toggle
-  if (e.target.classList.contains('bundle-toggle-btn')) {
-    toggleBundleActive(e.target.getAttribute('data-id'), e.target.getAttribute('data-active') === 'true');
+  if (e.target.classList.contains("bundle-toggle-btn")) {
+    toggleBundleActive(
+      e.target.getAttribute("data-id"),
+      e.target.getAttribute("data-active") === "true",
+    );
   }
 
   // Bundle delete
-  if (e.target.classList.contains('bundle-delete-btn')) {
-    deleteBundle(e.target.getAttribute('data-id'));
+  if (e.target.classList.contains("bundle-delete-btn")) {
+    deleteBundle(e.target.getAttribute("data-id"));
   }
 
   // Revoke scanner code
-  if (e.target.classList.contains('revoke-code-btn')) {
-    revokeScannerCode(e.target.getAttribute('data-id'));
+  if (e.target.classList.contains("revoke-code-btn")) {
+    revokeScannerCode(e.target.getAttribute("data-id"));
   }
 
   // Mark an unpaid order as paid and create tickets
-  if (e.target.classList.contains('mark-paid-btn')) {
+  if (e.target.classList.contains("mark-paid-btn")) {
     var btn = e.target;
-    var orderId = btn.getAttribute('data-order-id');
-    var email = btn.getAttribute('data-email');
-    if (!orderId) { alert('Missing order ID'); return; }
-    if (!confirm('Mark order #' + orderId.slice(0, 8) + ' as paid? Tickets will be created and the customer will receive an email with their ticket codes and QR codes.')) return;
+    var orderId = btn.getAttribute("data-order-id");
+    var email = btn.getAttribute("data-email");
+    if (!orderId) {
+      alert("Missing order ID");
+      return;
+    }
+    if (
+      !confirm(
+        "Mark order #" +
+          orderId.slice(0, 8) +
+          " as paid? Tickets will be created and the customer will receive an email with their ticket codes and QR codes.",
+      )
+    )
+      return;
 
     btn.disabled = true;
-    btn.textContent = 'Processing...';
+    btn.textContent = "Processing...";
 
     // Step 1: Mark order as paid via confirm-payment endpoint
     var token = getEdgeFunctionToken();
-    fetch(SUPABASE_URL + '/functions/v1/ticketing/confirm-payment', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, payment_method: 'cash' })
-    }).then(function(r) { return r.json(); }).then(function(result) {
-      if (!result.success) throw new Error(result.error || 'Failed to mark as paid');
+    fetch(SUPABASE_URL + "/functions/v1/ticketing/confirm-payment", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ order_id: orderId, payment_method: "cash" }),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (result) {
+        if (!result.success)
+          throw new Error(result.error || "Failed to mark as paid");
 
-      // Step 2: Create tickets via manual_paid webhook trigger
-      return fetch(SUPABASE_URL + '/functions/v1/ticketing/webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trigger: 'manual_paid', order_id: orderId, email: email, payment_method: 'cash' })
-      }).then(function(r2) { return r2.json(); });
-    }).then(function(result2) {
-      var ticketCount = result2.tickets_created || 0;
-      var msg = 'Order marked as paid!';
-      if (ticketCount > 0) {
-        msg += ' ' + ticketCount + ' ticket(s) created. Customer will receive QR codes by email.';
-      } else if (result2.status === 'already_processed') {
-        msg += ' Tickets already existed.';
-      }
-      alert(msg);
-      loadOrders();
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = 'Mark Paid';
-    });
+        // Step 2: Create tickets via manual_paid webhook trigger
+        return fetch(SUPABASE_URL + "/functions/v1/ticketing/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trigger: "manual_paid",
+            order_id: orderId,
+            email: email,
+            payment_method: "cash",
+          }),
+        }).then(function (r2) {
+          return r2.json();
+        });
+      })
+      .then(function (result2) {
+        var ticketCount = result2.tickets_created || 0;
+        var msg = "Order marked as paid!";
+        if (ticketCount > 0) {
+          msg +=
+            " " +
+            ticketCount +
+            " ticket(s) created. Customer will receive QR codes by email.";
+        } else if (result2.status === "already_processed") {
+          msg += " Tickets already existed.";
+        }
+        alert(msg);
+        loadOrders();
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        btn.disabled = false;
+        btn.textContent = "Mark Paid";
+      });
     return;
   }
 
   // Regenerate tickets for paid orders with no tickets
-  if (e.target.classList.contains('regenerate-tickets-btn')) {
+  if (e.target.classList.contains("regenerate-tickets-btn")) {
     var btn = e.target;
-    var orderId = btn.getAttribute('data-order-id');
-    if (!orderId) { alert('Missing order ID'); return; }
-    if (!confirm('Re-create tickets for order #' + orderId.slice(0, 8) + '? Only use if this paid order has zero tickets.')) return;
+    var orderId = btn.getAttribute("data-order-id");
+    if (!orderId) {
+      alert("Missing order ID");
+      return;
+    }
+    if (
+      !confirm(
+        "Re-create tickets for order #" +
+          orderId.slice(0, 8) +
+          "? Only use if this paid order has zero tickets.",
+      )
+    )
+      return;
 
     btn.disabled = true;
-    btn.textContent = 'Regenerating...';
+    btn.textContent = "Regenerating...";
     var token = getEdgeFunctionToken();
-    fetch(SUPABASE_URL + '/functions/v1/ticketing/regenerate-tickets', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId })
-    }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.success) {
-        alert('Success! ' + d.tickets_created + ' ticket(s) created.');
-        loadOrders();
-      } else {
-        alert('Failed: ' + (d.error || 'Unknown error'));
+    fetch(SUPABASE_URL + "/functions/v1/ticketing/regenerate-tickets", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ order_id: orderId }),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (d.success) {
+          alert("Success! " + d.tickets_created + " ticket(s) created.");
+          loadOrders();
+        } else {
+          alert("Failed: " + (d.error || "Unknown error"));
+          btn.disabled = false;
+          btn.textContent = "Regenerate";
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
         btn.disabled = false;
-        btn.textContent = 'Regenerate';
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = 'Regenerate';
-    });
+        btn.textContent = "Regenerate";
+      });
     return;
   }
 
   // Resend magic link
-  if (e.target.classList.contains('resend-magic-link-btn')) {
-    var email = e.target.getAttribute('data-email');
-    var orderId = e.target.getAttribute('data-order-id');
+  if (e.target.classList.contains("resend-magic-link-btn")) {
+    var email = e.target.getAttribute("data-email");
+    var orderId = e.target.getAttribute("data-order-id");
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert('Invalid email address: ' + (email || 'empty'));
+      alert("Invalid email address: " + (email || "empty"));
       return;
     }
-    if (confirm('Send a magic link to ' + email + '? A fresh sign-in link will be emailed to them.')) {
+    if (
+      confirm(
+        "Send a magic link to " +
+          email +
+          "? A fresh sign-in link will be emailed to them.",
+      )
+    ) {
       e.target.disabled = true;
-      e.target.textContent = 'Sending...';
+      e.target.textContent = "Sending...";
       var token = getEdgeFunctionToken();
-      fetch(SUPABASE_URL + '/functions/v1/ticketing/resend-magic-link', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email })
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) {
-          // Log the send to magic_link_logs
-          var logPayload = {
-            email: email,
-            sent_by: 'admin',
-            order_id: orderId || null
-          };
-          fetchWithAuth(SUPABASE_URL + '/rest/v1/magic_link_logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-            body: JSON.stringify(logPayload)
-          }).catch(function(logErr) {
-            console.error('Failed to log magic link send:', logErr);
-          });
+      fetch(SUPABASE_URL + "/functions/v1/ticketing/resend-magic-link", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email }),
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (d) {
+          if (d.success) {
+            // Log the send to magic_link_logs
+            var logPayload = {
+              email: email,
+              sent_by: "admin",
+              order_id: orderId || null,
+            };
+            fetchWithAuth(SUPABASE_URL + "/rest/v1/magic_link_logs", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Prefer: "return=minimal",
+              },
+              body: JSON.stringify(logPayload),
+            }).catch(function (logErr) {
+              console.error("Failed to log magic link send:", logErr);
+            });
 
-          e.target.textContent = 'Sent!';
-          // Refresh orders to update the send count display
-          setTimeout(function() { loadOrders(); }, 500);
-        } else {
-          alert('Failed: ' + (d.error || 'Unknown error'));
+            e.target.textContent = "Sent!";
+            // Refresh orders to update the send count display
+            setTimeout(function () {
+              loadOrders();
+            }, 500);
+          } else {
+            alert("Failed: " + (d.error || "Unknown error"));
+            e.target.disabled = false;
+            e.target.textContent = "Send Login Link";
+          }
+        })
+        .catch(function (err) {
+          alert("Error: " + err.message);
           e.target.disabled = false;
-          e.target.textContent = 'Send Login Link';
-        }
-      }).catch(function(err) {
-        alert('Error: ' + err.message);
-        e.target.disabled = false;
-        e.target.textContent = 'Send Login Link';
-      });
+          e.target.textContent = "Send Login Link";
+        });
     }
   }
 
   // Issue scanner code
-  if (e.target.id === 'issue-scanner-code-btn') {
+  if (e.target.id === "issue-scanner-code-btn") {
     issueScannerCode();
   }
 
   // Add ticket type
-  if (e.target.id === 'add-ticket-type-btn') {
+  if (e.target.id === "add-ticket-type-btn") {
     addTicketType();
   }
 
   // Add bundle
-  if (e.target.id === 'add-bundle-btn') {
+  if (e.target.id === "add-bundle-btn") {
     addBundle();
   }
 
   // Save balance cap
-  if (e.target.id === 'save-balance-cap-btn') {
+  if (e.target.id === "save-balance-cap-btn") {
     saveBalanceCap();
   }
 
   // ─────────── Ticket Management ───────────
 
   // Edit ticket — open modal
-  if (e.target.classList.contains('ticket-edit-btn')) {
+  if (e.target.classList.contains("ticket-edit-btn")) {
     var btn = e.target;
     showTicketEditModal({
-      id: btn.getAttribute('data-id'),
-      code: btn.getAttribute('data-code'),
-      status: btn.getAttribute('data-status'),
-      name: btn.getAttribute('data-name'),
-      email: btn.getAttribute('data-email'),
-      balance: btn.getAttribute('data-balance'),
-      type: btn.getAttribute('data-type'),
-      orderId: btn.getAttribute('data-order')
+      id: btn.getAttribute("data-id"),
+      code: btn.getAttribute("data-code"),
+      status: btn.getAttribute("data-status"),
+      name: btn.getAttribute("data-name"),
+      email: btn.getAttribute("data-email"),
+      balance: btn.getAttribute("data-balance"),
+      type: btn.getAttribute("data-type"),
+      orderId: btn.getAttribute("data-order"),
     });
   }
 
   // Save ticket edit (submit button inside modal)
-  if (e.target.id === 'ticket-edit-save-btn') {
+  if (e.target.id === "ticket-edit-save-btn") {
     e.preventDefault();
-    var form = document.getElementById('ticket-edit-form');
+    var form = document.getElementById("ticket-edit-form");
     if (!form) return;
-    var modal = document.getElementById('ticket-edit-modal');
-    var saveBtn = document.getElementById('ticket-edit-save-btn');
-    var ticketId = saveBtn ? saveBtn.getAttribute('data-ticket-id') : null;
-    var orderId = saveBtn ? saveBtn.getAttribute('data-order-id') : null;
+    var modal = document.getElementById("ticket-edit-modal");
+    var saveBtn = document.getElementById("ticket-edit-save-btn");
+    var ticketId = saveBtn ? saveBtn.getAttribute("data-ticket-id") : null;
+    var orderId = saveBtn ? saveBtn.getAttribute("data-order-id") : null;
     if (!ticketId) return;
 
     var data = {
-      name: document.getElementById('edit-ticket-name').value.trim(),
-      email: document.getElementById('edit-ticket-email').value.trim(),
-      status: document.getElementById('edit-ticket-status').value,
-      balance: parseInt(document.getElementById('edit-ticket-balance').value) || 0
+      name: document.getElementById("edit-ticket-name").value.trim(),
+      email: document.getElementById("edit-ticket-email").value.trim(),
+      status: document.getElementById("edit-ticket-status").value,
+      balance:
+        parseInt(document.getElementById("edit-ticket-balance").value) || 0,
     };
 
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    saveBtn.textContent = "Saving...";
 
-    saveTicketEdit(ticketId, data).then(function(success) {
-      if (success) {
-        if (modal) modal.remove();
-        alert('Ticket updated successfully.');
-        // Refresh the order tickets view
-        if (orderId) toggleOrderTickets(orderId);
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
-    });
+    saveTicketEdit(ticketId, data)
+      .then(function (success) {
+        if (success) {
+          if (modal) modal.remove();
+          alert("Ticket updated successfully.");
+          // Refresh the order tickets view
+          if (orderId) toggleOrderTickets(orderId);
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save Changes";
+        }
+      });
   }
 
   // Cancel edit modal
-  if (e.target.id === 'ticket-edit-cancel-btn') {
-    var modal = document.getElementById('ticket-edit-modal');
+  if (e.target.id === "ticket-edit-cancel-btn") {
+    var modal = document.getElementById("ticket-edit-modal");
     if (modal) modal.remove();
   }
 
   // Dismiss edit modal by clicking overlay background
-  if (e.target.id === 'ticket-edit-modal') {
+  if (e.target.id === "ticket-edit-modal") {
     e.target.remove();
   }
 
   // Revoke ticket
-  if (e.target.classList.contains('ticket-revoke-btn')) {
+  if (e.target.classList.contains("ticket-revoke-btn")) {
     var btn = e.target;
-    var ticketId = btn.getAttribute('data-id');
-    var ticketCode = btn.getAttribute('data-code');
-    var orderId = btn.getAttribute('data-order');
+    var ticketId = btn.getAttribute("data-id");
+    var ticketCode = btn.getAttribute("data-code");
+    var orderId = btn.getAttribute("data-order");
 
     if (!ticketId) return;
     btn.disabled = true;
-    btn.textContent = 'Revoking...';
+    btn.textContent = "Revoking...";
 
-    revokeTicket(ticketId, ticketCode).then(function(success) {
-      if (success === true) {
-        alert('Ticket ' + ticketCode + ' revoked.');
-        if (orderId) toggleOrderTickets(orderId);
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; }
-    });
+    revokeTicket(ticketId, ticketCode)
+      .then(function (success) {
+        if (success === true) {
+          alert("Ticket " + ticketCode + " revoked.");
+          if (orderId) toggleOrderTickets(orderId);
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Revoke";
+        }
+      });
   }
 
   // Delete ticket
-  if (e.target.classList.contains('ticket-delete-btn')) {
+  if (e.target.classList.contains("ticket-delete-btn")) {
     var btn = e.target;
-    var ticketId = btn.getAttribute('data-id');
-    var ticketCode = btn.getAttribute('data-code');
+    var ticketId = btn.getAttribute("data-id");
+    var ticketCode = btn.getAttribute("data-code");
     // Find the order ID from the closest order row's data-order
     var orderRow = btn.closest('[id^="order-tickets-"]');
-    var orderId = orderRow ? orderRow.id.replace('order-tickets-', '') : null;
+    var orderId = orderRow ? orderRow.id.replace("order-tickets-", "") : null;
 
     if (!ticketId) return;
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = "...";
 
-    deleteTicket(ticketId, ticketCode).then(function(success) {
-      if (success === true) {
-        alert('Ticket ' + ticketCode + ' deleted.');
-        if (orderId) toggleOrderTickets(orderId);
-      }
-    }).catch(function(err) {
-      alert('Error: ' + err.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
-    });
+    deleteTicket(ticketId, ticketCode)
+      .then(function (success) {
+        if (success === true) {
+          alert("Ticket " + ticketCode + " deleted.");
+          if (orderId) toggleOrderTickets(orderId);
+        }
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Delete";
+        }
+      });
   }
 });
-
-
 
 // ─── Helper: proxy Supabase REST queries through Edge Function (bypasses RLS) ──
 
 function adminQuery(path) {
   var token = getEdgeFunctionToken();
   if (!token) {
-    return Promise.reject(new Error('Authentication required.'));
+    return Promise.reject(new Error("Authentication required."));
   }
-  return fetch(SUPABASE_URL + '/functions/v1/ticketing/admin-query', {
-    method: 'POST',
+  return fetch(SUPABASE_URL + "/functions/v1/ticketing/admin-query", {
+    method: "POST",
     headers: {
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ path: path })
-  }).then(function(res) {
+    body: JSON.stringify({ path: path }),
+  }).then(function (res) {
     if (!res.ok) {
-      return res.json().then(function(err) {
-        throw new Error(err.error || 'Query failed');
+      return res.json().then(function (err) {
+        throw new Error(err.error || "Query failed");
       });
     }
     return res.json();
@@ -1388,7 +2325,11 @@ function getEdgeFunctionToken() {
   if (session && session.access_token) {
     return session.access_token;
   }
-  var svcKey = localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key');
-  if (!svcKey && typeof getServiceKey === 'function') { svcKey = getServiceKey(true); }
-  return svcKey || '';
+  var svcKey =
+    localStorage.getItem("wf_service_key") ||
+    sessionStorage.getItem("wf_service_key");
+  if (!svcKey && typeof getServiceKey === "function") {
+    svcKey = getServiceKey(true);
+  }
+  return svcKey || "";
 }

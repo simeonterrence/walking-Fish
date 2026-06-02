@@ -522,6 +522,18 @@
                             </div>
                         </div>
 
+                                                </div>
+
+                        <!-- 1b. Redemption Stats -->
+                        <div class="ticket-section">
+                            <h3>Redemption Stats (Scan / Bill)</h3>
+                            <div id="redemption-container">
+                                <p style="color: var(--muted); font-size: 14px">
+                                    Loading redemption stats…
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- 2. Order Management -->
                         <div class="ticket-section">
                             <h3>Orders</h3>
@@ -1160,6 +1172,7 @@
                 loadVendors();
                 // Ticketing dashboard
                 loadInventory();
+                loadRedemptionStats();
                 loadOrders();
                 loadTicketTypes();
                 loadTopUpBundles();
@@ -2076,6 +2089,19 @@
                             }),
                     );
                 }
+
+                // 6. Redemption Stats (Balance Transactions)
+                promises.push(
+                    adminQuery(
+                        "/rest/v1/balance_transactions?select=type,amount_delta,source,notes,created_at&order=created_at.desc&limit=10000",
+                    )
+                        .then(function (txns) {
+                            return { label: "Balance Transactions (Debits)", data: txns || [] };
+                        })
+                        .catch(function () {
+                            return { label: "Balance Transactions (Debits)", data: [] };
+                        }),
+                );
 
                 return Promise.all(promises).then(function (sections) {
                     var csvRows = [];
