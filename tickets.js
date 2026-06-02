@@ -1057,6 +1057,84 @@
 
   /* ─── Persistent token magic link handler ─────────────────────────── */
 
+  /* ─── Helper: attempt token exchange with retry ────────────── */
+  async function exchangeTokenWithRetry(ticketToken, maxRetries) {
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        var res = await fetch(TICKET_FN + "/exchange-token", {
+          method: "POST",
+          headers: ANON_H,
+          body: JSON.stringify({ ticket_token: ticketToken }),
+        });
+
+        var data;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          console.error(
+            "[tickets] exchange-token: JSON parse failed on attempt",
+            attempt + 1,
+            parseErr,
+          );
+          if (attempt < maxRetries) {
+            await new Promise(function (r) {
+              setTimeout(r, 1500);
+            });
+            continue;
+          }
+          return {
+            error: "Server returned an invalid response. Please try again.",
+          };
+        }
+
+        if (res.ok && data.success && data.access_token) {
+          return { data: data };
+        }
+
+        if (res.ok && data.success && data.action_link) {
+          return { action_link: data.action_link };
+        }
+
+        /* On server 5xx errors, retry — on client errors (4xx), don't */
+        if (res.status >= 500 && attempt < maxRetries) {
+          console.warn(
+            "[tickets] exchange-token: server error (" +
+              res.status +
+              ") on attempt " +
+              (attempt + 1) +
+              ", retrying...",
+          );
+          await new Promise(function (r) {
+            setTimeout(r, 1500);
+          });
+          continue;
+        }
+
+        /* Non-retryable error */
+        return {
+          error: data.error || "Link expired. Please request a new one.",
+          email: data.email,
+          reason: data.reason,
+          status: res.status,
+        };
+      } catch (err) {
+        console.error(
+          "[tickets] exchange-token: network error on attempt",
+          attempt + 1,
+          err.message,
+        );
+        if (attempt < maxRetries) {
+          await new Promise(function (r) {
+            setTimeout(r, 1500);
+          });
+          continue;
+        }
+        return { error: "Network error. Please check your connection and try again." };
+      }
+    }
+    return { error: "Unable to sign in. Please try again." };
+  }
+
   async function checkTicketToken() {
     var params = new URLSearchParams(window.location.search);
     var ticketToken = params.get("ticket_token");
@@ -1070,6 +1148,22 @@
     }
 
     if (!ticketToken) return;
+
+    /* Quick client-side sanity check: token should have 4 dot-separated parts
+     * starting with "v1". If it doesn't, it was likely truncated by email link
+     * tracking. Log and show a helpful message. */
+    var tokenParts = ticketToken.split(".");
+    if (tokenParts.length !== 4 || tokenParts[0] !== "v1") {
+      console.error(
+        "[tickets] ticket_token appears truncated or malformed:",
+        tokenParts.length,
+        "parts, expected 4. Token length:",
+        ticketToken.length,
+      );
+      /* The token is corrupted — don't even send to server. The user needs
+       * a fresh magic link. Still persist to localStorage so the server
+       * can validate it on retry. */
+    }
 
     /* Persist the ticket_token to localStorage immediately so that if the
      * page is subsequently loaded in Safari (via iOS handoff) without
@@ -1098,71 +1192,70 @@
         '<div class="loading-spinner"><div class="spinner"></div><p style="margin-top:12px;">Signing you in\u2026</p></div>';
     }
 
-    try {
-      var res = await fetch(TICKET_FN + "/exchange-token", {
-        method: "POST",
-        headers: ANON_H,
-        body: JSON.stringify({ ticket_token: ticketToken }),
-      });
+    /* Attempt token exchange with up to 1 retry on transient failures */
+    var result = await exchangeTokenWithRetry(ticketToken, 1);
 
-      var data = await res.json();
-
-      if (res.ok && data.success && data.access_token) {
-        /* Clear the pending token from localStorage — the session is now
-         * stored in sessionStorage (current browser) and the token is no
-         * longer needed. */
-        localStorage.removeItem("wf_pending_ticket_token");
-        /* Server-side: edge function already exchanged the token for a session.
-         * Store the session directly and load the dashboard — no browser redirect needed.
-         * This works reliably on mobile in-app browsers where redirect chains break. */
-        sessionStorage.setItem(
-          "wf_ticket_session",
-          JSON.stringify({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token || "",
-          }),
-        );
-        try {
-          var payload = JSON.parse(atob(data.access_token.split(".")[1]));
-          userEmail = payload.email;
-        } catch (_) {
-          userEmail = null;
-        }
-        window.history.replaceState({}, document.title, "/tickets");
-        loadDashboard();
-        return;
-      }
-
-      if (res.ok && data.success && data.action_link) {
-        /* Legacy fallback: redirect the browser to the action_link URL.
-         * Supabase Auth will process the magic link (GET redirect),
-         * create a session, and redirect back to /tickets#access_token=xxx */
-        window.location.href = data.action_link;
-        return;
-      }
-
-      /* Token exchange failed — show error with login form retry */
-      var userMsg = data.error || "Link expired. Please request a new one.";
-      rebuildLoginForm(userMsg);
-      /* Auto-populate email if the server decoded it from the token */
-      if (data.email) {
-        var emailInput = document.getElementById("dashboard-email");
-        if (emailInput) {
-          emailInput.value = data.email;
-          /* Show a helpful hint to click the button */
-          var hint = document.getElementById("dashboard-login-msg");
-          if (hint) {
-            hint.textContent =
-              "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
-            hint.style.color = "";
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[tickets] checkTicketToken:", err);
-      rebuildLoginForm(
-        "Something went wrong. Please try again or request a new link.",
+    if (result.data) {
+      /* Clear the pending token from localStorage — the session is now
+       * stored in sessionStorage (current browser) and the token is no
+       * longer needed. */
+      localStorage.removeItem("wf_pending_ticket_token");
+      /* Server-side: edge function already exchanged the token for a session.
+       * Store the session directly and load the dashboard — no browser redirect needed.
+       * This works reliably on mobile in-app browsers where redirect chains break. */
+      sessionStorage.setItem(
+        "wf_ticket_session",
+        JSON.stringify({
+          access_token: result.data.access_token,
+          refresh_token: result.data.refresh_token || "",
+        }),
       );
+      try {
+        var payload = JSON.parse(
+          atob(result.data.access_token.split(".")[1]),
+        );
+        userEmail = payload.email;
+      } catch (_) {
+        userEmail = null;
+      }
+      window.history.replaceState({}, document.title, "/tickets");
+      loadDashboard();
+      return;
+    }
+
+    if (result.action_link) {
+      /* Legacy fallback: redirect the browser to the action_link URL.
+       * Supabase Auth will process the magic link (GET redirect),
+       * create a session, and redirect back to /tickets#access_token=xxx */
+      window.location.href = result.action_link;
+      return;
+    }
+
+    /* Token exchange failed — log diagnostics */
+    console.error("[tickets] exchange-token failed:", {
+      error: result.error,
+      reason: result.reason,
+      status: result.status,
+      tokenLength: ticketToken.length,
+      tokenParts: tokenParts.length,
+    });
+
+    /* Show error with login form retry */
+    var userMsg = result.error || "Link expired. Please request a new one.";
+    rebuildLoginForm(userMsg);
+    /* Auto-populate email if the server decoded it from the token */
+    if (result.email) {
+      var emailInput = document.getElementById("dashboard-email");
+      if (emailInput) {
+        emailInput.value = result.email;
+        /* Show a helpful hint to click the button */
+        var hint = document.getElementById("dashboard-login-msg");
+        if (hint) {
+          hint.textContent =
+            "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
+          hint.style.color = "";
+        }
+      }
     }
   }
 

@@ -5,6 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
 };
 function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
@@ -3544,7 +3545,7 @@ async function handleExchangeToken(req) {
       }
 
       // 5. Brief delay for password propagation
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 1000));
 
       // 6. Sign in with password grant using the anon key
       const anonClient = createClient(supabaseUrl, anonKey, {
