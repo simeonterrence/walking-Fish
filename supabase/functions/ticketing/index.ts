@@ -5542,6 +5542,7 @@ async function handleViewTickets(req) {
         {
           status: 400,
           headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
 
             "X-RateLimit-Remaining": String(rateCheck.remaining),
@@ -5576,7 +5577,7 @@ async function handleViewTickets(req) {
       return new Response(
         JSON.stringify({ success: false, error: "Database error." }),
 
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -5597,6 +5598,7 @@ async function handleViewTickets(req) {
         {
           status: 404,
           headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
 
             "X-RateLimit-Remaining": String(rateCheck.remaining),
@@ -5625,7 +5627,7 @@ async function handleViewTickets(req) {
       return new Response(
         JSON.stringify({ success: false, error: "Failed to load tickets." }),
 
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -5709,6 +5711,7 @@ async function handleViewTickets(req) {
       {
         status: 200,
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
 
           "X-RateLimit-Remaining": String(rateCheck.remaining),
@@ -5724,7 +5727,7 @@ async function handleViewTickets(req) {
         error: "Server error. Please try again.",
       }),
 
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 }
