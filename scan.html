@@ -417,7 +417,30 @@
             }
 
             /* ─── Debit Amount Entry ─── */
-            .debit-form {
+            #staff-activity-view .stat-row {
+                display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+            }
+            #staff-activity-view .stat-card {
+                flex: 1; min-width: 120px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 20px 16px;
+                text-align: center;
+            }
+            #staff-activity-view .stat-card .num {
+                font-family: var(--font-display);
+                font-size: 26px;
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+            #staff-activity-view .stat-card .lbl {
+                font-size: 12px;
+                color: var(--muted);
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+                        .debit-form {
                 margin: 16px 0;
                 display: none;
             }
@@ -1090,13 +1113,13 @@
                             <div class="nav-dropdown">
                                 <a href="/about">About</a>
                                 <a href="/tickets">Tickets</a>
-        <a href="/view-tickets">View Tickets</a>
+                                <a href="/view-tickets">View Tickets</a>
                                 <a href="/top-up">Top Up</a>
                                 <a href="/gallery">Gallery</a>
                                 <a href="/blog">Blog</a>
                                 <a href="/partners">Partners</a>
                                 <a href="/contact">Contact</a>
-      <a href="/report-issue">Report Issue</a>
+                                <a href="/report-issue">Report Issue</a>
                             </div>
                         </details>
                         <a href="/login" class="nav-cta" aria-label="Sign in"
@@ -1144,7 +1167,34 @@
                 <div class="w scanner-root">
                     <!-- ─── PASSCODE AUTH ─── -->
                     <div id="scanner-passcode" class="scanner-passcode">
-                        <div class="lock-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg></div>
+                        <div class="lock-icon">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="40"
+                                height="40"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <rect
+                                    x="5"
+                                    y="11"
+                                    width="14"
+                                    height="10"
+                                    rx="2"
+                                />
+                                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                                <circle
+                                    cx="12"
+                                    cy="16"
+                                    r="1.5"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                        </div>
                         <h2>Staff Access</h2>
                         <p>
                             Enter your staff scanner code to access the ticket
@@ -1178,41 +1228,152 @@
                         <h2 style="margin-bottom: 20px">Select Mode</h2>
                         <div class="mode-grid">
                             <button class="mode-btn" data-mode="gate">
-                                <span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4a2 2 0 0 0-2 2v3a2 2 0 0 1 2 2 2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a2 2 0 0 1-2-2 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M9 12l2 2 4-4"/></svg></span>
+                                <span class="mode-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M20 4H4a2 2 0 0 0-2 2v3a2 2 0 0 1 2 2 2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a2 2 0 0 1-2-2 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"
+                                        />
+                                        <path d="M9 12l2 2 4-4" /></svg
+                                ></span>
                                 <span class="mode-label">Gate</span>
                                 <span class="mode-desc"
                                     >Verify entry &amp; parking passes</span
                                 >
                             </button>
                             <button class="mode-btn" data-mode="debit">
-                                <span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/><path d="M12 8v3"/><path d="M12 16v-3"/></svg></span>
+                                <span class="mode-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="8" y1="12" x2="16" y2="12" />
+                                        <path d="M12 8v3" />
+                                        <path d="M12 16v-3" /></svg
+                                ></span>
                                 <span class="mode-label">Debit</span>
                                 <span class="mode-desc"
                                     >Deduct activity credits</span
                                 >
                             </button>
                             <button class="mode-btn" data-mode="topup">
-                                <span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+                                <span class="mode-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="16" />
+                                        <line
+                                            x1="8"
+                                            y1="12"
+                                            x2="16"
+                                            y2="12"
+                                        /></svg
+                                ></span>
                                 <span class="mode-label">Top-Up</span>
                                 <span class="mode-desc"
                                     >Add credits at booth</span
                                 >
                             </button>
                             <button class="mode-btn" data-mode="bill">
-                                <span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h10l4 4v16H5V2z"/><path d="M15 2v4h4"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="14" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg></span>
+                                <span class="mode-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path d="M5 2h10l4 4v16H5V2z" />
+                                        <path d="M15 2v4h4" />
+                                        <line x1="8" y1="10" x2="16" y2="10" />
+                                        <line x1="8" y1="14" x2="14" y2="14" />
+                                        <line
+                                            x1="8"
+                                            y1="18"
+                                            x2="12"
+                                            y2="18"
+                                        /></svg
+                                ></span>
                                 <span class="mode-label">Bill</span>
                                 <span class="mode-desc"
                                     >Redeem food &amp; drinks vouchers</span
                                 >
                             </button>
                             <button class="mode-btn" data-mode="bulk">
-                                <span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="14" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg></span>
+                                <span class="mode-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="4"
+                                            width="18"
+                                            height="18"
+                                            rx="2"
+                                        />
+                                        <path d="M8 2v4" />
+                                        <path d="M16 2v4" />
+                                        <line x1="8" y1="10" x2="16" y2="10" />
+                                        <line x1="8" y1="14" x2="14" y2="14" />
+                                        <line
+                                            x1="8"
+                                            y1="18"
+                                            x2="12"
+                                            y2="18"
+                                        /></svg
+                                ></span>
                                 <span class="mode-label">Bulk Catch-Up</span>
                                 <span class="mode-desc"
                                     >Batch enter offline records</span
                                 >
                             </button>
                         </div>
+                        <button
+                            class="mode-btn"
+                            id="view-activity-btn"
+                            style="width:100%;border:1.5px solid var(--accent);color:var(--accent-text);margin-bottom:8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            My Activity
+                        </button>
+
                         <button
                             class="mode-btn logout-mode"
                             id="scanner-logout"
@@ -1238,6 +1399,20 @@
                             </svg>
                             Lock Scanner
                         </button>
+                    </div>
+
+                    <!-- ─── STAFF ACTIVITY VIEW ─── -->
+                    <div id="staff-activity-view" style="display:none;padding:20px 0;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                            <button id="activity-back-btn" class="action-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                                Back
+                            </button>
+                            <h2 style="margin:0;font-size:20px;">My Activity</h2>
+                        </div>
+                        <div id="staff-activity-content" style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;">
+                            Loading your activity...
+                        </div>
                     </div>
 
                     <!-- ─── SCANNER VIEW (shared by Gate / Debit / Top-Up) ─── -->
@@ -1287,7 +1462,24 @@
                                         white-space: nowrap;
                                     "
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><polyline points="4 13 9 18 20 6"/></svg> <span id="bill-counter">0</span>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="
+                                            vertical-align: middle;
+                                            margin-right: 2px;
+                                        "
+                                    >
+                                        <polyline points="4 13 9 18 20 6" />
+                                    </svg>
+                                    <span id="bill-counter">0</span>
                                 </div>
                                 <button
                                     id="bill-log-btn"
@@ -1308,7 +1500,29 @@
                                         min-height: 30px;
                                     "
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Log
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="
+                                            vertical-align: middle;
+                                            margin-right: 2px;
+                                        "
+                                    >
+                                        <path
+                                            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                        />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="9" y1="13" x2="15" y2="13" />
+                                        <line x1="9" y1="17" x2="13" y2="17" />
+                                    </svg>
+                                    Log
                                 </button>
                             </div>
                         </div>
@@ -1321,7 +1535,29 @@
                         >
                             <div class="bill-log-panel-header">
                                 <span style="font-size: 16px; font-weight: 600"
-                                    ><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Session Log</span
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="
+                                            vertical-align: middle;
+                                            margin-right: 4px;
+                                        "
+                                    >
+                                        <path
+                                            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                        />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="9" y1="13" x2="15" y2="13" />
+                                        <line x1="9" y1="17" x2="13" y2="17" />
+                                    </svg>
+                                    Session Log</span
                                 >
                                 <span
                                     id="bill-log-close-btn"
@@ -1332,8 +1568,29 @@
                                         line-height: 1;
                                     "
                                     title="Close"
-                                    ><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span
-                                >
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="
+                                            vertical-align: middle;
+                                            display: inline;
+                                        "
+                                    >
+                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                        <line
+                                            x1="6"
+                                            y1="6"
+                                            x2="18"
+                                            y2="18"
+                                        /></svg
+                                ></span>
                             </div>
                         </div>
 
@@ -1396,7 +1653,23 @@
                                 id="camera-placeholder"
                                 class="camera-placeholder"
                             >
-                                <span class="cam-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+                                <span class="cam-icon"
+                                    ><svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="40"
+                                        height="40"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                                        />
+                                        <circle cx="12" cy="13" r="4" /></svg
+                                ></span>
                                 <p>
                                     Point camera at QR code<br /><span
                                         style="font-size: 12px"
@@ -1429,7 +1702,27 @@
                                 </button>
                             </div>
                             <div class="email-lookup" id="email-lookup-toggle">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><circle cx="10" cy="10" r="7"/><line x1="21" y1="21" x2="15" y2="15"/><line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/></svg> Look up by email instead
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    style="
+                                        vertical-align: middle;
+                                        margin-right: 2px;
+                                    "
+                                >
+                                    <circle cx="10" cy="10" r="7" />
+                                    <line x1="21" y1="21" x2="15" y2="15" />
+                                    <line x1="8" y1="10" x2="12" y2="10" />
+                                    <line x1="10" y1="8" x2="10" y2="12" />
+                                </svg>
+                                Look up by email instead
                             </div>
                         </div>
 
@@ -1573,7 +1866,45 @@
                                         class="method-btn"
                                         data-method="modempay"
                                     >
-                                        <span class="m-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="22" height="14" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/><line x1="5" y1="14" x2="7" y2="14"/><line x1="9" y1="14" x2="11" y2="14"/></svg></span>
+                                        <span class="m-icon"
+                                            ><svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <rect
+                                                    x="1"
+                                                    y="6"
+                                                    width="22"
+                                                    height="14"
+                                                    rx="2"
+                                                    ry="2"
+                                                />
+                                                <line
+                                                    x1="1"
+                                                    y1="10"
+                                                    x2="23"
+                                                    y2="10"
+                                                />
+                                                <line
+                                                    x1="5"
+                                                    y1="14"
+                                                    x2="7"
+                                                    y2="14"
+                                                />
+                                                <line
+                                                    x1="9"
+                                                    y1="14"
+                                                    x2="11"
+                                                    y2="14"
+                                                /></svg
+                                        ></span>
                                         <span class="m-label">ModemPay</span>
                                         <span class="m-desc"
                                             >Customer scans QR</span
@@ -1583,7 +1914,40 @@
                                         class="method-btn"
                                         data-method="cash"
                                     >
-                                        <span class="m-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"/><circle cx="12" cy="12" r="3"/><line x1="6" y1="10" x2="6" y2="10"/><line x1="18" y1="14" x2="18" y2="14"/></svg></span>
+                                        <span class="m-icon"
+                                            ><svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <rect
+                                                    x="2"
+                                                    y="6"
+                                                    width="20"
+                                                    height="12"
+                                                    rx="2"
+                                                    ry="2"
+                                                />
+                                                <circle cx="12" cy="12" r="3" />
+                                                <line
+                                                    x1="6"
+                                                    y1="10"
+                                                    x2="6"
+                                                    y2="10"
+                                                />
+                                                <line
+                                                    x1="18"
+                                                    y1="14"
+                                                    x2="18"
+                                                    y2="14"
+                                                /></svg
+                                        ></span>
                                         <span class="m-label">Cash</span>
                                         <span class="m-desc"
                                             >Mark as received</span
@@ -1696,7 +2060,33 @@
                                                         ).remove()
                                                     "
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="18"
+                                                        height="18"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.5"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        style="
+                                                            vertical-align: middle;
+                                                        "
+                                                    >
+                                                        <line
+                                                            x1="18"
+                                                            y1="6"
+                                                            x2="6"
+                                                            y2="18"
+                                                        />
+                                                        <line
+                                                            x1="6"
+                                                            y1="6"
+                                                            x2="18"
+                                                            y2="18"
+                                                        />
+                                                    </svg>
                                                 </button>
                                             </td>
                                         </tr>

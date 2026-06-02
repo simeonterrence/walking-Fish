@@ -131,6 +131,9 @@ async function routeRequest(req, pathname) {
     case "/debug-ticket":
       return handleDebugTicket(req);
 
+    case "/staff-activity":
+      return handleStaffActivity(req);
+
     default:
       return new Response(
         JSON.stringify({
@@ -5973,6 +5976,70 @@ async function handleDebugTicket(req) {
           "Content-Type": "application/json",
         },
       },
+    );
+  }
+}
+
+
+// ─── Handler: /staff-activity
+
+// Returns aggregated transaction stats for a specific staff scanner code.
+
+// Used by the scan page to show staff their own activity totals.
+
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function handleStaffActivity(req) {
+  try {
+    const { staff_code } = await req.json();
+
+    if (!staff_code) {
+      return new Response(
+        JSON.stringify({ error: "Missing staff_code" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Get all transactions for this staff code
+    const { data: txns, error: txnsErr } = await supabase
+      .from("balance_transactions")
+      .select("type, amount_delta, source, created_at")
+      .eq("staff_code", staff_code)
+      .order("created_at", { ascending: false });
+
+    if (txnsErr) {
+      console.error("[staff-activity] DB error:", txnsErr);
+      return new Response(
+        JSON.stringify({ error: "Database error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    var debits = 0, debitCount = 0, topups = 0, topupCount = 0;
+    (txns || []).forEach(function(t) {
+      if (t.type === "debit") { debits += Math.abs(t.amount_delta); debitCount++; }
+      else if (t.type === "topup") { topups += Math.abs(t.amount_delta); topupCount++; }
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        staff_code: staff_code,
+        total_debits: debits,
+        debit_count: debitCount,
+        total_topups: topups,
+        topup_count: topupCount,
+        total_transactions: (txns || []).length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("[staff-activity] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to load activity" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 }

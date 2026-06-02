@@ -305,7 +305,38 @@
     });
   }
 
-  function lockScanner() {
+  function showStaffActivity() {
+    hide("scanner-modes");
+    show("staff-activity-view");
+    var content = document.getElementById("staff-activity-content");
+    if (!content) return;
+    content.innerHTML = "Loading your activity...";
+
+    callEdgeFunction("/staff-activity", { staff_code: state.scannerCode })
+      .then(function (data) {
+        if (!data.success) throw new Error(data.error || "Failed to load");
+        var html = "";
+        html += '<div class="stat-row">';
+        html += '<div class="stat-card"><div class="num" style="color:#991B1B;">D' + Number(data.total_debits || 0).toLocaleString() + '</div><div class="lbl">Total Debited</div></div>';
+        html += '<div class="stat-card"><div class="num">' + (data.debit_count || 0) + '</div><div class="lbl">Debit Txn</div></div>';
+        html += '<div class="stat-card"><div class="num" style="color:#065F46;">D' + Number(data.total_topups || 0).toLocaleString() + '</div><div class="lbl">Total Top-Ups</div></div>';
+        html += '<div class="stat-card"><div class="num">' + (data.topup_count || 0) + '</div><div class="lbl">Top-Up Txn</div></div>';
+        html += '<div class="stat-card"><div class="num" style="color:var(--accent-text);">' + (data.total_transactions || 0) + '</div><div class="lbl">All Txn</div></div>';
+        html += '</div>';
+        html += '<p style="font-size:12px;color:var(--muted);margin-top:8px;">Your scanner code: <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(state.scannerCode || "") + '</code></p>';
+        content.innerHTML = html;
+      })
+      .catch(function (err) {
+        content.innerHTML = '<p style="color:#DC2626;">' + escapeHtml(err.message || "Failed to load activity") + '</p>';
+      });
+}
+
+function hideStaffActivity() {
+  hide("staff-activity-view");
+  show("scanner-modes");
+}
+
+function lockScanner() {
     state.authenticated = false;
     state.scannerCode = null;
     state.scannerId = null;
@@ -2464,6 +2495,17 @@
       }
 
       // Logout / Lock
+      if (target.closest("#view-activity-btn")) {
+        showStaffActivity();
+        return;
+      }
+
+      // Activity back button
+      if (target.closest("#activity-back-btn")) {
+        hideStaffActivity();
+        return;
+      }
+
       if (target.closest("#scanner-logout")) {
         lockScanner();
         return;
