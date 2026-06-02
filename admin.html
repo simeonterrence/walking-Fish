@@ -1611,12 +1611,9 @@
                 }
 
                 function fetchComplaints() {
-                    return fetch(
+                    return fetchWithAuth(
                         SUPABASE_URL +
-                            "/rest/v1/complaints?order=created_at.desc&select=*",
-                        {
-                            headers: authHeaders(),
-                        }
+                            "/rest/v1/complaints?order=created_at.desc&select=*"
                     ).then(function (r) {
                         if (!r.ok) throw new Error("Failed to load complaints.");
                         return r.json();
