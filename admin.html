@@ -1549,9 +1549,7 @@
                         } catch (_) {}
                         var msgPreview = (c.message || "")
                             .substring(0, 60)
-                            .replace(/[
-
-]/g, " ");
+                            .replace(/[\n\r]+/g, " ");
 
                         html +=
                             "<tr>" +
