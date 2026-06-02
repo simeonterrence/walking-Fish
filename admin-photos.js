@@ -6,37 +6,19 @@
 
 var STORAGE_BUCKET = 'site-photos';
 
-// Get the JWT access token from the stored session
-function getAccessToken() {
-  try {
-    var session = JSON.parse(sessionStorage.getItem('wf_session'));
-    return session && session.access_token ? session.access_token : null;
-  } catch (e) { return null; }
-}
-
-// Fallback: service key from localStorage (for backward compatibility)
-function getServiceKey() {
-  return localStorage.getItem('wf_service_key') || sessionStorage.getItem('wf_service_key') || null;
-}
-
 // ─── State ────────────────────────────────────────────
 var _photos = [];             // cached photo records
 var _dragId = null;           // photo id being dragged
 var _deletedToast = null;     // { timer, ids, section } for undo
 
 // ─── API helper ───────────────────────────────────────
+// Uses fetchWithAuth() from vendor-auth.js which handles token refresh
 async function api(path, options) {
   var method = (options && options.method) || 'GET';
   var headers = { apikey: SUPABASE_ANON_KEY };
   if (options && options.headers) Object.assign(headers, options.headers);
 
-  // Prefer JWT session (works with RLS), fall back to service key
-  var token = getAccessToken() || getServiceKey();
-  if (token) {
-    headers['Authorization'] = 'Bearer ' + token;
-  }
-
-  var res = await fetch(SUPABASE_URL + path, Object.assign({}, options, { headers: headers }));
+  var res = await fetchWithAuth(SUPABASE_URL + path, Object.assign({}, options, { headers: headers }));
   if (!res.ok) { var txt = await res.text(); throw new Error(txt); }
   try { return await res.json(); } catch (e) { return; }
 }
@@ -435,17 +417,13 @@ async function confirmDelete(ids) {
   var toast = document.getElementById('photo-undo-toast');
   if (toast) toast.remove();
   try {
-    var token = getAccessToken() || getServiceKey();
-    if (!token) throw new Error('Not authenticated. Please sign in as admin.');
-
     for (var i = 0; i < ids.length; i++) {
       var id = ids[i];
       var photo = _photos.find(function(p) { return p.id === id; });
       if (photo) {
         // Delete from storage
-        await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + photo.file_path, {
-          method: 'DELETE',
-          headers: { Authorization: 'Bearer ' + token }
+        await fetchWithAuth(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + photo.file_path, {
+          method: 'DELETE'
         }).catch(function() {});
         // Delete DB record
         await api('/rest/v1/site_images?id=eq.' + id, { method: 'DELETE' });
@@ -506,9 +484,6 @@ async function uploadPhoto() {
   }
 
   try {
-    var token = getAccessToken() || getServiceKey();
-    if (!token) throw new Error('Not authenticated. Please sign in as admin.');
-
     var uploaded = 0;
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
@@ -517,9 +492,8 @@ async function uploadPhoto() {
       var fileName = section + '/' + Date.now() + '-' + i + '.' + ext;
 
       // Upload to Storage
-      var uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fileName, {
+      var uploadRes = await fetchWithAuth(SUPABASE_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + fileName, {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
         body: file
       });
       if (!uploadRes.ok) throw new Error('Failed to upload ' + file.name + ': ' + (await uploadRes.text()));
