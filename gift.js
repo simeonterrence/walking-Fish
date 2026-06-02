@@ -351,8 +351,8 @@ function giftReportIssue(form) {
     headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
     body: JSON.stringify({
       token: turnstileToken || 'bypass',
-      table: 'contact_messages',
-      data: { name, email, subject: 'Complaint / Report an Issue', message, phone }
+      table: 'complaints',
+      data: { name, email, phone, message }
     })
   }).then(function (r) {
     if (!r.ok) {

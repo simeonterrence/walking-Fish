@@ -165,6 +165,42 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
     }
   }
 
+  if (table === "complaints") {
+    emails.push({
+      to: "hello@walkingfish.gm",
+      subject: `[Complaint] ${data.name} — ${data.message ? data.message.slice(0, 60) : "New report"}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 16px;">New Complaint Report</h2>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:8px 0;color:#666;width:140px;vertical-align:top;">Name</td><td style="padding:8px 0;">${data.name || "-"}</td></tr>
+          ${data.email ? `<tr><td style="padding:8px 0;color:#666;vertical-align:top;">Email</td><td style="padding:8px 0;"><a href="mailto:${data.email}">${data.email}</a></td></tr>` : ""}
+          ${data.phone ? `<tr><td style="padding:8px 0;color:#666;vertical-align:top;">WhatsApp</td><td style="padding:8px 0;"><a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a></td></tr>` : ""}
+          <tr><td style="padding:8px 0;color:#666;vertical-align:top;">Status</td><td style="padding:8px 0;"><span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;">New</span></td></tr>
+        </table>
+        <div style="margin-top:16px;padding:16px;background:#f9f9f9;border-radius:8px;">
+          <p style="color:#666;font-size:13px;margin:0 0 8px;">Issue Description</p>
+          <p style="margin:0;white-space:pre-wrap;">${data.message || "No details provided."}</p>
+        </div>
+        <p style="margin-top:24px;font-size:13px;color:#999;">
+          Track and manage this complaint in the <a href="https://www.walkingfish.gm/admin">admin panel</a>.
+        </p>
+      `),
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: "We've received your complaint — Walking-Fish",
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">Complaint Received</h2>
+          <p>Hi ${data.name || "there"},</p>
+          <p>We've received your complaint and take it seriously. Our team will review it and reach out to you on <strong>${data.phone || "WhatsApp"}</strong> within 24 hours.</p>
+          <p style="color:#666;font-size:14px;">Reference: Your report was submitted on ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.</p>
+        `),
+      });
+    }
+  }
+
   return emails;
 }
 
@@ -294,7 +330,7 @@ Deno.serve(async (req) => {
       console.warn("TURNSTILE_SECRET_KEY not set — dev mode, skipping CAPTCHA");
     }
 
-    const ALLOWED_TABLES = ["vendor_applications", "contact_messages", "early_access"];
+    const ALLOWED_TABLES = ["vendor_applications", "contact_messages", "early_access", "complaints"];
     if (!ALLOWED_TABLES.includes(table)) {
       return new Response(JSON.stringify({ error: "Invalid table specified" }), {
         status: 400,
