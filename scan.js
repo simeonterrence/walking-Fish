@@ -2102,7 +2102,7 @@
     if (!select) return;
 
     supabaseGet(
-      "/rest/v1/ticket_types?select=id,name,price,type,sort_order&is_active=eq.true&type=not.eq.entry&order=sort_order.asc",
+      "/rest/v1/ticket_types?select=id,name,price,type,sort_order,sold,capacity&is_active=eq.true&type=not.eq.entry&order=sort_order.asc",
     )
       .then(function (types) {
         if (!types || types.length === 0) {
@@ -2112,15 +2112,20 @@
         }
         var html = types
           .map(function (t) {
+            var soldOut = t.capacity > 0 && t.sold >= t.capacity;
+            var suffix = soldOut ? " — Sold Out" : "";
             return (
               '<option value="' +
               t.id +
               '" data-price="' +
               t.price +
-              '">' +
+              '"' +
+              (soldOut ? " disabled style=\"color:var(--muted);\"" : "") +
+              ">" +
               escapeHtml(t.name) +
               " — " +
               formatCurrency(t.price) +
+              suffix +
               "</option>"
             );
           })
