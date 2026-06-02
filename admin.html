@@ -1767,18 +1767,16 @@
                     }
                 }
 
-                var hdrs = { "Content-Type": "application/json", Prefer: "return=minimal" };
-                var sess = getStoredSession();
-                if (sess && sess.access_token) {
-                    hdrs.Authorization = "Bearer " + sess.access_token;
-                }
-                return fetch(
+                return fetchWithAuth(
                     SUPABASE_URL +
                         "/rest/v1/complaints?id=eq." +
                         encodeURIComponent(complaintId),
                     {
                         method: "PATCH",
-                        headers: hdrs,
+                        headers: {
+                            "Content-Type": "application/json",
+                            Prefer: "return=minimal",
+                        },
                         body: JSON.stringify(payload),
                     }
                 ).then(function (r) {
