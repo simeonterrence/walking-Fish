@@ -107,9 +107,8 @@ document.getElementById('vendor-login-form').addEventListener('submit', function
 
   authLogin(email, password).then(function(session) {
     // Verify this user has a vendor profile
-    return fetch(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(session.user.id) + '&select=id,business_name,email,category,status,created_at', {
-      headers: authHeaders()
-    }).then(function(r) { return r.json(); }).then(function(profiles) {
+    return fetchWithAuth(SUPABASE_URL + '/rest/v1/vendor_profiles?auth_user_id=eq.' + encodeURIComponent(session.user.id) + '&select=id,business_name,email,category,status,created_at'
+    ).then(function(r) { return r.json(); }).then(function(profiles) {
       var profile = profiles && profiles.length > 0 ? profiles[0] : null;
       if (!profile) { clearSession(); throw new Error('Not a vendor account.'); }
       var s = getStoredSession();

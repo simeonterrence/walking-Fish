@@ -1270,12 +1270,9 @@
 
             // ---------- Vendor management ----------
             function loadVendors() {
-                fetch(
+                fetchWithAuth(
                     SUPABASE_URL +
-                        "/rest/v1/vendor_profiles?order=created_at.desc",
-                    {
-                        headers: authHeaders(),
-                    },
+                        "/rest/v1/vendor_profiles?order=created_at.desc"
                 )
                     .then(function (r) {
                         if (!r.ok) throw new Error("Failed to load vendors.");
