@@ -1121,7 +1121,21 @@
       }
 
       /* Token exchange failed — show error with login form retry */
-      rebuildLoginForm(data.error || "Link expired. Please request a new one.");
+      var userMsg = data.error || "Link expired. Please request a new one.";
+      rebuildLoginForm(userMsg);
+      /* Auto-populate email if the server decoded it from the token */
+      if (data.email) {
+        var emailInput = document.getElementById("dashboard-email");
+        if (emailInput) {
+          emailInput.value = data.email;
+          /* Show a helpful hint to click the button */
+          var hint = document.getElementById("dashboard-login-msg");
+          if (hint) {
+            hint.textContent = "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
+            hint.style.color = "";
+          }
+        }
+      }
     } catch (err) {
       console.error("[tickets] checkTicketToken:", err);
       rebuildLoginForm(

@@ -3316,9 +3316,12 @@ async function handleExchangeToken(req) {
     // Parse token: v1.{expiresAt}.{base64url(email)}.{hexSig}
     const parts = ticket_token.split(".");
     if (parts.length !== 4 || parts[0] !== "v1") {
+      console.warn(`[exchange-token] Bad token format: ${parts.length} parts, token length=${ticket_token.length}`);
       return new Response(
         JSON.stringify({
-          error: "Invalid token format",
+          error: "This link appears to be broken or incomplete. Please request a new sign-in link.",
+          reason: "invalid_format",
+          parts_count: parts.length,
         }),
         {
           status: 400,
@@ -3332,11 +3335,35 @@ async function handleExchangeToken(req) {
     const expiresAt = parseInt(parts[1], 10);
     const encodedEmail = parts[2];
     const sig = parts[3];
+    // Attempt to decode email early for better error messages
+    let emailFromToken = "";
+    try { emailFromToken = base64UrlDecode(encodedEmail).toLowerCase(); } catch (_) {}
     // Check expiry
-    if (isNaN(expiresAt) || expiresAt < Date.now()) {
+    if (isNaN(expiresAt)) {
+      console.warn(`[exchange-token] NaN expiresAt — token likely truncated. Length=${ticket_token.length}`);
       return new Response(
         JSON.stringify({
-          error: "Link expired. Please request a new sign-in link.",
+          error: "This link appears to be broken or truncated. Please request a new sign-in link.",
+          reason: "invalid_expiry",
+          email: emailFromToken || undefined,
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    if (expiresAt < Date.now()) {
+      const expiredAgo = Math.round((Date.now() - expiresAt) / 1000 / 60);
+      console.warn(`[exchange-token] Token expired ${expiredAgo}m ago for ${emailFromToken || "(unknown email)"}`);
+      return new Response(
+        JSON.stringify({
+          error: "This link has expired. Please request a new sign-in link below.",
+          reason: "expired",
+          email: emailFromToken || undefined,
         }),
         {
           status: 401,
