@@ -270,6 +270,13 @@
                             >Back to site</a
                         >
                         <button
+                            id="export-csv-btn"
+                            class="btn btn-secondary"
+                            style="padding: 6px 14px; font-size: 13px"
+                        >
+                            Export CSV
+                        </button>
+                        <button
                             id="logout-btn"
                             class="btn btn-secondary"
                             style="padding: 6px 14px; font-size: 13px"
@@ -1168,6 +1175,25 @@
                     });
 
                 document
+                    .getElementById("export-csv-btn")
+                    .addEventListener("click", function () {
+                        var btn = this;
+                        btn.disabled = true;
+                        btn.textContent = "Exporting…";
+                        exportAllDataCSV()
+                            .catch(function (err) {
+                                alert(
+                                    "Export failed: " +
+                                        (err.message || "Unknown error"),
+                                );
+                            })
+                            .then(function () {
+                                btn.disabled = false;
+                                btn.textContent = "Export CSV";
+                            });
+                    });
+
+                document
                     .getElementById("invite-close-btn")
                     .addEventListener("click", function () {
                         document
@@ -1964,6 +1990,170 @@
                     e.target.remove();
                 }
             });
+
+            // ─── CSV Export ─────────────────────────────────────────────
+            function exportAllDataCSV() {
+                var promises = [];
+
+                // 1. Vendor applications (from cache or re-fetch)
+                var appsPromise =
+                    typeof getApplications === "function"
+                        ? getApplications()
+                        : Promise.resolve([]);
+                promises.push(
+                    appsPromise.then(function (apps) {
+                        window.cachedApps = apps || [];
+                        return { label: "Vendor Applications", data: apps };
+                    }),
+                );
+
+                // 2. Vendors
+                var vendorsUrl =
+                    SUPABASE_URL +
+                    "/rest/v1/vendor_profiles?order=created_at.desc&select=*";
+                promises.push(
+                    fetchWithAuth(vendorsUrl)
+                        .then(function (r) {
+                            return r.ok ? r.json() : [];
+                        })
+                        .then(function (v) {
+                            return { label: "Vendors", data: v || [] };
+                        }),
+                );
+
+                // 3. Orders
+                promises.push(
+                    adminQuery("/rest/v1/orders?order=created_at.desc&select=*")
+                        .then(function (orders) {
+                            return { label: "Orders", data: orders || [] };
+                        })
+                        .catch(function () {
+                            return { label: "Orders", data: [] };
+                        }),
+                );
+
+                // 4. Ticket types / inventory
+                promises.push(
+                    adminQuery(
+                        "/rest/v1/ticket_types?order=sort_order.asc&select=*",
+                    )
+                        .then(function (types) {
+                            return {
+                                label: "Ticket Types",
+                                data: types || [],
+                            };
+                        })
+                        .catch(function () {
+                            return { label: "Ticket Types", data: [] };
+                        }),
+                );
+
+                // 5. Complaints (from cache or re-fetch)
+                if (
+                    window.cachedComplaints &&
+                    window.cachedComplaints.length > 0
+                ) {
+                    promises.push(
+                        Promise.resolve({
+                            label: "Complaints",
+                            data: window.cachedComplaints,
+                        }),
+                    );
+                } else {
+                    promises.push(
+                        fetchWithAuth(
+                            SUPABASE_URL +
+                                "/rest/v1/complaints?order=created_at.desc&select=*",
+                        )
+                            .then(function (r) {
+                                return r.ok ? r.json() : [];
+                            })
+                            .then(function (c) {
+                                return {
+                                    label: "Complaints",
+                                    data: c || [],
+                                };
+                            }),
+                    );
+                }
+
+                return Promise.all(promises).then(function (sections) {
+                    var csvRows = [];
+                    var now = new Date()
+                        .toISOString()
+                        .replace(/T/, " ")
+                        .substring(0, 19);
+
+                    sections.forEach(function (section) {
+                        var label = section.label;
+                        var rows = section.data;
+
+                        // Section header
+                        csvRows.push("");
+                        csvRows.push(
+                            "=== " + label + " (exported " + now + ") ===",
+                        );
+                        csvRows.push("");
+
+                        if (!rows || rows.length === 0) {
+                            csvRows.push("(no records)");
+                            csvRows.push("");
+                            return;
+                        }
+
+                        // Headers
+                        var headers = Object.keys(rows[0]);
+                        csvRows.push(
+                            headers
+                                .map(function (h) {
+                                    return (
+                                        '"' +
+                                        String(h).replace(/"/g, '""') +
+                                        '"'
+                                    );
+                                })
+                                .join(","),
+                        );
+
+                        // Data rows
+                        rows.forEach(function (row) {
+                            var vals = headers.map(function (h) {
+                                var v = row[h];
+                                if (v === null || v === undefined) return "";
+                                if (typeof v === "object") {
+                                    try {
+                                        v = JSON.stringify(v);
+                                    } catch (_) {
+                                        v = String(v);
+                                    }
+                                }
+                                return (
+                                    '"' + String(v).replace(/"/g, '""') + '"'
+                                );
+                            });
+                            csvRows.push(vals.join(","));
+                        });
+
+                        csvRows.push("");
+                    });
+
+                    var csv = csvRows.join("\n");
+                    var blob = new Blob([csv], {
+                        type: "text/csv;charset=utf-8;",
+                    });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download =
+                        "walkingfish-admin-export-" +
+                        new Date().toISOString().substring(0, 10) +
+                        ".csv";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }
         </script>
 
         <nav class="bottom-tabs" aria-label="Main navigation">
