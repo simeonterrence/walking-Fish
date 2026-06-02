@@ -522,8 +522,6 @@
                             </div>
                         </div>
 
-                                                </div>
-
                         <!-- 1b. Redemption Stats -->
                         <div class="ticket-section">
                             <h3>Redemption Stats (Scan / Bill)</h3>
@@ -632,26 +630,41 @@
                                 padding-top: 20px;
                             "
                         >
-                                                    <h3>Staff Scanner Codes</h3>
-                                                    <div id="scanner-codes-container">
-                                                        <p style="color: var(--muted); font-size: 14px">
-                                                            Loading scanner codes...
-                                                        </p>
-                                                    </div>
-                                                </div>
+                            <h3>Staff Scanner Codes</h3>
+                            <div id="scanner-codes-container">
+                                <p style="color: var(--muted); font-size: 14px">
+                                    Loading scanner codes...
+                                </p>
+                            </div>
+                        </div>
 
-                                                <!-- Staff Activity Report -->
-                                                <div class="ticket-section">
-                                                    <h3 style="margin-top:24px;">Staff Activity Report</h3>
-                                                    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Per-staff transaction totals from the scan page (debits &amp; top-ups). Only transactions processed after adding staff_code tracking are included.</p>
-                                                    <div id="staff-activity-container">
-                                                        <p style="color:var(--muted);font-size:14px;">Loading staff activity...</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </details>
-                                        <!-- ════════════════════════════════════════════════════════════════ -->
-                                        <!-- COMPLAINTS MANAGEMENT -->
+                        <!-- Staff Activity Report -->
+                        <div class="ticket-section">
+                            <h3 style="margin-top: 24px">
+                                Staff Activity Report
+                            </h3>
+                            <p
+                                style="
+                                    font-size: 13px;
+                                    color: var(--muted);
+                                    margin-bottom: 8px;
+                                "
+                            >
+                                Per-staff transaction totals from the scan page
+                                (debits &amp; top-ups). Only transactions
+                                processed after adding staff_code tracking are
+                                included.
+                            </p>
+                            <div id="staff-activity-container">
+                                <p style="color: var(--muted); font-size: 14px">
+                                    Loading staff activity...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- COMPLAINTS MANAGEMENT -->
                 <!-- ════════════════════════════════════════════════════════════════ -->
 
                 <details
@@ -2106,10 +2119,16 @@
                         "/rest/v1/balance_transactions?select=type,amount_delta,source,notes,created_at&order=created_at.desc&limit=10000",
                     )
                         .then(function (txns) {
-                            return { label: "Balance Transactions (Debits)", data: txns || [] };
+                            return {
+                                label: "Balance Transactions (Debits)",
+                                data: txns || [],
+                            };
                         })
                         .catch(function () {
-                            return { label: "Balance Transactions (Debits)", data: [] };
+                            return {
+                                label: "Balance Transactions (Debits)",
+                                data: [],
+                            };
                         }),
                 );
 
@@ -2119,14 +2138,20 @@
                         "/rest/v1/balance_transactions?select=staff_code,type,amount_delta,source,created_at&staff_code=not.is.null&limit=10000",
                     )
                         .then(function (txns) {
-                            return { label: "Staff Activity (by Staff Code)", data: txns || [] };
+                            return {
+                                label: "Staff Activity (by Staff Code)",
+                                data: txns || [],
+                            };
                         })
                         .catch(function () {
-                            return { label: "Staff Activity (by Staff Code)", data: [] };
+                            return {
+                                label: "Staff Activity (by Staff Code)",
+                                data: [],
+                            };
                         }),
                 );
 
-                                return Promise.all(promises).then(function (sections) {
+                return Promise.all(promises).then(function (sections) {
                     var csvRows = [];
                     var now = new Date()
                         .toISOString()

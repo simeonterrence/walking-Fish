@@ -1042,9 +1042,12 @@ function showTicketTypeEditModal(typeData) {
     "</div>";
 
   document.body.appendChild(overlay);
-  setTimeout(function () {
-    document.getElementById("edit-type-name").focus();
-  }, 100);
+  requestAnimationFrame(function () {
+    overlay.classList.add("open");
+    setTimeout(function () {
+      document.getElementById("edit-type-name").focus();
+    }, 100);
+  });
   return overlay;
 }
 
@@ -1710,7 +1713,7 @@ function loadScannerCodes() {
         '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Staff Label/Name</label><input type="text" id="new-scanner-label" placeholder="e.g. Gate Alpha" style="width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue Code</button>' +
-        '</div>' +
+        "</div>" +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px solid var(--border);">' +
         '<label style="font-size:13px;font-weight:600;color:var(--muted);margin-right:8px;">Permissions:</label>' +
         '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="gate" checked> Gate</label>' +
@@ -1719,8 +1722,8 @@ function loadScannerCodes() {
         '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bill"> Bill</label>' +
         '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bulk"> Bulk</label>' +
         '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;border-left:1px solid var(--border);padding-left:12px;"><input type="checkbox" id="perm-universal" value="*"> <strong>Universal</strong> (all modes)</label>' +
-        '</div>' +
-        '</div>';
+        "</div>" +
+        "</div>";
 
       container.innerHTML = html;
     })
@@ -1732,12 +1735,11 @@ function loadScannerCodes() {
     });
 }
 
-
 function getSelectedPermissions() {
   var universal = document.getElementById("perm-universal");
   if (universal && universal.checked) return ["*"];
   var perms = [];
-  document.querySelectorAll(".perm-checkbox:checked").forEach(function(cb) {
+  document.querySelectorAll(".perm-checkbox:checked").forEach(function (cb) {
     perms.push(cb.value);
   });
   return perms.length > 0 ? perms : ["*"];
@@ -1886,7 +1888,6 @@ function revokeScannerCode(id) {
     });
 }
 
-
 /* ═══════════════════════════════════════════════════════════════════════════
    8b. STAFF ACTIVITY REPORT
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1978,7 +1979,7 @@ function loadStaffActivity() {
       // Grand total row
       html +=
         '<tr style="border-top:2px solid var(--accent);font-weight:700;">' +
-        '<td><strong>GRAND TOTAL</strong></td>' +
+        "<td><strong>GRAND TOTAL</strong></td>" +
         '<td style="color:#991B1B;">D' +
         grandDebits.toLocaleString() +
         "</td>" +
@@ -1995,7 +1996,7 @@ function loadStaffActivity() {
           return s + staffGroups[c].topupCount;
         }, 0) +
         "</td>" +
-        '<td>D' +
+        "<td>D" +
         (grandDebits + grandTopups).toLocaleString() +
         "</td>" +
         "</tr>";
@@ -2010,7 +2011,6 @@ function loadStaffActivity() {
         "</p>";
     });
 }
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
