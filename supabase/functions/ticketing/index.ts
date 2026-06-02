@@ -1374,7 +1374,7 @@ async function handleCreateIntent(req) {
 
   } catch (err) {
 
-    console.error("[create-intent] Error:", err.message);
+    console.error("[create-intent] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -2959,7 +2959,7 @@ async function handleWebhook(req) {
 
   } catch (err) {
 
-    console.error("[Webhook] Error:", err.message);
+    console.error("[Webhook] Error:", err.message, err.stack || "");
 
     // Always return 200 for webhooks to acknowledge receipt
 
@@ -3000,6 +3000,7 @@ async function handleWebhook(req) {
 async function handleCheckOrder(req) {
 
   try {
+    console.log("[handleCheckOrder] Request:");
 
     const { order_id } = await req.json();
 
@@ -3125,7 +3126,7 @@ async function handleCheckOrder(req) {
 
   } catch (err) {
 
-    console.error("[check-order] Error:", err.message);
+    console.error("[check-order] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -3166,6 +3167,7 @@ async function handleCheckOrder(req) {
 async function handleCreateOrder(req) {
 
   try {
+    console.log("[handleCreateOrder] Request:");
 
     const {
 
@@ -3413,7 +3415,7 @@ async function handleCreateOrder(req) {
 
   } catch (err) {
 
-    console.error("[create-order] Error:", err.message);
+    console.error("[create-order] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -3456,6 +3458,7 @@ async function handleCreateOrder(req) {
 async function handleLookupTicket(req) {
 
   try {
+    console.log("[handleLookupTicket] Request:");
 
     const { code } = await req.json();
 
@@ -3641,7 +3644,7 @@ async function handleLookupTicket(req) {
 
   } catch (err) {
 
-    console.error("[lookup-ticket] Error:", err.message);
+    console.error("[lookup-ticket] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -3748,6 +3751,7 @@ async function isTicketingRequestAuthorized(req) {
 async function handleLookupByEmail(req) {
 
   try {
+    console.log("[handleLookupByEmail] Request:");
 
     const { email: rawEmail, mode } = await req.json();
 
@@ -3907,7 +3911,7 @@ async function handleLookupByEmail(req) {
 
   } catch (err) {
 
-    console.error("[lookup-by-email] Error:", err.message);
+    console.error("[lookup-by-email] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -4272,7 +4276,7 @@ async function handleConfirmPayment(req) {
 
   } catch (err) {
 
-    console.error("[confirm-payment] Error:", err.message);
+    console.error("[confirm-payment] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -4512,7 +4516,7 @@ async function handleStaffAuth(req) {
 
   } catch (err) {
 
-    console.error("[staff-auth] Error:", err.message);
+    console.error("[staff-auth] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -4748,7 +4752,7 @@ async function handleMarkUsed(req) {
 
   } catch (err) {
 
-    console.error("[mark-used] Error:", err.message);
+    console.error("[mark-used] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -5005,7 +5009,7 @@ async function handleDebit(req) {
 
   } catch (err) {
 
-    console.error("[debit] Error:", err.message);
+    console.error("[debit] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -5296,7 +5300,7 @@ async function handleBulkTopup(req) {
 
   } catch (err) {
 
-    console.error("[bulk-topup] Error:", err.message);
+    console.error("[bulk-topup] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -5546,7 +5550,7 @@ async function handleUnmarkUsed(req) {
 
   } catch (err) {
 
-    console.error("[unmark-used] Error:", err.message);
+    console.error("[unmark-used] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -5776,7 +5780,7 @@ async function handleReverseDebit(req) {
 
   } catch (err) {
 
-    console.error("[reverse-debit] Error:", err.message);
+    console.error("[reverse-debit] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -5877,6 +5881,7 @@ async function isAuthenticatedUser(req) {
 async function handleAdminQuery(req) {
 
   try {
+    console.log("[handleAdminQuery] Request:");
 
     if (!(await isAuthenticatedUser(req))) {
 
@@ -6006,7 +6011,7 @@ async function handleAdminQuery(req) {
 
   } catch (err) {
 
-    console.error("[admin-query] Error:", err.message);
+    console.error("[admin-query] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -6388,7 +6393,7 @@ async function handleRegenerateTickets(req) {
 
   } catch (err) {
 
-    console.error("[regenerate-tickets] Error:", err.message);
+    console.error("[regenerate-tickets] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -6431,6 +6436,7 @@ async function handleRegenerateTickets(req) {
 async function handleResendMagicLink(req) {
 
   try {
+    console.log("[handleResendMagicLink] Request:");
 
     if (!(await isTicketingRequestAuthorized(req))) {
 
@@ -6600,7 +6606,7 @@ async function handleResendMagicLink(req) {
 
   } catch (err) {
 
-    console.error("[resend-magic-link] Error:", err.message);
+    console.error("[resend-magic-link] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -6645,6 +6651,7 @@ async function handleResendMagicLink(req) {
 async function handleSendMagicLink(req) {
 
   try {
+    console.log("[handleSendMagicLink] Request:");
 
     // Rate limit: 3 requests per email per minute
 
@@ -6824,7 +6831,7 @@ async function handleSendMagicLink(req) {
 
   } catch (err) {
 
-    console.error("[send-magic-link] Error:", err.message);
+    console.error("[send-magic-link] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -7376,7 +7383,7 @@ async function handleExchangeToken(req) {
 
   } catch (err) {
 
-    console.error("[exchange-token] Error:", err.message);
+    console.error("[exchange-token] Error:", err.message, err.stack || "");
 
     return new Response(
 
@@ -7679,6 +7686,7 @@ async function handleViewTickets(req) {
 async function handleDebugTicket(req) {
 
   try {
+    console.log("[handleDebugTicket] Request:");
 
     const { order_id, email, ticket_type_id, quantity } = await req.json();
 
@@ -8018,7 +8026,7 @@ Deno.serve(async (req) => {
 
   } catch (err) {
 
-    console.error("[ticketing] Unhandled error:", err.message);
+    console.error("[ticketing] Unhandled error:", err.message, err.stack || "");
 
     return new Response(
 
