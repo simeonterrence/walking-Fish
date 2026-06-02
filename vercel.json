@@ -53,6 +53,7 @@
     { "source": "/t", "destination": "/t.html" },
     { "source": "/scan", "destination": "/scan.html" },
     { "source": "/admin-tickets", "destination": "/admin-tickets.html" },
+    { "source": "/view-tickets", "destination": "/view-tickets.html" },
     { "source": "/admin-photos", "destination": "/admin-photos.html" }
   ]
 }

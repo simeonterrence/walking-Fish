@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="View your Piroake Fest 2026 tickets. Enter the email and ticket code from your purchase confirmation to see your QR codes and balances.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
+<meta property="og:title" content="View My Tickets | Walking-Fish Group">
+<meta property="og:description" content="View your Piroake Fest 2026 tickets and QR codes.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.walkingfish.gm/view-tickets">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="View My Tickets | Walking-Fish Group">
+<meta name="twitter:description" content="View your Piroake Fest 2026 tickets and QR codes.">
+<link rel="canonical" href="https://www.walkingfish.gm/view-tickets">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "View My Tickets",
+  "description": "View your Piroake Fest 2026 tickets and QR codes.",
+  "isPartOf": { "@type": "WebSite", "name": "Walking-Fish Group", "url": "https://www.walkingfish.gm" }
+}
+</script>
+<title>View My Tickets | Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css?v=2">
+<script defer src="gift.min.js?v=3"></script>
+<script defer src="nav.min.js?v=3"></script>
+<script defer src="supabase-config.min.js?v=3"></script>
+<style>
+/* ─── Login Form ─── */
+.view-tickets-form {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  text-align: center;
+}
+.view-tickets-form .form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 28px;
+  text-align: left;
+}
+.view-tickets-form h2 { font-size: 22px; text-align: center; margin-bottom: 8px; }
+.view-tickets-form .desc { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 28px; line-height: 1.5; }
+.view-tickets-form .form-group { margin-bottom: 18px; }
+.view-tickets-form label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.view-tickets-form input {
+  width: 100%; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: var(--font-body); font-size: 16px;
+  background: var(--surface); color: var(--fg);
+  transition: border-color .15s, box-shadow .15s;
+}
+.view-tickets-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 20%, transparent);
+}
+.view-tickets-form .hint {
+  font-size: 12px; color: var(--muted); margin-top: 6px;
+}
+.view-tickets-form .code-hint {
+  background: var(--accent-dim); border-radius: 8px; padding: 12px 16px;
+  font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.5;
+}
+.view-tickets-form .code-hint strong {
+  font-family: var(--font-mono); font-size: 14px; color: var(--accent-text); letter-spacing: 0.04em;
+}
+.view-tickets-form .btn-primary {
+  width: 100%; justify-content: center; padding: 14px; font-size: 16px;
+  margin-top: 4px;
+}
+.view-tickets-form .error-msg {
+  background: #fef2f2; border: 1px solid #fca5a5;
+  color: #991b1b; padding: 12px 16px; border-radius: 10px;
+  font-size: 14px; margin-top: 16px; display: none;
+}
+
+/* ─── Results ─── */
+.tickets-results { display: none; margin-top: 0; }
+.tickets-results.active { display: block; }
+
+.results-header {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+  margin-bottom: 24px;
+}
+.results-header h2 { margin: 0; font-size: 20px; }
+.results-header .email-badge {
+  font-size: 13px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 8px;
+}
+
+.ticket-view-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+  transition: border-color .2s;
+}
+.ticket-view-card:hover { border-color: var(--accent); }
+.ticket-view-card .info { }
+.ticket-view-card .info h3 { font-size: 17px; margin-bottom: 4px; }
+.ticket-view-card .info .code { font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent-text); }
+.ticket-view-card .info .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.ticket-view-card .info .status-badge { margin-top: 8px; }
+.ticket-view-card .balance-col { text-align: right; }
+.ticket-view-card .balance-col .amt { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--accent-text); }
+.ticket-view-card .balance-col .lbl { font-size: 12px; color: var(--muted); }
+.ticket-view-card .qr-toggle { margin-top: 8px; }
+
+.qr-row { display: none; margin: -8px 0 16px; text-align: center; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.qr-row.active { display: block; }
+.qr-row img { width: 200px; height: 200px; }
+
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; color: var(--muted); margin-bottom: 24px;
+  cursor: pointer; border: none; background: none;
+  font-family: var(--font-body); padding: 0;
+}
+.back-link:hover { color: var(--fg); }
+
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  border: 2px dashed var(--border); border-radius: 16px;
+  color: var(--muted);
+}
+
+.loading-spinner { text-align: center; padding: 40px; color: var(--muted); }
+.loading-spinner .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .ticket-view-card { grid-template-columns: 1fr; text-align: center; }
+  .ticket-view-card .balance-col { text-align: center; }
+}
+</style>
+</head>
+<body data-page="view-tickets">
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+<header><nav>
+<div class="w">
+  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/walkie-talkie">Experiences</a>
+    <a href="/piroake">Piroake</a>
+    <a href="/muster-point">Media</a>
+    <a href="/vendors">Vendors</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="/about">About</a>
+        <a href="/tickets">Tickets</a>
+        <a href="/top-up">Top Up</a>
+        <a href="/gallery">Gallery</a>
+        <a href="/blog">Blog</a>
+        <a href="/partners">Partners</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </details>
+    <a href="/login" class="nav-cta" aria-label="Sign in to admin or vendor dashboard">Sign In</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span></button>
+</div>
+</nav></header>
+
+<main id="main-content">
+
+<section class="page-header">
+  <div class="w">
+    <p class="label">Walking-Fish Group</p>
+    <h1>View My Tickets</h1>
+    <p>Enter your email and ticket code from your purchase confirmation to view your tickets and QR codes.</p>
+  </div>
+</section>
+
+<section>
+<div class="w">
+
+  <!-- Login form -->
+  <div class="view-tickets-form" id="login-section">
+    <div class="form-card">
+      <h2>Access Your Tickets</h2>
+      <p class="desc">Use the email address and ticket code from your purchase confirmation email.</p>
+
+      <div class="code-hint">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Your ticket code looks like <strong>TKT-A1B2C3</strong>. It's in the email with your QR code.
+      </div>
+
+      <form id="view-tickets-form" autocomplete="off">
+        <div class="form-group">
+          <label for="vt-email">Email Address</label>
+          <input type="email" id="vt-email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="vt-code">Ticket Code</label>
+          <input type="text" id="vt-code" placeholder="e.g. TKT-A1B2C3" required autocomplete="off" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:0.06em;">
+          <p class="hint">Enter the ticket code from your email. It starts with "TKT-" followed by 6 characters.</p>
+        </div>
+        <button type="submit" class="btn btn-primary" id="vt-submit-btn">View My Tickets</button>
+        <div class="error-msg" id="vt-error"></div>
+      </form>
+
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+        Having trouble? <a href="/contact" style="color:var(--accent);text-decoration:underline;">Contact us</a> for help.
+      </p>
+    </div>
+  </div>
+
+  <!-- Results section (hidden initially) -->
+  <div class="tickets-results" id="results-section">
+    <button class="back-link" id="back-to-login-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Use a different code
+    </button>
+
+    <div class="results-header">
+      <h2>Your Tickets</h2>
+      <span class="email-badge" id="vt-display-email"></span>
+    </div>
+
+    <div id="tickets-list">
+      <div class="loading-spinner"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+  <div class="grid-4">
+    <div>
+      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
+      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
+      <a href="/walkie-talkie">Experiences</a>
+      <a href="/piroake">Piroake Fest</a>
+      <a href="/muster-point">Media</a>
+      <a href="/gallery">Gallery</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
+      <a href="/about">About Us</a>
+      <a href="/partners">Partners</a>
+      <a href="/vendors">Vendors</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
+      <a href="/blog">Blog</a>
+      <a href="/top-up">Top Up</a>
+      <a href="/tickets">Buy Tickets</a>
+      <a href="/view-tickets">View My Tickets</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/vendor-login">Vendor Login</a>
+      <a href="/admin-login" style="font-size:12px;opacity:0.5;">Admin</a>
+    </div>
+  </div>
+  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
+</div>
+</footer>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="/piroake">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="/vendors">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="/tickets">
+    <span><svg viewBox="0 0 24 24"><path d="M20 12V4H4v8"/><path d="M4 12v8h16v-8"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg></span>
+    Tickets
+  </a>
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.replace(/\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
+
+<script>
+(function() {
+  "use strict";
+
+  var TICKET_FN = SUPABASE_URL + "/functions/v1/ticketing";
+
+  var form = document.getElementById("view-tickets-form");
+  var emailInput = document.getElementById("vt-email");
+  var codeInput = document.getElementById("vt-code");
+  var submitBtn = document.getElementById("vt-submit-btn");
+  var errorEl = document.getElementById("vt-error");
+  var loginSection = document.getElementById("login-section");
+  var resultsSection = document.getElementById("results-section");
+  var ticketsList = document.getElementById("tickets-list");
+  var displayEmail = document.getElementById("vt-display-email");
+
+  // Auto-uppercase the ticket code input
+  codeInput.addEventListener("input", function() {
+    var start = this.selectionStart;
+    var end = this.selectionEnd;
+    this.value = this.value.toUpperCase();
+    this.setSelectionRange(start, end);
+  });
+
+  form.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    errorEl.style.display = "none";
+
+    var email = emailInput.value.trim().toLowerCase();
+    var code = codeInput.value.trim().toUpperCase();
+
+    if (!email) {
+      showError("Please enter your email address.");
+      emailInput.focus();
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError("Please enter a valid email address.");
+      emailInput.focus();
+      return;
+    }
+
+    if (!code) {
+      showError("Please enter your ticket code.");
+      codeInput.focus();
+      return;
+    }
+
+    if (code.length < 6) {
+      showError("That code looks too short. The full ticket code should be something like TKT-A1B2C3.");
+      codeInput.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Looking up your tickets\u2026";
+
+    try {
+      var res = await fetch(TICKET_FN + "/view-tickets", {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email: email, code: code })
+      });
+
+      var data;
+      try { data = await res.json(); } catch (_) { data = {}; }
+
+      if (!res.ok || !data.success) {
+        showError(data.error || "Could not find tickets. Double-check your email and code.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "View My Tickets";
+        return;
+      }
+
+      // Success — show tickets
+      loginSection.style.display = "none";
+      resultsSection.classList.add("active");
+      displayEmail.textContent = email;
+
+      renderTickets(data.tickets || []);
+    } catch (err) {
+      showError("Network error. Please check your connection and try again.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "View My Tickets";
+    }
+  });
+
+  function renderTickets(tickets) {
+    if (!tickets || tickets.length === 0) {
+      ticketsList.innerHTML =
+        '<div class="empty-state"><p>No tickets found for this account.</p></div>';
+      return;
+    }
+
+    var html = "";
+    tickets.forEach(function(t) {
+      var typeName = (t.ticket_type && t.ticket_type.name) || "Ticket";
+      var hasBalance = t.type === "activity_credit" || t.type === "food" || t.type === "drinks";
+      var balance = t.balance || 0;
+      var statusLabel = t.status || "active";
+      var statusClass = "status-" + (statusLabel === "active" ? "approved" : statusLabel === "used" ? "pending" : "rejected");
+      var dateStr = "";
+      try { dateStr = new Date(t.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(_) {}
+
+      html +=
+        '<div class="ticket-view-card">' +
+        '<div class="info">' +
+        "<h3>" + escHtml(typeName) + "</h3>" +
+        '<div class="code">' + escHtml(t.code) + "</div>" +
+        (t.customer_name ? '<div class="meta">' + escHtml(t.customer_name) + "</div>" : "") +
+        '<div class="meta">Purchased ' + dateStr + "</div>" +
+        '<span class="status-badge ' + statusClass + '" style="text-transform:capitalize;margin-top:8px;">' + statusLabel + "</span>" +
+        "</div>" +
+        (hasBalance ? '<div class="balance-col"><div class="amt">D' + Number(balance).toLocaleString() + '</div><div class="lbl">Balance</div></div>' : '<div class="balance-col"></div>') +
+        "</div>" +
+        // QR section
+        '<div class="qr-row" id="qr-' + t.id + '">' +
+        (t.qr_data_uri
+          ? '<img src="' + t.qr_data_uri + '" alt="QR Code for ' + escHtml(t.code) + '" style="width:200px;height:200px;">'
+          : '<p style="font-size:13px;color:var(--muted);">Show this code at the gate:</p>' +
+            '<p style="font-family:var(--font-mono);font-size:18px;font-weight:700;letter-spacing:0.1em;margin-top:8px;">' + escHtml(t.code) + "</p>") +
+        '<p style="font-size:13px;color:var(--muted);margin-top:8px;">' +
+        '<button class="btn btn-secondary qr-hide-btn" data-qr-id="' + t.id + '" style="font-size:13px;padding:6px 16px;min-width:auto;min-height:auto;">Hide QR</button>' +
+        "</p>" +
+        "</div>" +
+        '<div style="text-align:center;margin:-8px 0 20px;">' +
+        '<button class="btn btn-secondary qr-show-btn" data-qr-id="' + t.id + '" style="font-size:13px;padding:6px 16px;min-width:auto;min-height:auto;">' + (t.qr_data_uri ? "Show QR Code" : "Show Code") + "</button>" +
+        "</div>";
+    });
+
+    ticketsList.innerHTML = html;
+
+    // QR toggle handlers
+    ticketsList.querySelectorAll(".qr-show-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var id = btn.getAttribute("data-qr-id");
+        var el = document.getElementById("qr-" + id);
+        if (el) { el.classList.add("active"); btn.style.display = "none"; }
+      });
+    });
+    ticketsList.querySelectorAll(".qr-hide-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var id = btn.getAttribute("data-qr-id");
+        var el = document.getElementById("qr-" + id);
+        if (el) { el.classList.remove("active"); }
+        var showBtn = document.querySelector('.qr-show-btn[data-qr-id="' + id + '"]');
+        if (showBtn) { showBtn.style.display = ""; }
+      });
+    });
+  }
+
+  // Back button
+  document.getElementById("back-to-login-btn").addEventListener("click", function() {
+    resultsSection.classList.remove("active");
+    loginSection.style.display = "";
+    codeInput.value = "";
+    codeInput.focus();
+    submitBtn.disabled = false;
+    submitBtn.textContent = "View My Tickets";
+    errorEl.style.display = "none";
+  });
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = "block";
+  }
+
+  function escHtml(s) {
+    if (!s) return "";
+    var d = document.createElement("div");
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+  }
+})();
+</script>
+
+</body>
+</html>

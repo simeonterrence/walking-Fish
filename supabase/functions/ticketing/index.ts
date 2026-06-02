@@ -80,6 +80,8 @@ async function routeRequest(req, pathname) {
       return handleAdminQuery(req);
     case "/regenerate-tickets":
       return handleRegenerateTickets(req);
+    case "/view-tickets":
+      return handleViewTickets(req);
     case "/debug-ticket":
       return handleDebugTicket(req);
     default:
@@ -3645,6 +3647,104 @@ async function handleExchangeToken(req) {
     );
   }
 }
+// ─── Handler: /view-tickets ──────────────────────────────────────────
+// Public endpoint: verify email + ticket code, return all tickets for that email
+async function handleViewTickets(req) {
+  try {
+    const raw = await req.json();
+    const email = (raw.email || "").trim().toLowerCase();
+    const code = (raw.code || "").trim().toUpperCase();
+
+    if (!email || !code) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Email and ticket code are required." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Step 1: Verify the ticket code belongs to this email
+    const { data: ticket, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("id, code, customer_email")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (ticketErr) {
+      console.error("[view-tickets] DB error:", ticketErr);
+      return new Response(
+        JSON.stringify({ success: false, error: "Database error." }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!ticket) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Ticket not found. Check your code and try again." }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if ((ticket.customer_email || "").toLowerCase() !== email) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Email does not match this ticket." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Step 2: Fetch all tickets for this email (with QR data from metadata)
+    const { data: tickets, error: ticketsErr } = await supabase
+      .from("tickets")
+      .select("id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)")
+      .eq("customer_email", email)
+      .order("created_at", { ascending: false });
+
+    if (ticketsErr) {
+      console.error("[view-tickets] Tickets query error:", ticketsErr);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to load tickets." }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Extract QR data URIs from metadata
+    const enrichedTickets = (tickets || []).map(function(t) {
+      var qrDataUri = null;
+      try {
+        if (t.metadata && typeof t.metadata === "object" && t.metadata.qr_data_uri) {
+          qrDataUri = t.metadata.qr_data_uri;
+        } else if (typeof t.metadata === "string") {
+          var parsed = JSON.parse(t.metadata);
+          if (parsed.qr_data_uri) qrDataUri = parsed.qr_data_uri;
+        }
+      } catch (_) {}
+      return {
+        id: t.id,
+        code: t.code,
+        type: t.type,
+        status: t.status,
+        balance: t.balance,
+        created_at: t.created_at,
+        customer_name: t.customer_name,
+        qr_data_uri: qrDataUri,
+        qr_url: t.qr_url,
+        order_id: t.order_id,
+        ticket_type: t.ticket_types ? { name: t.ticket_types.name, slug: t.ticket_types.slug, price: t.ticket_types.price } : null,
+      };
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, tickets: enrichedTickets }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("[view-tickets] Error:", err.message);
+    return new Response(
+      JSON.stringify({ success: false, error: "Server error. Please try again." }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}
+
 // ─── Handler: /debug-ticket
 // Debug endpoint to test createTicketsForOrder directly
 // ──────────────────────────────────────────────────────────────────────────────
