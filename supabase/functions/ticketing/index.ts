@@ -278,9 +278,9 @@ async function sendMagicLinkEmail(email) {
   }
 }
 // ─── Rate Limiter (in-memory, per-IP) ───────────────────────────────────────
-// Used to prevent brute-force attacks on the /staff-auth endpoint.
-// In-memory is sufficient for basic protection in a serverless Edge Function;
-// limits reset on cold start but still prevent sustained brute-force.
+// Used to prevent brute-force attacks on the /staff-auth and /view-tickets
+// endpoints. In-memory is sufficient for basic protection in a serverless Edge
+// Function; limits reset on cold start but still prevent sustained brute-force.
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_ATTEMPTS = 5; // 5 attempts per window
 const rateLimitStore = new Map();
@@ -3667,6 +3667,28 @@ async function handleExchangeToken(req) {
 // The access code is generated at ticket creation and sent in the email alongside the QR code.
 async function handleViewTickets(req) {
   try {
+    // ── Rate limit check ──────────────────────────────────────────────────
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(clientIp);
+    if (!rateCheck.allowed) {
+      console.warn("[view-tickets] Rate limit exceeded for IP", clientIp);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Too many attempts. Please wait before trying again.",
+          retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
+    }
     const raw = await req.json();
     const email = (raw.email || "").trim().toLowerCase();
     const codeInput = (raw.code || "").trim();
@@ -3676,7 +3698,8 @@ async function handleViewTickets(req) {
       console.warn("[view-tickets] Missing fields - email:", !!email, "code:", !!codeInput);
       return new Response(
         JSON.stringify({ success: false, error: "Email and access code are required." }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
       );
     }
 
@@ -3703,7 +3726,8 @@ async function handleViewTickets(req) {
       console.warn("[view-tickets] No match for", email, "- wrong access code or no tickets");
       return new Response(
         JSON.stringify({ success: false, error: "No matching ticket found. Check your email and access code and try again." }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
+        { status: 404, headers: { "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
       );
     }
 
@@ -3758,7 +3782,8 @@ async function handleViewTickets(req) {
     console.log("[view-tickets] Returning", enrichedTickets.length, "tickets for", email);
     return new Response(
       JSON.stringify({ success: true, tickets: enrichedTickets }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
     );
   } catch (err) {
     console.error("[view-tickets] Error:", err.message, err.stack || "");
