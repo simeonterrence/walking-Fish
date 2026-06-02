@@ -1781,6 +1781,10 @@
                     "</div>";
 
                 document.body.appendChild(overlay);
+                // Trigger the CSS transition to make the overlay visible
+                requestAnimationFrame(function () {
+                    overlay.classList.add("open");
+                });
             }
 
             function updateComplaintStatus(complaintId, newStatus, notes) {
