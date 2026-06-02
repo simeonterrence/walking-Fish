@@ -745,7 +745,10 @@
     tickets.forEach(function (t) {
       var typeName = (t.ticket_types && t.ticket_types.name) || "Ticket";
       var typeSlug = t.type || "entry";
-      var hasBalance = t.type === "activity_credit" || t.type === "food" || t.type === "drinks";
+      var hasBalance =
+        t.type === "activity_credit" ||
+        t.type === "food" ||
+        t.type === "drinks";
       var balance = t.balance || 0;
       var statusBadge =
         t.status !== "active"
@@ -1058,7 +1061,21 @@
     var params = new URLSearchParams(window.location.search);
     var ticketToken = params.get("ticket_token");
 
+    /* Also check localStorage for a pending token — this handles the iOS
+     * WKWebView → Safari handoff where replaceState may strip the query
+     * param before the real browser can use it. localStorage is shared
+     * across all iOS web views (WKWebView + Safari), unlike sessionStorage. */
+    if (!ticketToken) {
+      ticketToken = localStorage.getItem("wf_pending_ticket_token");
+    }
+
     if (!ticketToken) return;
+
+    /* Persist the ticket_token to localStorage immediately so that if the
+     * page is subsequently loaded in Safari (via iOS handoff) without
+     * the query parameter (because a preview WKWebView called replaceState),
+     * Safari can still pick up the token from here. Cleaned up on success. */
+    localStorage.setItem("wf_pending_ticket_token", ticketToken);
 
     /* Immediately switch to dashboard tab with visible loading state */
     document.querySelectorAll("[data-tab]").forEach(function (t) {
@@ -1091,6 +1108,10 @@
       var data = await res.json();
 
       if (res.ok && data.success && data.access_token) {
+        /* Clear the pending token from localStorage — the session is now
+         * stored in sessionStorage (current browser) and the token is no
+         * longer needed. */
+        localStorage.removeItem("wf_pending_ticket_token");
         /* Server-side: edge function already exchanged the token for a session.
          * Store the session directly and load the dashboard — no browser redirect needed.
          * This works reliably on mobile in-app browsers where redirect chains break. */
@@ -1131,7 +1152,8 @@
           /* Show a helpful hint to click the button */
           var hint = document.getElementById("dashboard-login-msg");
           if (hint) {
-            hint.textContent = "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
+            hint.textContent =
+              "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
             hint.style.color = "";
           }
         }
