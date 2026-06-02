@@ -33,6 +33,8 @@
     billReceiptDelay: null,
     undoingEntryIdx: -1, // index in billLog of entry being undone with note input
     crossTypeMode: "scan", // 'scan' | 'new'
+    newTicketQty: 1,
+    newTicketPrice: 0,
     pollingInterval: null,
   };
 
@@ -2282,7 +2284,7 @@
     if (!select) return;
 
     supabaseGet(
-      "/rest/v1/ticket_types?select=id,name,price,type,sort_order,sold,capacity&is_active=eq.true&type=not.eq.entry&order=sort_order.asc",
+      "/rest/v1/ticket_types?select=id,name,price,type,sort_order,sold,capacity&is_active=eq.true&order=sort_order.asc",
     )
       .then(function (types) {
         if (!types || types.length === 0) {
@@ -2311,10 +2313,47 @@
           })
           .join("");
         select.innerHTML = '<option value="">Select type…</option>' + html;
+
+        // Reset quantity and total when types reload
+        state.newTicketQty = 1;
+        state.newTicketPrice = 0;
+        updateNewTicketTotal();
       })
       .catch(function () {
         select.innerHTML = '<option value="">Failed to load types</option>';
+        state.newTicketQty = 1;
+        state.newTicketPrice = 0;
+        updateNewTicketTotal();
       });
+  }
+
+  // ─── New Ticket: Quantity & Total ────────────────────────────────────────
+
+  function updateNewTicketTotal() {
+    var qtyEl = document.getElementById("new-ticket-qty-display");
+    if (qtyEl) qtyEl.textContent = state.newTicketQty;
+
+    var typeSelect = document.getElementById("new-ticket-type");
+    if (typeSelect && typeSelect.value) {
+      var price = parseInt(
+        typeSelect.options[typeSelect.selectedIndex].getAttribute("data-price"),
+        10,
+      );
+      state.newTicketPrice = (price || 0) * state.newTicketQty;
+    } else {
+      state.newTicketPrice = 0;
+    }
+
+    var totalEl = document.getElementById("new-ticket-total");
+    var totalAmtEl = document.getElementById("new-ticket-total-amount");
+    if (totalEl && totalAmtEl) {
+      if (state.newTicketPrice > 0) {
+        totalEl.style.display = "flex";
+        totalAmtEl.textContent = formatCurrency(state.newTicketPrice);
+      } else {
+        totalEl.style.display = "none";
+      }
+    }
   }
 
   function createNewTicket() {
@@ -2356,6 +2395,7 @@
     var typeId = typeSelect.value;
     var customerName = nameInput.value.trim();
     var email = emailInput.value.trim();
+    var quantity = state.newTicketQty || 1;
     var price = parseInt(
       typeSelect.options[typeSelect.selectedIndex].getAttribute("data-price"),
       10,
@@ -2365,7 +2405,7 @@
     callEdgeFunction("/create-order", {
       email: email,
       customer_name: customerName,
-      items: [{ ticket_type_id: typeId, quantity: 1 }],
+      items: [{ ticket_type_id: typeId, quantity: quantity }],
     })
       .then(function (orderData) {
         if (!orderData.success)
@@ -2393,25 +2433,68 @@
         });
       })
       .then(function (data) {
-        if (data && data.success && data.ticket_code) {
-          // Show result with ticket code for paper slip
-          showResult(
-            "success",
-            icon("checkcircle", 16) +
-              " Created <strong>" +
-              escapeHtml(data.ticket_code) +
-              "</strong> for " +
-              escapeHtml(customerName),
-          );
+        if (data && data.success) {
+          var ticketCodes = data.ticket_codes || [];
+          if (ticketCodes.length > 0) {
+            var firstCode = escapeHtml(ticketCodes[0]);
+            var count = ticketCodes.length;
+            var pluralSuffix = count > 1 ? "s" : "";
+            showResult(
+              "success",
+              icon("checkcircle", 16) +
+                " Created <strong>" +
+                count +
+                " ticket" +
+                pluralSuffix +
+                "</strong> for " +
+                escapeHtml(customerName) +
+                (count <= 3
+                  ? "<br><span style=\"font-size:12px;color:var(--muted);\">" +
+                    ticketCodes
+                      .map(function (c) {
+                        return escapeHtml(c);
+                      })
+                      .join(", ") +
+                    "</span>"
+                  : "<br><span style=\"font-size:12px;color:var(--muted);\">First: " +
+                    firstCode +
+                    "</span>"),
+            );
+          } else if (data.ticket_code) {
+            showResult(
+              "success",
+              icon("checkcircle", 16) +
+                " Created <strong>" +
+                escapeHtml(data.ticket_code) +
+                "</strong> for " +
+                escapeHtml(customerName),
+            );
+          } else {
+            showResult(
+              "info",
+              "Order created. " +
+                quantity +
+                " ticket" +
+                (quantity > 1 ? "s" : "") +
+                " will be generated and emailed to " +
+                escapeHtml(email),
+            );
+          }
 
           // Reset form
           if (typeSelect) typeSelect.value = "";
           if (nameInput) nameInput.value = "";
           if (emailInput) emailInput.value = "";
+          state.newTicketQty = 1;
+          updateNewTicketTotal();
         } else {
           showResult(
             "info",
-            "Order created. Ticket will be generated and emailed to " +
+            "Order created. " +
+              quantity +
+              " ticket" +
+              (quantity > 1 ? "s" : "") +
+              " will be generated and emailed to " +
               escapeHtml(email),
           );
         }
@@ -2779,6 +2862,24 @@
         return;
       }
 
+      // New ticket quantity: minus
+      if (target.closest("#new-ticket-qty-minus")) {
+        if (state.newTicketQty > 1) {
+          state.newTicketQty--;
+          updateNewTicketTotal();
+        }
+        return;
+      }
+
+      // New ticket quantity: plus
+      if (target.closest("#new-ticket-qty-plus")) {
+        if (state.newTicketQty < 50) {
+          state.newTicketQty++;
+          updateNewTicketTotal();
+        }
+        return;
+      }
+
       // Cross-type toggle
       if (target.closest(".toggle-btn[data-ct]")) {
         var ctBtn = target.closest(".toggle-btn[data-ct]");
@@ -2843,6 +2944,14 @@
     });
 
     // Input events
+    // Type change on new ticket form — update total
+    var newTicketTypeSelect = document.getElementById("new-ticket-type");
+    if (newTicketTypeSelect) {
+      newTicketTypeSelect.addEventListener("change", function () {
+        updateNewTicketTotal();
+      });
+    }
+
     document.addEventListener("input", function (e) {
       // Booth custom amount
       var boothCustomInput = document.getElementById("booth-custom-amount");

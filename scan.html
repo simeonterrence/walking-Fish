@@ -1632,6 +1632,37 @@
                                     placeholder="customer@example.com"
                                 />
                             </div>
+                            <!-- Quantity Selector -->
+                            <div class="form-group">
+                                <label>Quantity</label>
+                                <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+                                    <button
+                                        id="new-ticket-qty-minus"
+                                        style="width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:20px;font-weight:600;font-family:var(--font-body);color:var(--fg);transition:border-color 0.15s;display:flex;align-items:center;justify-content:center;"
+                                        aria-label="Decrease quantity"
+                                    >−</button>
+                                    <span
+                                        id="new-ticket-qty-display"
+                                        style="font-family:var(--font-display);font-size:24px;font-weight:700;min-width:40px;text-align:center;"
+                                    >1</span>
+                                    <button
+                                        id="new-ticket-qty-plus"
+                                        style="width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:20px;font-weight:600;font-family:var(--font-body);color:var(--fg);transition:border-color 0.15s;display:flex;align-items:center;justify-content:center;"
+                                        aria-label="Increase quantity"
+                                    >+</button>
+                                </div>
+                            </div>
+                            <!-- Total Price Display -->
+                            <div
+                                id="new-ticket-total"
+                                style="background:var(--accent-dim);border-radius:var(--radius);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;display:none;"
+                            >
+                                <span style="font-size:13px;color:var(--muted);">Total</span>
+                                <span
+                                    id="new-ticket-total-amount"
+                                    style="font-family:var(--font-display);font-size:22px;font-weight:700;"
+                                >D0</span>
+                            </div>
                             <div
                                 id="new-ticket-error"
                                 class="error-message"

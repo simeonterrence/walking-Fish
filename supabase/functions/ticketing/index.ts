@@ -1344,9 +1344,10 @@ async function handleWebhook(req) {
           });
         }
 
-        // Return first ticket code for the frontend to show
+        // Return ticket codes for the frontend to show
 
         const firstCode = tickets.length > 0 ? tickets[0].code : null;
+        const allCodes = tickets.map(function (t) { return t.code; });
 
         console.log(
           `[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`,
@@ -1359,6 +1360,8 @@ async function handleWebhook(req) {
             tickets_created: tickets.length,
 
             ticket_code: firstCode,
+
+            ticket_codes: allCodes,
           }),
 
           {
