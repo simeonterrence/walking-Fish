@@ -321,7 +321,9 @@ async function createTicketsForOrder(
       const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
       const qrDataUri = await generateQRDataUri(qrContent);
       const initialBalance =
-        ticketType.type === "activity_credit" || ticketType.type === "food" || ticketType.type === "drinks"
+        ticketType.type === "activity_credit" ||
+        ticketType.type === "food" ||
+        ticketType.type === "drinks"
           ? ticketType.price
           : 0;
       const { data: ticket, error: ticketErr } = await supabase
@@ -2211,10 +2213,15 @@ async function handleMarkUsed(req) {
       );
     }
 
-    if (ticket.type === "activity_credit" || ticket.type === "food" || ticket.type === "drinks") {
+    if (
+      ticket.type === "activity_credit" ||
+      ticket.type === "food" ||
+      ticket.type === "drinks"
+    ) {
       return new Response(
         JSON.stringify({
-          error: "Balance-based tickets cannot be marked as used. Use Debit mode to deduct from balance instead.",
+          error:
+            "Balance-based tickets cannot be marked as used. Use Debit mode to deduct from balance instead.",
         }),
         {
           status: 400,
@@ -3314,10 +3321,13 @@ async function handleExchangeToken(req) {
     // Parse token: v1.{expiresAt}.{base64url(email)}.{hexSig}
     const parts = ticket_token.split(".");
     if (parts.length !== 4 || parts[0] !== "v1") {
-      console.warn(`[exchange-token] Bad token format: ${parts.length} parts, token length=${ticket_token.length}`);
+      console.warn(
+        `[exchange-token] Bad token format: ${parts.length} parts, token length=${ticket_token.length}`,
+      );
       return new Response(
         JSON.stringify({
-          error: "This link appears to be broken or incomplete. Please request a new sign-in link.",
+          error:
+            "This link appears to be broken or incomplete. Please request a new sign-in link.",
           reason: "invalid_format",
           parts_count: parts.length,
         }),
@@ -3335,13 +3345,18 @@ async function handleExchangeToken(req) {
     const sig = parts[3];
     // Attempt to decode email early for better error messages
     let emailFromToken = "";
-    try { emailFromToken = base64UrlDecode(encodedEmail).toLowerCase(); } catch (_) {}
+    try {
+      emailFromToken = base64UrlDecode(encodedEmail).toLowerCase();
+    } catch (_) {}
     // Check expiry
     if (isNaN(expiresAt)) {
-      console.warn(`[exchange-token] NaN expiresAt — token likely truncated. Length=${ticket_token.length}`);
+      console.warn(
+        `[exchange-token] NaN expiresAt — token likely truncated. Length=${ticket_token.length}`,
+      );
       return new Response(
         JSON.stringify({
-          error: "This link appears to be broken or truncated. Please request a new sign-in link.",
+          error:
+            "This link appears to be broken or truncated. Please request a new sign-in link.",
           reason: "invalid_expiry",
           email: emailFromToken || undefined,
         }),
@@ -3356,10 +3371,13 @@ async function handleExchangeToken(req) {
     }
     if (expiresAt < Date.now()) {
       const expiredAgo = Math.round((Date.now() - expiresAt) / 1000 / 60);
-      console.warn(`[exchange-token] Token expired ${expiredAgo}m ago for ${emailFromToken || "(unknown email)"}`);
+      console.warn(
+        `[exchange-token] Token expired ${expiredAgo}m ago for ${emailFromToken || "(unknown email)"}`,
+      );
       return new Response(
         JSON.stringify({
-          error: "This link has expired. Please request a new sign-in link below.",
+          error:
+            "This link has expired. Please request a new sign-in link below.",
           reason: "expired",
           email: emailFromToken || undefined,
         }),
@@ -3486,8 +3504,16 @@ async function handleExchangeToken(req) {
         );
       }
 
-      // 3. Generate a strong temporary password
-      const tempPassword = crypto.randomUUID().replace(/-/g, "") + "Aa1!";
+      // 3. Derive a deterministic temporary password from email + secret.
+      // Using crypto.randomUUID() caused a race condition: when two concurrent
+      // invocations (e.g. iOS WKWebView + Safari) both reach this point, they
+      // generate DIFFERENT passwords. The second updateUserById overwrites the
+      // first, causing the first invocation's signInWithPassword to fail.
+      // A deterministic HMAC means all concurrent invocations set the SAME
+      // password, so every signInWithPassword attempt succeeds.
+      const tempPassword =
+        (await signMessage(tokenSecret, "temp_pw:" + email)).slice(0, 24) +
+        "Aa1!";
 
       // 4. Update password AND confirm email in a single admin call.
       // Some accounts are created in an unconfirmed state (e.g. via a prior
