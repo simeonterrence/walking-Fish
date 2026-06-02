@@ -5,35 +5,27 @@ import { createClient } from "npm:@supabase/supabase-js@2.39.8";
 import * as QRCode from "qrcode";
 
 const corsHeaders = {
-
   "Access-Control-Allow-Origin": "*",
 
   "Access-Control-Allow-Headers":
-
     "authorization, x-client-info, apikey, content-type",
 
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
-
 };
 
 function hexToBytes(hex) {
-
   const bytes = new Uint8Array(hex.length / 2);
 
   for (let i = 0; i < bytes.length; i++) {
-
     bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-
   }
 
   return bytes;
-
 }
 
 // ─── Helper: HMAC-SHA256 sign a message (used for persistent ticket tokens) ──
 
 async function signMessage(secret, message) {
-
   const encoder = new TextEncoder();
 
   const keyData = encoder.encode(secret);
@@ -41,23 +33,19 @@ async function signMessage(secret, message) {
   const messageData = encoder.encode(message);
 
   const key = await crypto.subtle.importKey(
-
     "raw",
 
     keyData,
 
     {
-
       name: "HMAC",
 
       hash: "SHA-256",
-
     },
 
     false,
 
     ["sign"],
-
   );
 
   const signature = await crypto.subtle.sign("HMAC", key, messageData);
@@ -67,187 +55,137 @@ async function signMessage(secret, message) {
     .map((b) => b.toString(16).padStart(2, "0"))
 
     .join("");
-
 }
 
 // ─── Helper: URL-safe base64 encode/decode ───────────────────────────────────
 
 function base64UrlEncode(str) {
-
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
 }
 
 function base64UrlDecode(str) {
-
   return atob(str.replace(/-/g, "+").replace(/_/g, "/"));
-
 }
 
 // ─── Request routing ─────────────────────────────────────────────────────────
 
 async function routeRequest(req, pathname) {
-
   switch (pathname) {
-
     case "/create-intent":
-
       return handleCreateIntent(req);
 
     case "/webhook":
-
       return handleWebhook(req);
 
     case "/check-order":
-
       return handleCheckOrder(req);
 
     case "/create-order":
-
       return handleCreateOrder(req);
 
     case "/lookup-ticket":
-
       return handleLookupTicket(req);
 
     case "/lookup-by-email":
-
       return handleLookupByEmail(req);
 
     case "/staff-auth":
-
       return handleStaffAuth(req);
 
     case "/mark-used":
-
       return handleMarkUsed(req);
 
     case "/debit":
-
       return handleDebit(req);
 
     case "/bulk-topup":
-
       return handleBulkTopup(req);
 
     case "/confirm-payment":
-
       return handleConfirmPayment(req);
 
     case "/unmark-used":
-
       return handleUnmarkUsed(req);
 
     case "/reverse-debit":
-
       return handleReverseDebit(req);
 
     case "/resend-magic-link":
-
       return handleResendMagicLink(req);
 
     case "/send-magic-link":
-
       return handleSendMagicLink(req);
 
     case "/exchange-token":
-
       return handleExchangeToken(req);
 
     case "/admin-query":
-
       return handleAdminQuery(req);
 
     case "/regenerate-tickets":
-
       return handleRegenerateTickets(req);
 
     case "/view-tickets":
-
       return handleViewTickets(req);
 
     case "/debug-ticket":
-
       return handleDebugTicket(req);
 
     default:
-
       return new Response(
-
         JSON.stringify({
-
           error: "Not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
   }
-
 }
 
 // ─── Helper: get Supabase client (service role) ──────────────────────────────
 
 function getSupabaseClient() {
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   return createClient(supabaseUrl, supabaseKey);
-
 }
 
 // ─── Helper: send email via Resend ───────────────────────────────────────────
 
 function emailShell(body) {
-
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;color:#111;">${body}<hr style="margin:32px 0;border:none;border-top:1px solid #eee;"><p style="font-size:12px;color:#999;margin:0;">Walking-Fish Group · walkingfish.gm</p></div>`;
-
 }
 
 async function sendEmail(payload) {
-
   const resendKey = Deno.env.get("RESEND_API_KEY");
 
   if (!resendKey) {
-
     console.warn("RESEND_API_KEY not set — skipping email");
 
     return;
-
   }
 
   try {
-
     const res = await fetch("https://api.resend.com/emails", {
-
       method: "POST",
 
       headers: {
-
         Authorization: `Bearer ${resendKey}`,
 
         "Content-Type": "application/json",
-
       },
 
       body: JSON.stringify({
-
         from: "Walking-Fish <noreply@walkingfish.gm>",
 
         to: [payload.to],
@@ -255,27 +193,17 @@ async function sendEmail(payload) {
         subject: payload.subject,
 
         html: payload.html,
-
       }),
-
     });
 
     if (!res.ok) {
-
       console.error(`[Email] Resend error ${res.status}: ${await res.text()}`);
-
     } else {
-
       console.log(`[Email] ✓ Sent to ${payload.to} — ${payload.subject}`);
-
     }
-
   } catch (err) {
-
     console.error(`[Email] Send failed: ${err.message}`);
-
   }
-
 }
 
 // ─── Helper: send magic link via Supabase Auth Admin REST API + Resend ────
@@ -288,8 +216,6 @@ async function sendEmail(payload) {
 
 // Docs: https://supabase.com/docs/reference/api/auth-admin-generatelink
 
-
-
 // ─── Helper: send ticket email with QR images ────────────────────────────────
 
 // Generates a beautiful HTML email with embedded QR codes for each ticket.
@@ -297,7 +223,6 @@ async function sendEmail(payload) {
 // Used for purchase confirmations, top-ups, and debit notifications.
 
 function renderTicketEmailHtml(tickets, title, subtitle) {
-
   const siteUrl = "https://www.walkingfish.gm";
 
   const viewTicketsLink = `${siteUrl}/view-tickets`;
@@ -305,31 +230,23 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
   let ticketCards = tickets
 
     .map(function (t) {
-
       const qrSrc = t.qrImageUrl || t.qrDataUri;
 
       const qrImg = qrSrc
-
         ? `<img src="${qrSrc}" alt="QR Code" style="width:180px;height:180px;border-radius:8px;display:block;margin:0 auto;">`
-
         : `<div style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:0.08em;color:#111;text-align:center;padding:12px;">${t.code}</div>`;
 
-      const balanceLine = t.balance !== undefined && t.balance !== null
-
-        ? `<div style="font-size:13px;color:#666;margin-top:4px;">Balance: <strong>D${Number(t.balance).toLocaleString()}</strong></div>`
-
-        : "";
+      const balanceLine =
+        t.balance !== undefined && t.balance !== null
+          ? `<div style="font-size:13px;color:#666;margin-top:4px;">Balance: <strong>D${Number(t.balance).toLocaleString()}</strong></div>`
+          : "";
 
       const ticketTypeLine = t.ticketTypeName
-
         ? `<div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.05em;">${t.ticketTypeName}</div>`
-
         : "";
 
       const codeLine = t.accessCode
-
         ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:13px;color:#666;">Access Code: <strong style="font-family:monospace;font-size:18px;letter-spacing:0.15em;color:#111;">${t.accessCode}</strong></div>`
-
         : "";
 
       return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">
@@ -345,7 +262,6 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
         ${codeLine}
 
       </div>`;
-
     })
 
     .join("");
@@ -383,39 +299,25 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
       Show the QR code at the venue gate. Your access code lets you log in at walkingfish.gm/view-tickets.
 
     </p>`;
-
 }
 
-
-
 async function sendTicketsEmail(options) {
-
   const { to, subject, tickets, title, subtitle } = options;
 
   try {
-
     await sendEmail({
-
       to,
 
       subject,
 
       html: emailShell(renderTicketEmailHtml(tickets, title, subtitle)),
-
     });
-
   } catch (e) {
-
     console.error("[TicketEmail] Sending failed:", e.message);
-
   }
-
 }
 
-
-
 async function sendMagicLinkEmail(email) {
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -443,65 +345,45 @@ async function sendMagicLinkEmail(email) {
   // (signup link creates the user if they don't exist yet)
 
   try {
-
     const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-
       method: "POST",
 
       headers: {
-
         Authorization: `Bearer ${serviceKey}`,
 
         apikey: serviceKey,
 
         "Content-Type": "application/json",
-
       },
 
       body: JSON.stringify({
-
         type: "magiclink",
 
         email,
 
         options: {
-
           redirect_to: `${siteUrl}/tickets`,
-
         },
-
       }),
-
     });
 
     if (res.ok) {
-
       console.log(`[MagicLink] User record ensured for ${email}`);
-
     } else {
-
       const body = await res.json();
 
       // User already exists — that's fine
 
       console.log(
-
         `[MagicLink] User already exists for ${email}: ${res.status}`,
-
       );
-
     }
-
   } catch (err) {
-
     console.warn(`[MagicLink] User check error for ${email}: ${err.message}`);
-
   }
 
   try {
-
     await sendEmail({
-
       to: email,
 
       subject: "Sign in to your tickets — Walking-Fish",
@@ -545,17 +427,12 @@ async function sendMagicLinkEmail(email) {
         </p>
 
       `),
-
     });
 
     console.log(`[MagicLink] Persistent ticket token sent to ${email}`);
-
   } catch (err) {
-
     console.error(`[MagicLink] Send error for ${email}: ${err.message}`);
-
   }
-
 }
 
 // ─── Rate Limiter (in-memory, per-IP) ───────────────────────────────────────
@@ -575,29 +452,20 @@ const rateLimitStore = new Map();
 // Periodically purge expired entries to prevent unbounded Map growth
 
 setInterval(() => {
-
   const now = Date.now();
 
   for (const [ip, entry] of rateLimitStore) {
-
     if (now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
-
       rateLimitStore.delete(ip);
-
     }
-
   }
-
 }, 300_000);
 
 function getClientIp(req) {
-
   const forwarded = req.headers.get("x-forwarded-for");
 
   if (forwarded) {
-
     return forwarded.split(",")[0].trim();
-
   }
 
   const realIp = req.headers.get("x-real-ip");
@@ -605,93 +473,71 @@ function getClientIp(req) {
   if (realIp) return realIp;
 
   return "unknown";
-
 }
 
 function checkRateLimit(ip) {
-
   const now = Date.now();
 
   const entry = rateLimitStore.get(ip);
 
   if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
-
     // New window
 
     rateLimitStore.set(ip, {
-
       attempts: 1,
 
       windowStart: now,
-
     });
 
     return {
-
       allowed: true,
 
       remaining: RATE_LIMIT_MAX_ATTEMPTS - 1,
 
       resetMs: RATE_LIMIT_WINDOW_MS,
-
     };
-
   }
 
   if (entry.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
-
     const resetMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
 
     return {
-
       allowed: false,
 
       remaining: 0,
 
       resetMs,
-
     };
-
   }
 
   entry.attempts++;
 
   return {
-
     allowed: true,
 
     remaining: RATE_LIMIT_MAX_ATTEMPTS - entry.attempts,
 
     resetMs: RATE_LIMIT_WINDOW_MS - (now - entry.windowStart),
-
   };
-
 }
 
 // ─── Helper: generate QR code as base64 data URI ─────────────────────────────
 
 async function generateQRDataUri(text) {
-
   return await QRCode.toDataURL(text, {
-
     width: 400,
 
     margin: 2,
 
     color: {
-
       dark: "#111111",
 
       light: "#ffffff",
-
     },
-
   });
-
 }
 
 async function createTicketsForOrder(
-
   supabase,
 
   orderId,
@@ -701,13 +547,10 @@ async function createTicketsForOrder(
   items,
 
   customerName,
-
 ) {
-
   const created = [];
 
   for (const item of items) {
-
     // Fetch ticket type info
 
     const { data: ticketType, error: typeErr } = await supabase
@@ -721,53 +564,40 @@ async function createTicketsForOrder(
       .single();
 
     if (typeErr || !ticketType) {
-
       console.error(
-
         `[Tickets] Ticket type ${item.ticket_type_id} not found:`,
 
         typeErr,
-
       );
 
       continue;
-
     }
 
     // Try to increment sold count — if at capacity, skip
 
     const { data: canSell } = await supabase.rpc(
-
       "increment_ticket_sold_count",
 
       {
-
         ticket_type_id: item.ticket_type_id,
-
       },
-
     );
 
     if (canSell === false) {
-
       console.warn(`[Tickets] Ticket type ${ticketType.slug} is sold out`);
 
       continue;
-
     }
 
     for (let i = 0; i < item.quantity; i++) {
-
       // Generate ticket code
 
       const { data: code } = await supabase.rpc("generate_ticket_code");
 
       if (!code) {
-
         console.error("[Tickets] Failed to generate ticket code");
 
         continue;
-
       }
 
       const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
@@ -781,14 +611,15 @@ async function createTicketsForOrder(
       let qrImageUrl = null;
 
       try {
-
         const base64Data = qrDataUri.split(",")[1];
 
         const binaryStr = atob(base64Data);
 
         const bytes = new Uint8Array(binaryStr.length);
 
-        for (let bi = 0; bi < binaryStr.length; bi++) { bytes[bi] = binaryStr.charCodeAt(bi); }
+        for (let bi = 0; bi < binaryStr.length; bi++) {
+          bytes[bi] = binaryStr.charCodeAt(bi);
+        }
 
         const blob = new Blob([bytes], { type: "image/png" });
 
@@ -801,39 +632,39 @@ async function createTicketsForOrder(
           .upload(filePath, blob, { contentType: "image/png", upsert: true });
 
         if (uploadErr) {
-
-          console.warn("[Tickets] QR upload failed for", code, "-", uploadErr.message);
-
+          console.warn(
+            "[Tickets] QR upload failed for",
+            code,
+            "-",
+            uploadErr.message,
+          );
         } else {
-
-          const { data: { publicUrl } } = supabase.storage
+          const {
+            data: { publicUrl },
+          } = supabase.storage
 
             .from("ticket-qrs")
 
             .getPublicUrl(filePath);
 
           qrImageUrl = publicUrl;
-
         }
-
       } catch (qrUploadErr) {
-
-        console.warn("[Tickets] QR upload error for", code, "-", qrUploadErr.message);
-
+        console.warn(
+          "[Tickets] QR upload error for",
+          code,
+          "-",
+          qrUploadErr.message,
+        );
       }
 
       const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       const initialBalance =
-
         ticketType.type === "activity_credit" ||
-
         ticketType.type === "food" ||
-
         ticketType.type === "drinks"
-
           ? ticketType.price
-
           : 0;
 
       const { data: ticket, error: ticketErr } = await supabase
@@ -841,7 +672,6 @@ async function createTicketsForOrder(
         .from("tickets")
 
         .insert({
-
           order_id: orderId,
 
           ticket_type_id: item.ticket_type_id,
@@ -859,15 +689,12 @@ async function createTicketsForOrder(
           qr_url: qrContent,
 
           metadata: {
-
             qr_data_uri: qrDataUri,
 
             qr_image_url: qrImageUrl,
 
             access_code: accessCode,
-
           },
-
         })
 
         .select()
@@ -875,11 +702,9 @@ async function createTicketsForOrder(
         .single();
 
       if (ticketErr) {
-
         console.error(`[Tickets] Failed to create ticket:`, ticketErr);
 
         continue;
-
       }
 
       // Record initial balance transaction for tickets with a balance
@@ -889,9 +714,7 @@ async function createTicketsForOrder(
       // We insert directly rather than calling update_ticket_balance (which would double-add).
 
       if (initialBalance > 0) {
-
         await supabase.from("balance_transactions").insert({
-
           ticket_id: ticket.id,
 
           type: "initial_purchase",
@@ -903,13 +726,10 @@ async function createTicketsForOrder(
           source: "initial",
 
           notes: `Initial purchase — ${ticketType.name}`,
-
         });
-
       }
 
       created.push({
-
         code,
 
         ticketTypeSlug: ticketType.slug,
@@ -920,14 +740,12 @@ async function createTicketsForOrder(
 
         qrImageUrl: qrImageUrl,
 
+        balance: ticket.balance,
       });
-
     }
-
   }
 
   return created;
-
 }
 
 // ─── Handler: /create-intent
@@ -939,11 +757,8 @@ async function createTicketsForOrder(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleCreateIntent(req) {
-
   try {
-
     const {
-
       order_id,
 
       amount: amount1,
@@ -955,35 +770,24 @@ async function handleCreateIntent(req) {
       purpose,
 
       ticket_code,
-
     } = await req.json();
 
     if (!order_id || !amount1 || !email) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing required fields: order_id, amount, email",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -1001,59 +805,39 @@ async function handleCreateIntent(req) {
       .single();
 
     if (orderErr || !order) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Order not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (order.status !== "unpaid") {
-
       return new Response(
-
         JSON.stringify({
-
           error: `Order is already ${order.status}`,
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // ─── ModemPay Payment Intent API ───────────────────────────────────────
@@ -1067,43 +851,31 @@ async function handleCreateIntent(req) {
     const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ticketing/webhook`;
 
     if (!modemPaySecretKey) {
-
       console.error("[create-intent] MODEMPAY_SECRET_KEY not configured");
 
       return new Response(
-
         JSON.stringify({
-
           error: "Payment gateway not configured",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Build metadata with order context for the webhook
 
     const modemMetadata = {
-
       order_id,
 
       source: "walkingfish-tickets",
-
     };
 
     if (purpose) modemMetadata.purpose = purpose;
@@ -1115,37 +887,27 @@ async function handleCreateIntent(req) {
     const isTopUp = purpose === "top-up";
 
     const returnUrl = isTopUp
-
       ? `${siteUrl}/top-up?payment=success&order_id=${order_id}`
-
       : `${siteUrl}/tickets?payment=success&order_id=${order_id}`;
 
     const cancelUrl = isTopUp
-
       ? `${siteUrl}/top-up?payment=cancelled`
-
       : `${siteUrl}/tickets?payment=cancelled`;
 
     let modemPayResponse;
 
     try {
-
       modemPayResponse = await fetch("https://api.modempay.com/v1/payments", {
-
         method: "POST",
 
         headers: {
-
           Authorization: `Bearer ${modemPaySecretKey}`,
 
           "Content-Type": "application/json",
-
         },
 
         body: JSON.stringify({
-
           data: {
-
             amount: amount1,
 
             currency: "GMD",
@@ -1159,123 +921,82 @@ async function handleCreateIntent(req) {
             skip_url_validation: true,
 
             metadata: modemMetadata,
-
           },
-
         }),
-
       });
-
     } catch (fetchErr) {
-
       console.error(
-
         "[create-intent] ModemPay API call failed:",
 
         fetchErr.message,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error: "Payment gateway unreachable",
-
         }),
 
         {
-
           status: 502,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     let modemPayData;
 
     try {
-
       modemPayData = await modemPayResponse.json();
-
     } catch {
-
       console.error("[create-intent] Failed to parse ModemPay response");
 
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid response from payment gateway",
-
         }),
 
         {
-
           status: 502,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (!modemPayResponse.ok) {
-
       console.error(
-
         "[create-intent] ModemPay error:",
 
         JSON.stringify(modemPayData),
-
       );
 
       const errorMsg =
-
         modemPayData.message || modemPayData.error || "Payment gateway error";
 
       return new Response(
-
         JSON.stringify({
-
           error: errorMsg,
-
         }),
 
         {
-
           status: 502,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Handle both REST API response (top-level) and SDK-wrapped response (nested under .data)
@@ -1283,27 +1004,19 @@ async function handleCreateIntent(req) {
     const responseData = modemPayData.data || modemPayData;
 
     const paymentIntentId =
-
       responseData.payment_intent_id ||
-
       modemPayData.payment_intent_id ||
-
       `mp_${crypto.randomUUID()}`;
 
     const paymentLink =
-
       responseData.payment_link || modemPayData.payment_link || "";
 
     const intentSecret =
-
       responseData.intent_secret || modemPayData.intent_secret || "";
 
     const expiresAt =
-
       responseData.expires_at ||
-
       modemPayData.expires_at ||
-
       new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     // Store the ModemPay intent ID and metadata on the order
@@ -1311,7 +1024,6 @@ async function handleCreateIntent(req) {
     const existingMeta = order.metadata || {};
 
     const metadata = {
-
       ...existingMeta,
 
       modempay_intent_id: paymentIntentId,
@@ -1321,7 +1033,6 @@ async function handleCreateIntent(req) {
       purpose: purpose || existingMeta.purpose || "purchase",
 
       ticket_code: ticket_code || existingMeta.ticket_code || null,
-
     };
 
     await supabase
@@ -1329,23 +1040,17 @@ async function handleCreateIntent(req) {
       .from("orders")
 
       .update({
-
         metadata,
-
       })
 
       .eq("id", order_id);
 
     console.log(
-
       `[ModemPay] Created intent ${paymentIntentId} for order ${order_id} (D${amount1})`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         payment_url: paymentLink,
@@ -1355,53 +1060,35 @@ async function handleCreateIntent(req) {
         intent_secret: intentSecret,
 
         expires_at: expiresAt,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[create-intent] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to create payment intent",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /webhook
@@ -1415,17 +1102,12 @@ async function handleCreateIntent(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleWebhook(req) {
-
   try {
-
     const body = await req.text();
 
     const signature =
-
       req.headers.get("x-modem-signature") ||
-
       req.headers.get("x-modempay-signature") ||
-
       "";
 
     const webhookSecret = Deno.env.get("MODEMPAY_WEBHOOK_SECRET");
@@ -1465,37 +1147,30 @@ async function handleWebhook(req) {
     let signatureValid = false;
 
     if (webhookSecret && signature) {
-
       // ── Path 1: Manual HMAC-SHA512 (raw body + raw secret) ──────────────
 
       try {
-
         const encoder = new TextEncoder();
 
         const sigBytes = hexToBytes(signature);
 
         const keyRaw = await crypto.subtle.importKey(
-
           "raw",
 
           encoder.encode(webhookSecret),
 
           {
-
             name: "HMAC",
 
             hash: "SHA-512",
-
           },
 
           false,
 
           ["verify"],
-
         );
 
         signatureValid = await crypto.subtle.verify(
-
           "HMAC",
 
           keyRaw,
@@ -1503,31 +1178,21 @@ async function handleWebhook(req) {
           sigBytes,
 
           encoder.encode(body),
-
         );
 
         if (signatureValid) {
-
           console.log(
-
             "[Webhook] Signature verified ✓ (HMAC-SHA512, raw secret)",
-
           );
-
         }
-
       } catch (sigErr) {
-
         console.error("[Webhook] Verification path 1 error:", sigErr.message);
-
       }
 
       // ── Path 2: Manual HMAC-SHA512 (raw body + stripped "wh" prefix) ──
 
       if (!signatureValid && webhookSecret.startsWith("wh")) {
-
         try {
-
           const encoder = new TextEncoder();
 
           const sigBytes = hexToBytes(signature);
@@ -1535,27 +1200,22 @@ async function handleWebhook(req) {
           const strippedSecret = webhookSecret.substring(2);
 
           const keyStripped = await crypto.subtle.importKey(
-
             "raw",
 
             encoder.encode(strippedSecret),
 
             {
-
               name: "HMAC",
 
               hash: "SHA-512",
-
             },
 
             false,
 
             ["verify"],
-
           );
 
           signatureValid = await crypto.subtle.verify(
-
             "HMAC",
 
             keyStripped,
@@ -1563,33 +1223,22 @@ async function handleWebhook(req) {
             sigBytes,
 
             encoder.encode(body),
-
           );
 
           if (signatureValid) {
-
             console.log(
-
               "[Webhook] Signature verified ✓ (HMAC-SHA512, stripped secret)",
-
             );
-
           }
-
         } catch (sigErr) {
-
           console.error("[Webhook] Verification path 2 error:", sigErr.message);
-
         }
-
       }
 
       // ── Path 3: Official modem-pay SDK (dynamic import for Deno compat) ─
 
       if (!signatureValid) {
-
         try {
-
           // Dynamic import to avoid crashing the function if the npm package
 
           // is not compatible with Deno's Edge Runtime
@@ -1601,43 +1250,30 @@ async function handleWebhook(req) {
           const parsedPayload = JSON.parse(body);
 
           const event = mp.webhooks.composeEventDetails(
-
             parsedPayload,
 
             signature,
 
             webhookSecret,
-
           );
 
           if (event && event.event) {
-
             signatureValid = true;
 
             console.log(
-
               "[Webhook] Signature verified ✓ (modempay SDK composeEventDetails)",
-
             );
-
           }
-
         } catch (sdkErr) {
-
           console.error(
-
             "[Webhook] SDK verification path error:",
 
             sdkErr.message,
-
           );
-
         }
-
       }
 
       if (!signatureValid) {
-
         // Log warning but DO NOT reject — process the webhook anyway.
 
         // This is critical: if the webhook secret was regenerated on the
@@ -1647,57 +1283,36 @@ async function handleWebhook(req) {
         // webhooks would be rejected and users would never get their tickets.
 
         console.warn(
-
           "[Webhook] ⚠️ Signature verification FAILED — processing anyway. " +
-
             "Check MODEMPAY_WEBHOOK_SECRET matches the secret in your ModemPay dashboard.",
-
         );
-
       }
-
     } else {
-
       console.warn(
-
         `[Webhook] Signature skipped — ${!webhookSecret ? "MODEMPAY_WEBHOOK_SECRET not set" : "header missing"} (processing anyway)`,
-
       );
-
     }
 
     let payload;
 
     try {
-
       payload = JSON.parse(body);
-
     } catch {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid JSON payload",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -1709,9 +1324,7 @@ async function handleWebhook(req) {
     // manual_paid requests don't have a modempay_intent_id.
 
     if (payload.trigger === "manual_paid") {
-
       const {
-
         order_id,
 
         email: rawEmail,
@@ -1719,37 +1332,26 @@ async function handleWebhook(req) {
         customer_name,
 
         payment_method,
-
       } = payload;
 
       const email = (rawEmail || "").trim().toLowerCase();
 
       if (!order_id) {
-
         return new Response(
-
           JSON.stringify({
-
             error: "Missing order_id",
-
           }),
 
           {
-
             status: 400,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // Fetch the order and its items from metadata
@@ -1765,71 +1367,48 @@ async function handleWebhook(req) {
         .single();
 
       if (orderErr || !order) {
-
         console.error(`[Webhook] Order ${order_id} not found for manual_paid`);
 
         return new Response(
-
           JSON.stringify({
-
             error: "Order not found",
-
           }),
 
           {
-
             status: 404,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       if (order.status !== "paid" && order.status !== "unpaid") {
-
         console.log(
-
           `[Webhook] Order ${order_id} is ${order.status} — cannot process manual_paid`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             status: "already_processed",
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // If order was marked paid by createNewTicket, create the tickets
 
       if (order.status === "paid") {
-
         // Guard: check if tickets already exist to prevent duplicates
 
         const { count: existingTickets } = await supabase
@@ -1837,47 +1416,33 @@ async function handleWebhook(req) {
           .from("tickets")
 
           .select("*", {
-
             count: "exact",
 
             head: true,
-
           })
 
           .eq("order_id", order.id);
 
         if ((existingTickets || 0) > 0) {
-
           console.log(
-
             `[Webhook] manual_paid: Order ${order.id} already has ${existingTickets} tickets — skipping`,
-
           );
 
           return new Response(
-
             JSON.stringify({
-
               status: "already_processed",
 
               tickets_count: existingTickets,
-
             }),
 
             {
-
               headers: {
-
                 ...corsHeaders,
 
                 "Content-Type": "application/json",
-
               },
-
             },
-
           );
-
         }
 
         const orderMetadata = order.metadata || {};
@@ -1885,11 +1450,9 @@ async function handleWebhook(req) {
         const items = orderMetadata.items || [];
 
         const custName =
-
           customer_name || orderMetadata.customer_name || undefined;
 
         const tickets = await createTicketsForOrder(
-
           supabase,
 
           order.id,
@@ -1899,17 +1462,13 @@ async function handleWebhook(req) {
           items,
 
           custName,
-
         );
 
         // Send confirmation email with QR images
 
         if (tickets.length > 0) {
-
           const emailTickets = tickets.map(function (t) {
-
             return {
-
               code: t.code,
 
               qrDataUri: t.qrDataUri,
@@ -1919,13 +1478,10 @@ async function handleWebhook(req) {
               ticketTypeName: t.ticketTypeSlug,
 
               accessCode: t.accessCode,
-
             };
-
           });
 
           await sendTicketsEmail({
-
             to: email,
 
             subject: "Your tickets are ready! — Walking-Fish",
@@ -1934,14 +1490,13 @@ async function handleWebhook(req) {
 
             title: "Ticket Created at Venue",
 
-            subtitle: "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
-
+            subtitle:
+              "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
           });
 
           // Send magic link so user can auto-login to their dashboard
 
           sendMagicLinkEmail(email);
-
         }
 
         // Return first ticket code for the frontend to show
@@ -1949,65 +1504,45 @@ async function handleWebhook(req) {
         const firstCode = tickets.length > 0 ? tickets[0].code : null;
 
         console.log(
-
           `[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             success: true,
 
             tickets_created: tickets.length,
 
             ticket_code: firstCode,
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // Order is unpaid — return early
 
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           status: "unpaid",
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // ─── ModemPay webhook processing ──────────────────────────────────────
@@ -2033,107 +1568,70 @@ async function handleWebhook(req) {
     const isSuccess = event === "charge.succeeded" || status === "completed";
 
     const isFailure =
-
       event === "charge.cancelled" ||
-
       event === "charge.failed" ||
-
       status === "failed" ||
-
       status === "cancelled";
 
     if (!isSuccess && !isFailure) {
-
       console.log(
-
         `[Webhook] Acknowledging receipt of unhandled event/status: ${event || status}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           received: true,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const intentId =
-
       data.payment_intent_id ||
-
       payload.payment_intent_id ||
-
       data.intent_id ||
-
       payload.intent_id ||
-
       "";
 
     console.log(
-
       `[Webhook] Processing event: ${event}, Intent: ${intentId}, Status: ${status}`,
-
     );
 
     // Guard: if intentId is blank the query would match nothing (or worse, everything).
 
     if (!intentId) {
-
       console.error(
-
         "[Webhook] Missing payment_intent_id / intent_id in payload — cannot match order.",
 
         JSON.stringify({
-
           event,
 
           data_keys: Object.keys(data),
-
         }),
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error: "Missing payment_intent_id or intent_id in webhook payload",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // ─── Idempotency check ─────────────────────────────────────────────────
@@ -2145,7 +1643,6 @@ async function handleWebhook(req) {
     const webhookEventId = data.id || payload.id || null;
 
     if (webhookEventId) {
-
       // Check if we've already processed this event
 
       const { data: existingEvent } = await supabase
@@ -2159,37 +1656,26 @@ async function handleWebhook(req) {
         .maybeSingle();
 
       if (existingEvent) {
-
         console.log(`[Webhook] Duplicate event ${webhookEventId} — skipping`);
 
         return new Response(
-
           JSON.stringify({
-
             status: "already_processed",
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // Note: processed_webhooks insert moved to AFTER successful ticket creation
 
       // to ensure idempotency doesn't block retries when ticket creation fails.
-
     }
 
     // Find the order by ModemPay intent ID
@@ -2207,33 +1693,23 @@ async function handleWebhook(req) {
       .filter("metadata->>modempay_intent_id", "eq", intentId);
 
     if (orderErr || !orders || orders.length === 0) {
-
       console.error(`[Webhook] No order found for intent ${intentId}`);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Order not found for this intent",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const order = orders[0];
@@ -2241,7 +1717,6 @@ async function handleWebhook(req) {
     // Handle charge.succeeded
 
     if (event === "charge.succeeded" || status === "completed") {
-
       // ─── Check if order already has tickets (fully processed) ────────────
 
       const { count: existingTicketCount, error: countErr } = await supabase
@@ -2249,25 +1724,19 @@ async function handleWebhook(req) {
         .from("tickets")
 
         .select("*", {
-
           count: "exact",
 
           head: true,
-
         })
 
         .eq("order_id", order.id);
 
       if (!countErr && (existingTicketCount || 0) > 0) {
-
         // Tickets exist from a previous successful run — ensure order is marked paid
 
         if (order.status !== "paid") {
-
           console.log(
-
             `[Webhook] Order ${order.id} has ${existingTicketCount} tickets but status=${order.status} — fixing to paid`,
-
           );
 
           await supabase
@@ -2275,57 +1744,41 @@ async function handleWebhook(req) {
             .from("orders")
 
             .update({
-
               status: "paid",
 
               payment_method: "modempay",
 
               metadata: {
-
                 ...(order.metadata || {}),
 
                 webhook_verified_at: new Date().toISOString(),
 
                 status_fixed_by_retry: true,
-
               },
-
             })
 
             .eq("id", order.id);
-
         }
 
         console.log(
-
           `[Webhook] Order ${order.id} already has ${existingTicketCount} tickets — skipping duplicate`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             status: "already_processed",
 
             tickets_count: existingTicketCount,
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // ─── Recovery mode: order is paid but has 0 tickets (previous webhook
@@ -2333,21 +1786,13 @@ async function handleWebhook(req) {
       //     attempt created the order but failed to generate tickets) ──────
 
       if (
-
         order.status === "paid" &&
-
         !countErr &&
-
         (existingTicketCount || 0) === 0
-
       ) {
-
         console.log(
-
           `[Webhook] Recovery mode for order ${order.id} — paid but 0 tickets, re-creating tickets`,
-
         );
-
       }
 
       const orderMetadata = order.metadata || {};
@@ -2355,7 +1800,6 @@ async function handleWebhook(req) {
       const isTopUp = orderMetadata.purpose === "top-up";
 
       if (isTopUp) {
-
         // ─── Top-up flow: increase ticket balance ────────────────────────────
 
         const ticketCode = orderMetadata.ticket_code;
@@ -2363,37 +1807,25 @@ async function handleWebhook(req) {
         const topupAmount = orderMetadata.topup_amount || amount;
 
         if (!ticketCode) {
-
           console.error(
-
             `[Webhook] Top-up order ${order.id} has no ticket_code in metadata`,
-
           );
 
           return new Response(
-
             JSON.stringify({
-
               error: "Missing ticket_code for top-up",
-
             }),
 
             {
-
               status: 400,
 
               headers: {
-
                 ...corsHeaders,
 
                 "Content-Type": "application/json",
-
               },
-
             },
-
           );
-
         }
 
         // Find the ticket by code
@@ -2409,47 +1841,33 @@ async function handleWebhook(req) {
           .maybeSingle();
 
         if (!ticket) {
-
           console.error(
-
             `[Webhook] Ticket ${ticketCode} not found for top-up order ${order.id}`,
-
           );
 
           return new Response(
-
             JSON.stringify({
-
               error: "Ticket not found",
-
             }),
 
             {
-
               status: 404,
 
               headers: {
-
                 ...corsHeaders,
 
                 "Content-Type": "application/json",
-
               },
-
             },
-
           );
-
         }
 
         // Update balance atomically
 
         const { data: newBalance, error: balanceErr } = await supabase.rpc(
-
           "update_ticket_balance",
 
           {
-
             p_ticket_id: ticket.id,
 
             p_amount_delta: topupAmount,
@@ -2459,59 +1877,49 @@ async function handleWebhook(req) {
             p_source: "modempay",
 
             p_notes: "Self-service top-up via ModemPay",
-
           },
-
         );
 
         if (balanceErr || newBalance === -1) {
-
           console.error(
-
             `[Webhook] Balance update failed for ticket ${ticketCode}:`,
 
             balanceErr,
-
           );
 
           // Don't fail the webhook — the operation is idempotent
-
         }
 
         // Store webhook event id after successful processing
 
         if (webhookEventId) {
-
           supabase
 
             .from("processed_webhooks")
 
             .insert({
-
               webhook_event_id: webhookEventId,
 
               event_type: event,
 
               processed_at: new Date().toISOString(),
-
             })
 
             .catch(() => {});
-
         }
 
         // Send top-up confirmation email with QR + balance
 
-        const topupFinalBalance = newBalance > 0 ? newBalance : (ticket.balance || 0) + topupAmount;
+        const topupFinalBalance =
+          newBalance > 0 ? newBalance : (ticket.balance || 0) + topupAmount;
 
         // Fetch ticket metadata to get QR data URI for the email
 
         let qrDataUri = null;
 
-                    let qrImageUrl = null;
+        let qrImageUrl = null;
 
         try {
-
           const { data: ticketMeta } = await supabase
 
             .from("tickets")
@@ -2523,96 +1931,74 @@ async function handleWebhook(req) {
             .maybeSingle();
 
           if (ticketMeta?.metadata?.qr_data_uri) {
-
             qrDataUri = ticketMeta.metadata.qr_data_uri;
-
           }
-
         } catch (_) {}
 
         await sendTicketsEmail({
-
           to: order.email,
 
           subject: "Credits Added! Top-Up Confirmed — Walking-Fish",
 
-          tickets: [{
+          tickets: [
+            {
+              code: ticketCode,
 
-            code: ticketCode,
+              qrDataUri: qrDataUri || null,
+              qrImageUrl: qrImageUrl || null,
 
-            qrDataUri: qrDataUri || null,
-                      qrImageUrl: qrImageUrl || null,
+              ticketTypeName: "Top-Up",
 
-            ticketTypeName: "Top-Up",
-
-            balance: topupFinalBalance,
-
-          }],
+              balance: topupFinalBalance,
+            },
+          ],
 
           title: "Top-Up Successful",
 
           subtitle: `Added D${topupAmount}. New balance: D${topupFinalBalance.toLocaleString()}`,
-
         });
 
         console.log(
-
           `[Webhook] ✓ Top-up order ${order.id} — ticket ${ticketCode} +D${topupAmount}`,
-
         );
 
         // Mark order as paid if not already
 
         if (order.status !== "paid") {
-
           await supabase
 
             .from("orders")
 
             .update({
-
               status: "paid",
 
               payment_method: "modempay",
 
               metadata: {
-
                 ...(order.metadata || {}),
 
                 webhook_verified_at: new Date().toISOString(),
-
               },
-
             })
 
             .eq("id", order.id);
-
         }
 
         return new Response(
-
           JSON.stringify({
-
             success: true,
 
             topup: true,
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // ─── Normal purchase: create tickets BEFORE marking paid ─────────────
@@ -2628,9 +2014,7 @@ async function handleWebhook(req) {
       const customerEmail = order.email;
 
       if (!items || items.length === 0) {
-
         const debug = {
-
           success: false,
 
           error: "No items in metadata",
@@ -2642,29 +2026,22 @@ async function handleWebhook(req) {
           items_json: JSON.stringify(orderMetadata.items),
 
           items_is_array: Array.isArray(orderMetadata.items),
-
         };
 
         console.error(`[Webhook] DEBUG: ${JSON.stringify(debug)}`);
 
         return new Response(JSON.stringify(debug), {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         });
-
       }
 
       const tickets = await createTicketsForOrder(
-
         supabase,
 
         order.id,
@@ -2674,23 +2051,17 @@ async function handleWebhook(req) {
         items,
 
         customerName,
-
       );
 
       if (tickets.length === 0) {
-
         // DON'T mark order as paid — return error so ModemPay retries
 
         console.error(
-
           `[Webhook] Failed to create tickets for order ${order.id}`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             success: false,
 
             error: "createTicketsForOrder returned 0 tickets",
@@ -2698,53 +2069,40 @@ async function handleWebhook(req) {
             items_length: items.length,
 
             first_item_type_id: items[0]?.ticket_type_id,
-
           }),
 
           {
-
             status: 500,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       // ─── Only now mark order as paid (if not already in recovery mode) ──
 
       if (order.status !== "paid") {
-
         await supabase
 
           .from("orders")
 
           .update({
-
             status: "paid",
 
             payment_method: "modempay",
 
             metadata: {
-
               ...(order.metadata || {}),
 
               webhook_verified_at: new Date().toISOString(),
-
             },
-
           })
 
           .eq("id", order.id);
-
       }
 
       // ─── Store webhook event id after successful processing ────────────
@@ -2754,33 +2112,26 @@ async function handleWebhook(req) {
       // when the previous attempt failed AFTER marking paid.
 
       if (webhookEventId) {
-
         supabase
 
           .from("processed_webhooks")
 
           .insert({
-
             webhook_event_id: webhookEventId,
 
             event_type: event,
 
             processed_at: new Date().toISOString(),
-
           })
 
           .catch(() => {});
-
       }
 
       // ─── Send confirmation email with QR images ──────────────────────
 
       if (tickets.length > 0) {
-
         const emailTickets = tickets.map(function (t) {
-
           return {
-
             code: t.code,
 
             qrDataUri: t.qrDataUri,
@@ -2788,13 +2139,10 @@ async function handleWebhook(req) {
             qrImageUrl: t.qrImageUrl,
 
             ticketTypeName: t.ticketTypeSlug,
-
           };
-
         });
 
         await sendTicketsEmail({
-
           to: customerEmail,
 
           subject: "Your tickets are ready! — Walking-Fish",
@@ -2804,91 +2152,60 @@ async function handleWebhook(req) {
           title: "Payment Confirmed",
 
           subtitle: `Order #${order.id.slice(0, 8)} — your tickets and QR codes are ready.`,
-
         });
 
         // Send magic link so user can auto-login to their dashboard
 
         sendMagicLinkEmail(customerEmail);
-
       }
 
       console.log(
-
         `[Webhook] ✓ Order ${order.id} paid, ${tickets.length} tickets created`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           success: true,
 
           tickets_created: tickets.length,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Handle charge.cancelled / charge.failed
 
     if (
-
       event === "charge.cancelled" ||
-
       event === "charge.failed" ||
-
       status === "failed" ||
-
       status === "cancelled"
-
     ) {
-
       if (order.status !== "unpaid") {
-
         console.log(
-
           `[Webhook] Order ${order.id} is ${order.status} — skipping cancellation`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             status: "already_processed",
-
           }),
 
           {
-
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       await supabase
@@ -2896,9 +2213,7 @@ async function handleWebhook(req) {
         .from("orders")
 
         .update({
-
           status: "cancelled",
-
         })
 
         .eq("id", order.id);
@@ -2906,29 +2221,20 @@ async function handleWebhook(req) {
       console.log(`[Webhook] Order ${order.id} cancelled`);
 
       return new Response(
-
         JSON.stringify({
-
           success: true,
 
           status: "cancelled",
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Unknown event — acknowledge receipt
@@ -2936,57 +2242,37 @@ async function handleWebhook(req) {
     console.log(`[Webhook] Unhandled event: ${event}`);
 
     return new Response(
-
       JSON.stringify({
-
         received: true,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[Webhook] Error:", err.message, err.stack || "");
 
     // Always return 200 for webhooks to acknowledge receipt
 
     return new Response(
-
       JSON.stringify({
-
         received: true,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /check-order
@@ -2998,38 +2284,27 @@ async function handleWebhook(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleCheckOrder(req) {
-
   try {
     console.log("[handleCheckOrder] Request:");
 
     const { order_id } = await req.json();
 
     if (!order_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing order_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -3045,31 +2320,21 @@ async function handleCheckOrder(req) {
       .single();
 
     if (error || !order) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Order not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Count tickets created for this order
@@ -3079,11 +2344,9 @@ async function handleCheckOrder(req) {
       .from("tickets")
 
       .select("*", {
-
         count: "exact",
 
         head: true,
-
       })
 
       .eq("order_id", order_id);
@@ -3091,9 +2354,7 @@ async function handleCheckOrder(req) {
     const orderMeta = order.metadata || {};
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         status: order.status,
@@ -3107,53 +2368,35 @@ async function handleCheckOrder(req) {
         purpose: orderMeta.purpose || "purchase",
 
         tickets_count: ticketCount || 0,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[check-order] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to check order status",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /create-order
@@ -3165,12 +2408,10 @@ async function handleCheckOrder(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleCreateOrder(req) {
-
   try {
     console.log("[handleCreateOrder] Request:");
 
     const {
-
       email: rawEmail,
 
       customer_name,
@@ -3182,37 +2423,26 @@ async function handleCreateOrder(req) {
       ticket_code,
 
       topup_amount,
-
     } = await req.json();
 
     const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing required field: email",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -3224,45 +2454,31 @@ async function handleCreateOrder(req) {
     const isTopUp = purpose === "top-up";
 
     if (isTopUp) {
-
       // Top-up orders: use provided topup_amount and store ticket_code reference
 
       total = topup_amount || 0;
-
     } else {
-
       // Normal purchase: validate ticket types and calculate total
 
       if (!items || !Array.isArray(items) || items.length === 0) {
-
         return new Response(
-
           JSON.stringify({
-
             error: "Missing required fields: items",
-
           }),
 
           {
-
             status: 400,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
 
       for (const item of items) {
-
         const { data: ticketType } = await supabase
 
           .from("ticket_types")
@@ -3274,65 +2490,47 @@ async function handleCreateOrder(req) {
           .single();
 
         if (!ticketType || !ticketType.is_active) {
-
           return new Response(
-
             JSON.stringify({
-
               error: `Invalid ticket type: ${item.ticket_type_id}`,
-
             }),
 
             {
-
               status: 400,
 
               headers: {
-
                 ...corsHeaders,
 
                 "Content-Type": "application/json",
-
               },
-
             },
-
           );
-
         }
 
         total += ticketType.price * item.quantity;
 
         validatedItems.push({
-
           ticket_type_id: item.ticket_type_id,
 
           quantity: item.quantity,
-
         });
-
       }
-
     }
 
     // Build metadata with top-up fields if applicable
 
     const metadata = {
-
       items: validatedItems,
 
       customer_name: customer_name || null,
-
     };
 
     if (isTopUp) {
-
       metadata.purpose = "top-up";
 
       metadata.ticket_code = ticket_code || null;
 
       metadata.topup_amount = topup_amount || 0;
-
     }
 
     // Create the order
@@ -3342,7 +2540,6 @@ async function handleCreateOrder(req) {
       .from("orders")
 
       .insert({
-
         email,
 
         total,
@@ -3350,7 +2547,6 @@ async function handleCreateOrder(req) {
         status: isTopUp ? "unpaid" : "unpaid",
 
         metadata,
-
       })
 
       .select()
@@ -3358,91 +2554,61 @@ async function handleCreateOrder(req) {
       .single();
 
     if (orderErr) {
-
       console.error("[create-order] Error:", orderErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to create order",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         order_id: order.id,
 
         total,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[create-order] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to create order",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /lookup-ticket
@@ -3456,38 +2622,27 @@ async function handleCreateOrder(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleLookupTicket(req) {
-
   try {
     console.log("[handleLookupTicket] Request:");
 
     const { code } = await req.json();
 
     if (!code) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing ticket code",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -3497,7 +2652,6 @@ async function handleLookupTicket(req) {
       .from("tickets")
 
       .select(
-
         `
 
         id,
@@ -3523,7 +2677,6 @@ async function handleLookupTicket(req) {
         ticket_types!inner(name, slug, price)
 
       `,
-
       )
 
       .eq("code", code.toUpperCase())
@@ -3531,73 +2684,50 @@ async function handleLookupTicket(req) {
       .maybeSingle();
 
     if (ticketErr) {
-
       console.error("[lookup-ticket] Error:", ticketErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to look up ticket",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (!ticket) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Ticket not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Return safe public subset
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         ticket: {
-
           id: ticket.id,
 
           code: ticket.code,
@@ -3611,67 +2741,46 @@ async function handleLookupTicket(req) {
           customer_name: ticket.customer_name,
 
           ticket_type: {
-
             name: ticket.ticket_types.name,
 
             slug: ticket.ticket_types.slug,
 
             price: ticket.ticket_types.price,
-
           },
 
           order_id: ticket.order_id,
 
           created_at: ticket.created_at,
-
         },
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[lookup-ticket] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to look up ticket",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Helper: check if request is authorized (service key or valid JWT)
@@ -3685,7 +2794,6 @@ async function handleLookupTicket(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function isTicketingRequestAuthorized(req) {
-
   const authHeader = req.headers.get("Authorization") || "";
 
   if (!authHeader.startsWith("Bearer ")) return false;
@@ -3701,27 +2809,20 @@ async function isTicketingRequestAuthorized(req) {
   // Verify JWT properly via Supabase Auth
 
   try {
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-
       auth: {
-
         persistSession: false,
-
       },
-
     });
 
     const {
-
       data: { user },
 
       error,
-
     } = await supabase.auth.getUser(token);
 
     if (error || !user) return false;
@@ -3729,13 +2830,9 @@ async function isTicketingRequestAuthorized(req) {
     const role = user?.app_metadata?.role;
 
     return role === "admin_role" || role === "ticketing_role";
-
   } catch {
-
     return false;
-
   }
-
 }
 
 // ─── Handler: /lookup-by-email
@@ -3749,7 +2846,6 @@ async function isTicketingRequestAuthorized(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleLookupByEmail(req) {
-
   try {
     console.log("[handleLookupByEmail] Request:");
 
@@ -3758,31 +2854,21 @@ async function handleLookupByEmail(req) {
     const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid email address",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -3794,7 +2880,6 @@ async function handleLookupByEmail(req) {
       .from("tickets")
 
       .select(
-
         `
 
         id,
@@ -3812,7 +2897,6 @@ async function handleLookupByEmail(req) {
         ticket_types!inner(name)
 
       `,
-
       )
 
       .eq("customer_email", email.trim().toLowerCase())
@@ -3820,59 +2904,42 @@ async function handleLookupByEmail(req) {
       .eq("status", "active")
 
       .order("code", {
-
         ascending: true,
-
       });
 
     // In bill mode, only show food and drinks vouchers
 
     if (mode === "bill") {
-
       query = query.in("type", ["food", "drinks"]);
-
     }
 
     const { data: tickets, error } = await query;
 
     if (error) {
-
       console.error("[lookup-by-email] Error:", error);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to look up tickets",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         tickets: (tickets || []).map((t) => ({
-
           id: t.id,
 
           code: t.code,
@@ -3886,59 +2953,38 @@ async function handleLookupByEmail(req) {
           customer_name: t.customer_name,
 
           ticket_type: {
-
             name: t.ticket_types?.name,
-
           },
-
         })),
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[lookup-by-email] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to look up tickets by email",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /confirm-payment
@@ -3952,11 +2998,8 @@ async function handleLookupByEmail(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleConfirmPayment(req) {
-
   try {
-
     const {
-
       order_id,
 
       payment_method,
@@ -3972,37 +3015,26 @@ async function handleConfirmPayment(req) {
       notes,
 
       purpose,
-
     } = await req.json();
 
     const email = (rawEmail || "").trim().toLowerCase();
 
     if (!order_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing order_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -4020,59 +3052,39 @@ async function handleConfirmPayment(req) {
       .single();
 
     if (orderErr || !order) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Order not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (order.status !== "unpaid" && order.status !== "pending_verification") {
-
       return new Response(
-
         JSON.stringify({
-
           error: `Order is already ${order.status}`,
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Mark order as paid
@@ -4084,43 +3096,31 @@ async function handleConfirmPayment(req) {
       .from("orders")
 
       .update({
-
         status: "paid",
 
         payment_method: payMethod,
-
       })
 
       .eq("id", order_id);
 
     if (updateErr) {
-
       console.error("[confirm-payment] Order update failed:", updateErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to update order",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     let newBalance = null;
@@ -4128,21 +3128,14 @@ async function handleConfirmPayment(req) {
     // If this is a top-up, update the ticket balance
 
     if (
-
       (purpose === "topup" || purpose === "top-up") &&
-
       ticket_id &&
-
       amount_delta
-
     ) {
-
       const { data: balance, error: balanceErr } = await supabase.rpc(
-
         "update_ticket_balance",
 
         {
-
           p_ticket_id: ticket_id,
 
           p_amount_delta: amount_delta,
@@ -4152,21 +3145,15 @@ async function handleConfirmPayment(req) {
           p_source: payMethod === "modempay" ? "modempay" : payMethod,
 
           p_notes: notes || `Booth top-up via ${payMethod}`,
-
         },
-
       );
 
       if (balanceErr) {
-
         console.error("[confirm-payment] Balance update failed:", balanceErr);
 
         // Don't fail — the order is already marked paid
-
       } else {
-
         newBalance = balance;
-
       }
 
       // Send receipt email with QR + balance
@@ -4174,17 +3161,15 @@ async function handleConfirmPayment(req) {
       const customerEmail = email || order.email;
 
       if (customerEmail) {
-
         // Fetch ticket metadata for QR image
 
         let qrDataUri = null;
 
-                    let qrImageUrl = null;
+        let qrImageUrl = null;
 
         let ticketCode = ticket_id;
 
         try {
-
           const { data: ticketMeta } = await supabase
 
             .from("tickets")
@@ -4198,58 +3183,45 @@ async function handleConfirmPayment(req) {
           if (ticketMeta) ticketCode = ticketMeta.code;
 
           if (ticketMeta?.metadata?.qr_data_uri) {
-
             qrDataUri = ticketMeta.metadata.qr_data_uri;
-
           }
-
         } catch (_) {}
 
         await sendTicketsEmail({
-
           to: customerEmail,
 
           subject: "Top-Up Confirmed — Walking-Fish",
 
-          tickets: [{
+          tickets: [
+            {
+              code: ticketCode,
 
-            code: ticketCode,
+              qrDataUri: qrDataUri || null,
+              qrImageUrl: qrImageUrl || null,
 
-            qrDataUri: qrDataUri || null,
-                      qrImageUrl: qrImageUrl || null,
+              ticketTypeName: "Top-Up",
 
-            ticketTypeName: "Top-Up",
-
-            balance: newBalance,
-
-          }],
+              balance: newBalance,
+            },
+          ],
 
           title: "Top-Up Successful",
 
-          subtitle: newBalance !== null
-
-            ? `Added D${amount_delta}. New balance: D${Number(newBalance).toLocaleString()}`
-
-            : `Added D${amount_delta}.`,
-
+          subtitle:
+            newBalance !== null
+              ? `Added D${amount_delta}. New balance: D${Number(newBalance).toLocaleString()}`
+              : `Added D${amount_delta}.`,
         });
-
       }
-
     }
 
     console.log(
-
       `[confirm-payment] ✓ Order ${order_id} paid via ${payMethod}` +
-
         `${newBalance !== null ? `, balance updated to D${newBalance}` : ""}`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         order_id,
@@ -4257,53 +3229,35 @@ async function handleConfirmPayment(req) {
         status: "paid",
 
         new_balance: newBalance,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[confirm-payment] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to confirm payment",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /staff-auth
@@ -4315,9 +3269,7 @@ async function handleConfirmPayment(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleStaffAuth(req) {
-
   try {
-
     // ── Rate limit check ──────────────────────────────────────────────────
 
     const clientIp = getClientIp(req);
@@ -4325,25 +3277,19 @@ async function handleStaffAuth(req) {
     const rateCheck = checkRateLimit(clientIp);
 
     if (!rateCheck.allowed) {
-
       console.warn(`[staff-auth] Rate limit exceeded for IP ${clientIp}`);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Too many attempts. Please wait before trying again.",
 
           retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
-
         }),
 
         {
-
           status: 429,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
@@ -4351,43 +3297,29 @@ async function handleStaffAuth(req) {
             "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
 
             "X-RateLimit-Remaining": "0",
-
           },
-
         },
-
       );
-
     }
 
     const { code } = await req.json();
 
     if (!code) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing staff code",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -4403,65 +3335,45 @@ async function handleStaffAuth(req) {
       .maybeSingle();
 
     if (recordErr) {
-
       console.error("[staff-auth] Error:", recordErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Database error",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (!record || !record.is_active) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: "Invalid or inactive staff code",
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
 
             "X-RateLimit-Remaining": String(rateCheck.remaining),
-
           },
-
         },
-
       );
-
     }
 
     // Update last_used_at
@@ -4471,23 +3383,17 @@ async function handleStaffAuth(req) {
       .from("staff_scanner_codes")
 
       .update({
-
         last_used_at: new Date().toISOString(),
-
       })
 
       .eq("id", record.id);
 
     console.log(
-
       `[staff-auth] ✓ Code ${code} authenticated (label: ${record.label || "none"})`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         id: record.id,
@@ -4495,55 +3401,37 @@ async function handleStaffAuth(req) {
         code: record.code,
 
         name: record.label || "Staff",
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
 
           "X-RateLimit-Remaining": String(rateCheck.remaining),
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[staff-auth] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Authentication failed",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /mark-used
@@ -4557,42 +3445,28 @@ async function handleStaffAuth(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleMarkUsed(req) {
-
   try {
-
     const { ticket_id } = await req.json();
 
     if (!ticket_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing ticket_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
-
-
 
     // Guard: balance-based tickets (food, drinks, activity_credit) must be
 
@@ -4608,178 +3482,111 @@ async function handleMarkUsed(req) {
 
       .single();
 
-
-
     if (ticketErr || !ticket) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Ticket not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
-
-
     if (
-
       ticket.type === "activity_credit" ||
-
       ticket.type === "food" ||
-
       ticket.type === "drinks"
-
     ) {
-
       return new Response(
-
         JSON.stringify({
-
           error:
-
             "Balance-based tickets cannot be marked as used. Use Debit mode to deduct from balance instead.",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
-
-
     const { data: success, error: rpcErr } = await supabase.rpc(
-
       "mark_ticket_used",
 
       {
-
         p_ticket_id: ticket_id,
-
       },
-
     );
 
     if (rpcErr) {
-
       console.error("[mark-used] RPC error:", rpcErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to mark ticket",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     console.log(
-
       `[mark-used] ✓ Ticket ${ticket_id} marked used (success=${success})`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: !!success,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[mark-used] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to mark ticket as used",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /debit
@@ -4793,47 +3600,33 @@ async function handleMarkUsed(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleDebit(req) {
-
   try {
-
     const { ticket_id, amount: amount1 } = await req.json();
 
     if (!ticket_id || !amount1 || amount1 <= 0) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing or invalid ticket_id or amount",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
 
     const { data: newBalance, error: rpcErr } = await supabase.rpc(
-
       "update_ticket_balance",
 
       {
-
         p_ticket_id: ticket_id,
 
         p_amount_delta: -Math.abs(amount1),
@@ -4843,79 +3636,54 @@ async function handleDebit(req) {
         p_source: "booth_debit",
 
         p_notes: `Staff debit: D${amount1}`,
-
       },
-
     );
 
     if (rpcErr) {
-
       console.error("[debit] RPC error:", rpcErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to debit ticket",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (newBalance === -1) {
-
       console.warn(
-
         `[debit] Insufficient balance for ticket ${ticket_id}, amount D${amount1}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error: "Insufficient balance",
-
         }),
 
         {
-
           status: 409,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Send debit notification email to customer
 
     try {
-
       const { data: debitTicket } = await supabase
 
         .from("tickets")
@@ -4927,150 +3695,105 @@ async function handleDebit(req) {
         .maybeSingle();
 
       if (debitTicket?.customer_email) {
-
         let qrDataUri = null;
 
-                    let qrImageUrl = null;
+        let qrImageUrl = null;
 
         if (debitTicket.metadata?.qr_data_uri) {
-
           qrDataUri = debitTicket.metadata.qr_data_uri;
-
         }
 
-                    if (debitTicket.metadata?.qr_image_url) {
-                      qrImageUrl = debitTicket.metadata.qr_image_url;
-                    }
+        if (debitTicket.metadata?.qr_image_url) {
+          qrImageUrl = debitTicket.metadata.qr_image_url;
+        }
 
         await sendTicketsEmail({
-
           to: debitTicket.customer_email,
 
           subject: "Debit Notification — Walking-Fish",
 
-          tickets: [{
+          tickets: [
+            {
+              code: debitTicket.code,
 
-            code: debitTicket.code,
+              qrDataUri: qrDataUri || null,
+              qrImageUrl: qrImageUrl || null,
 
-            qrDataUri: qrDataUri || null,
-                      qrImageUrl: qrImageUrl || null,
+              ticketTypeName: debitTicket.type || "",
 
-            ticketTypeName: debitTicket.type || "",
-
-            balance: newBalance,
-
-          }],
+              balance: newBalance,
+            },
+          ],
 
           title: "Debit Processed",
 
           subtitle: `D${amount1} was deducted from ${debitTicket.code}. Remaining balance: D${Number(newBalance).toLocaleString()}`,
-
         });
-
       }
-
     } catch (e) {
-
       console.warn(`[debit] Email notification failed: ${e.message}`);
-
     }
 
-
-
     console.log(
-
       `[debit] ✓ Ticket ${ticket_id} debited D${amount1}, new balance D${newBalance}`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         new_balance: newBalance,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[debit] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to debit ticket",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 async function handleBulkTopup(req) {
-
   try {
-
     const { entries } = await req.json();
 
     if (!entries || !Array.isArray(entries) || entries.length === 0) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing or empty entries array",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -5080,85 +3803,69 @@ async function handleBulkTopup(req) {
     let processed = 0;
 
     for (const entry of entries) {
-
       const { code, amount: amount1, method, note } = entry;
 
       if (!code || !amount1 || amount1 < 50) {
-
         results.push({
-
           code: code || "??",
 
           success: false,
 
           error: "Invalid entry",
-
         });
 
         continue;
-
       }
 
       const normalizedCode = code.toUpperCase().startsWith("TKT-")
-
         ? code.toUpperCase()
-
         : `TKT-${code.toUpperCase()}`;
 
       try {
-
         // Find the ticket
 
         const { data: ticket, error: ticketErr } = await supabase
 
           .from("tickets")
 
-          .select("id, code, balance, customer_email, customer_name, status, metadata")
+          .select(
+            "id, code, balance, customer_email, customer_name, status, metadata",
+          )
 
           .eq("code", normalizedCode)
 
           .maybeSingle();
 
         if (ticketErr || !ticket) {
-
           results.push({
-
             code: normalizedCode,
 
             success: false,
 
             error: "Ticket not found",
-
           });
 
           continue;
-
         }
 
         if (ticket.status !== "active") {
-
           results.push({
-
             code: normalizedCode,
 
             success: false,
 
             error: `Ticket is ${ticket.status}`,
-
           });
 
           continue;
-
         }
 
         // Update balance atomically
 
         const { data: newBalance, error: balanceErr } = await supabase.rpc(
-
           "update_ticket_balance",
 
           {
-
             p_ticket_id: ticket.id,
 
             p_amount_delta: amount1,
@@ -5168,110 +3875,86 @@ async function handleBulkTopup(req) {
             p_source: method === "cash" ? "cash" : "wave",
 
             p_notes: `Booth — offline catch-up${note ? ` (${note})` : ""}`,
-
           },
-
         );
 
         if (balanceErr || newBalance === -1) {
-
           results.push({
-
             code: normalizedCode,
 
             success: false,
 
             error: "Balance update failed (cap?)",
-
           });
 
           continue;
-
         }
 
         // Try to send receipt email with QR + balance
 
         if (ticket.customer_email) {
-
           let qrDataUri = null;
 
-                    let qrImageUrl = null;
+          let qrImageUrl = null;
 
           if (ticket.metadata?.qr_data_uri) {
-
             qrDataUri = ticket.metadata.qr_data_uri;
-
           }
 
-                    if (ticket.metadata?.qr_image_url) {
-                      qrImageUrl = ticket.metadata.qr_image_url;
-                    }
+          if (ticket.metadata?.qr_image_url) {
+            qrImageUrl = ticket.metadata.qr_image_url;
+          }
 
           await sendTicketsEmail({
-
             to: ticket.customer_email,
 
             subject: "Top-Up Confirmed — Walking-Fish",
 
-            tickets: [{
+            tickets: [
+              {
+                code: normalizedCode,
 
-              code: normalizedCode,
+                qrDataUri: qrDataUri || null,
+                qrImageUrl: qrImageUrl || null,
 
-              qrDataUri: qrDataUri || null,
-                      qrImageUrl: qrImageUrl || null,
+                ticketTypeName: ticket.type || "",
 
-              ticketTypeName: ticket.type || "",
-
-              balance: newBalance,
-
-            }],
+                balance: newBalance,
+              },
+            ],
 
             title: "Top-Up Successful",
 
             subtitle: `Added D${amount1}. New balance: D${Number(newBalance).toLocaleString()}. Processed at the booth.`,
-
           });
-
         }
 
         results.push({
-
           code: normalizedCode,
 
           success: true,
-
         });
 
         processed++;
-
       } catch (innerErr) {
-
         results.push({
-
           code: normalizedCode || "??",
 
           success: false,
 
           error: innerErr.message,
-
         });
-
       }
-
     }
 
     const errors = results.filter((r) => !r.success);
 
     console.log(
-
       `[bulk-topup] Processed ${processed} of ${entries.length} entries, ${errors.length} errors`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: errors.length === 0,
 
         processed,
@@ -5281,53 +3964,35 @@ async function handleBulkTopup(req) {
         errors: errors.length > 0 ? errors : undefined,
 
         results: errors.length > 0 ? results : undefined,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[bulk-topup] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to process bulk top-up",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /unmark-used
@@ -5341,37 +4006,25 @@ async function handleBulkTopup(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleUnmarkUsed(req) {
-
   try {
-
     const { ticket_id, reason, staff_code } = await req.json();
 
     if (!ticket_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing ticket_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -5389,67 +4042,45 @@ async function handleUnmarkUsed(req) {
       .single();
 
     if (fetchErr || !ticket) {
-
       console.error("[unmark-used] Ticket not found:", ticket_id);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Ticket not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (ticket.status !== "used") {
-
       console.warn(
-
         `[unmark-used] Ticket ${ticket.code} is not 'used' (current: ${ticket.status})`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error: `Ticket is ${ticket.status}, not 'used' — cannot undo`,
-
         }),
 
         {
-
           status: 409,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Merge undo reason into existing metadata
@@ -5457,7 +4088,6 @@ async function handleUnmarkUsed(req) {
     const existingMeta = ticket.metadata || {};
 
     const updatedMeta = {
-
       ...existingMeta,
 
       unmark_reason: reason || null,
@@ -5465,7 +4095,6 @@ async function handleUnmarkUsed(req) {
       unmarked_at: new Date().toISOString(),
 
       unmarked_by: staff_code || null,
-
     };
 
     // Revert status to 'active' and store undo audit trail in metadata
@@ -5475,11 +4104,9 @@ async function handleUnmarkUsed(req) {
       .from("tickets")
 
       .update({
-
         status: "active",
 
         metadata: updatedMeta,
-
       })
 
       .eq("id", ticket_id)
@@ -5487,97 +4114,65 @@ async function handleUnmarkUsed(req) {
       .eq("status", "used"); // Optimistic concurrency — only if still 'used'
 
     if (updateErr) {
-
       console.error("[unmark-used] Update failed:", updateErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to revert ticket status",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     console.log(
-
       `[unmark-used] Ticket ${ticket.code} reverted to 'active'${reason ? ` (reason: ${reason})` : ""}`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         code: ticket.code,
 
         status: "active",
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[unmark-used] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to revert ticket",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /reverse-debit
@@ -5591,37 +4186,25 @@ async function handleUnmarkUsed(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleReverseDebit(req) {
-
   try {
-
     const { ticket_id, amount, reason, staff_code } = await req.json();
 
     if (!ticket_id || !amount || amount <= 0) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing or invalid ticket_id or amount",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -5639,41 +4222,29 @@ async function handleReverseDebit(req) {
       .single();
 
     if (fetchErr || !ticket) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Ticket not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Add the balance back
 
     const { data: newBalance, error: rpcErr } = await supabase.rpc(
-
       "update_ticket_balance",
 
       {
-
         p_ticket_id: ticket_id,
 
         p_amount_delta: amount,
@@ -5683,131 +4254,86 @@ async function handleReverseDebit(req) {
         p_source: "booth_debit_reversal",
 
         p_notes: `Reversal of debit: D${amount}${reason ? ` - ${reason}` : ""}${staff_code ? ` (by ${staff_code})` : ""}`,
-
       },
-
     );
 
     if (rpcErr) {
-
       console.error("[reverse-debit] RPC error:", rpcErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to reverse debit",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (newBalance === -1) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Balance update failed (cap reached?)",
-
         }),
 
         {
-
           status: 409,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     console.log(
-
       `[reverse-debit] Ticket ${ticket.code} reversed D${amount}, new balance D${newBalance}` +
-
         `${reason ? ` (reason: ${reason})` : ""}`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         new_balance: newBalance,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[reverse-debit] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to reverse debit",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /admin-query
@@ -5831,7 +4357,6 @@ async function handleReverseDebit(req) {
 // Used by /admin-query since the actual query uses the service key server-side.
 
 async function isAuthenticatedUser(req) {
-
   const authHeader = req.headers.get("Authorization") || "";
 
   if (!authHeader.startsWith("Bearer ")) return false;
@@ -5845,100 +4370,68 @@ async function isAuthenticatedUser(req) {
   if (token === serviceKey) return true;
 
   try {
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-
       auth: {
-
         persistSession: false,
-
       },
-
     });
 
     const {
-
       data: { user },
 
       error,
-
     } = await supabase.auth.getUser(token);
 
     return !error && !!user;
-
   } catch {
-
     return false;
-
   }
-
 }
 
 async function handleAdminQuery(req) {
-
   try {
     console.log("[handleAdminQuery] Request:");
 
     if (!(await isAuthenticatedUser(req))) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Unauthorized",
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const { method = "GET", path, body } = await req.json();
 
     if (!path) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing path",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -5946,39 +4439,27 @@ async function handleAdminQuery(req) {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     if (!supabaseUrl || !serviceKey) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Server config error",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const response = await fetch(`${supabaseUrl}${path}`, {
-
       method,
 
       headers: {
-
         Authorization: `Bearer ${serviceKey}`,
 
         apikey: serviceKey,
@@ -5986,59 +4467,41 @@ async function handleAdminQuery(req) {
         "Content-Type": "application/json",
 
         Prefer: "return=representation",
-
       },
 
       body: body ? JSON.stringify(body) : undefined,
-
     });
 
     const data = await response.text();
 
     return new Response(data, {
-
       status: response.status,
 
       headers: {
-
         ...corsHeaders,
 
         "Content-Type": "application/json",
-
       },
-
     });
-
   } catch (err) {
-
     console.error("[admin-query] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Query failed",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /regenerate-tickets
@@ -6052,65 +4515,43 @@ async function handleAdminQuery(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleRegenerateTickets(req) {
-
   try {
-
     if (!(await isTicketingRequestAuthorized(req))) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Unauthorized. Service key or ticketing staff JWT required.",
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const { order_id } = await req.json();
 
     if (!order_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing required field: order_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
@@ -6128,61 +4569,41 @@ async function handleRegenerateTickets(req) {
       .single();
 
     if (orderErr || !order) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Order not found",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Only regenerate tickets for paid orders
 
     if (order.status !== "paid") {
-
       return new Response(
-
         JSON.stringify({
-
           error: `Order is ${order.status}, not paid. Payment must be confirmed first.`,
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Check if tickets already exist
@@ -6192,45 +4613,33 @@ async function handleRegenerateTickets(req) {
       .from("tickets")
 
       .select("*", {
-
         count: "exact",
 
         head: true,
-
       })
 
       .eq("order_id", order_id);
 
     if ((ticketCount || 0) > 0) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: `Order already has ${ticketCount} tickets. No regeneration needed.`,
 
           tickets_count: ticketCount,
-
         }),
 
         {
-
           status: 409,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Extract items from order metadata
@@ -6240,33 +4649,23 @@ async function handleRegenerateTickets(req) {
     const items = orderMetadata.items || [];
 
     if (!items || items.length === 0) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: "No items found in order metadata. Cannot regenerate tickets.",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Create tickets
@@ -6274,7 +4673,6 @@ async function handleRegenerateTickets(req) {
     const customerName = orderMetadata.customer_name || undefined;
 
     const tickets = await createTicketsForOrder(
-
       supabase,
 
       order.id,
@@ -6284,45 +4682,32 @@ async function handleRegenerateTickets(req) {
       items,
 
       customerName,
-
     );
 
     if (tickets.length === 0) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: "Failed to create any tickets. Items may be sold out.",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Send confirmation email with QR images
 
     const emailTickets = tickets.map(function (t) {
-
       return {
-
         code: t.code,
 
         qrDataUri: t.qrDataUri,
@@ -6330,13 +4715,10 @@ async function handleRegenerateTickets(req) {
         qrImageUrl: t.qrImageUrl,
 
         ticketTypeName: t.ticketTypeSlug,
-
       };
-
     });
 
     await sendTicketsEmail({
-
       to: order.email,
 
       subject: "Your tickets are ready! — Walking-Fish",
@@ -6346,7 +4728,6 @@ async function handleRegenerateTickets(req) {
       title: "Tickets Re-Generated",
 
       subtitle: `Order #${order.id.slice(0, 8)} — your tickets have been re-issued.`,
-
     });
 
     // Send magic link so user can auto-login to their dashboard
@@ -6354,73 +4735,49 @@ async function handleRegenerateTickets(req) {
     sendMagicLinkEmail(order.email);
 
     console.log(
-
       `[regenerate-tickets] ✓ Order ${order.id} — ${tickets.length} tickets re-generated`,
-
     );
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         tickets_created: tickets.length,
 
         tickets: tickets.map((t) => ({
-
           code: t.code,
 
           type_slug: t.ticketTypeSlug,
-
         })),
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[regenerate-tickets] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to regenerate tickets",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /resend-magic-link
@@ -6434,36 +4791,25 @@ async function handleRegenerateTickets(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleResendMagicLink(req) {
-
   try {
     console.log("[handleResendMagicLink] Request:");
 
     if (!(await isTicketingRequestAuthorized(req))) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Unauthorized. Service key or ticketing staff JWT required.",
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const { email: rawEmail } = await req.json();
@@ -6471,31 +4817,21 @@ async function handleResendMagicLink(req) {
     const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid email address",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Check if this email has any purchased tickets before sending
@@ -6507,73 +4843,51 @@ async function handleResendMagicLink(req) {
       .from("tickets")
 
       .select("*", {
-
         count: "exact",
 
         head: true,
-
       })
 
       .eq("customer_email", email);
 
     if (ticketErr) {
-
       console.error("[resend-magic-link] Ticket lookup error:", ticketErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to verify email. Please try again.",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (!ticketCount || ticketCount === 0) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: "No tickets found for this email address.",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Generate magic link via admin API and send via Resend
@@ -6581,59 +4895,39 @@ async function handleResendMagicLink(req) {
     await sendMagicLinkEmail(email);
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         message: `Magic link sent to ${email}`,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[resend-magic-link] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to resend magic link",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /send-magic-link
@@ -6649,7 +4943,6 @@ async function handleResendMagicLink(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleSendMagicLink(req) {
-
   try {
     console.log("[handleSendMagicLink] Request:");
 
@@ -6660,35 +4953,25 @@ async function handleSendMagicLink(req) {
     const rateCheck = checkRateLimit(clientIp);
 
     if (!rateCheck.allowed) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Too many requests. Please wait before trying again.",
 
           retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
-
         }),
 
         {
-
           status: 429,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
 
             "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
-
           },
-
         },
-
       );
-
     }
 
     const { email: rawEmail } = await req.json();
@@ -6696,31 +4979,21 @@ async function handleSendMagicLink(req) {
     const email = (rawEmail || "").trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid email address",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Check if this email has any purchased tickets before sending the magic link
@@ -6732,133 +5005,90 @@ async function handleSendMagicLink(req) {
       .from("tickets")
 
       .select("*", {
-
         count: "exact",
 
         head: true,
-
       })
 
       .eq("customer_email", email);
 
     if (ticketErr) {
-
       console.error("[send-magic-link] Ticket lookup error:", ticketErr);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Failed to verify email. Please try again.",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (!ticketCount || ticketCount === 0) {
-
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error:
-
             "No tickets found for this email address. Please purchase tickets first.",
-
         }),
 
         {
-
           status: 404,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     await sendMagicLinkEmail(email);
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         message: "Check your email for the sign-in link.",
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     console.error("[send-magic-link] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to send magic link. Please try again.",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /exchange-token
@@ -6872,43 +5102,31 @@ async function handleSendMagicLink(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleExchangeToken(req) {
-
   try {
-
     console.log("[exchange-token] Handler entered");
-
-
 
     const { ticket_token } = await req.json();
 
-    console.log(`[exchange-token] Parsed ticket_token, length: ${(ticket_token || "").length}`);
+    console.log(
+      `[exchange-token] Parsed ticket_token, length: ${(ticket_token || "").length}`,
+    );
 
     if (!ticket_token) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing ticket_token",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Parse token: v1.{expiresAt}.{base64url(email)}.{hexSig}
@@ -6916,43 +5134,30 @@ async function handleExchangeToken(req) {
     const parts = ticket_token.split(".");
 
     if (parts.length !== 4 || parts[0] !== "v1") {
-
       console.warn(
-
         `[exchange-token] Bad token format: ${parts.length} parts, token length=${ticket_token.length}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error:
-
             "This link appears to be broken or incomplete. Please request a new sign-in link.",
 
           reason: "invalid_format",
 
           parts_count: parts.length,
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const expiresAt = parseInt(parts[1], 10);
@@ -6966,93 +5171,65 @@ async function handleExchangeToken(req) {
     let emailFromToken = "";
 
     try {
-
       emailFromToken = base64UrlDecode(encodedEmail).toLowerCase();
-
     } catch (_) {}
 
     // Check expiry
 
     if (isNaN(expiresAt)) {
-
       console.warn(
-
         `[exchange-token] NaN expiresAt — token likely truncated. Length=${ticket_token.length}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error:
-
             "This link appears to be broken or truncated. Please request a new sign-in link.",
 
           reason: "invalid_expiry",
 
           email: emailFromToken || undefined,
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (expiresAt < Date.now()) {
-
       const expiredAgo = Math.round((Date.now() - expiresAt) / 1000 / 60);
 
       console.warn(
-
         `[exchange-token] Token expired ${expiredAgo}m ago for ${emailFromToken || "(unknown email)"}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error:
-
             "This link has expired. Please request a new sign-in link below.",
 
           reason: "expired",
 
           email: emailFromToken || undefined,
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Decode email
@@ -7060,31 +5237,21 @@ async function handleExchangeToken(req) {
     const email = base64UrlDecode(encodedEmail).toLowerCase();
 
     if (!email || !email.includes("@")) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid email in token",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Verify HMAC signature
@@ -7098,33 +5265,23 @@ async function handleExchangeToken(req) {
     const expectedSig = await signMessage(tokenSecret, message);
 
     if (sig !== expectedSig) {
-
       console.warn(`[exchange-token] Invalid signature for ${email}`);
 
       return new Response(
-
         JSON.stringify({
-
           error: "Invalid token signature",
-
         }),
 
         {
-
           status: 401,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Token is valid — create a session via verifyOtp (no password grant, no race condition).
@@ -7142,275 +5299,180 @@ async function handleExchangeToken(req) {
     const siteUrl = "https://www.walkingfish.gm";
 
     try {
-
       // 1. Create admin client to manage the user
 
       const adminSupabase = createClient(supabaseUrl, serviceKey, {
-
         auth: { autoRefreshToken: false, persistSession: false },
-
       });
-
-
 
       // 2. Generate a fresh action_link OTP via admin API
 
       const { data: linkData, error: linkError } =
-
         await adminSupabase.auth.admin.generateLink({
-
           type: "magiclink",
 
           email: email,
 
           options: {
-
-            redirect_to: `${siteUrl}/tickets`, email_confirm: true,
-
+            redirect_to: `${siteUrl}/tickets`,
+            email_confirm: true,
           },
-
         });
 
       if (linkError || !linkData?.properties?.action_link) {
-
         console.error(
-
           `[exchange-token] generateLink failed for ${email}: ${linkError?.message || "No action_link"}`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             error: "Unable to sign you in. Please try again.",
-
           }),
 
           {
-
             status: 500,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
-
-
 
       // 3. Extract token_hash from the action_link URL
 
       const actionUrl = new URL(linkData.properties.action_link);
 
-      const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
-
-
+      const tokenHash =
+        actionUrl.searchParams.get("token") ||
+        actionUrl.searchParams.get("token_hash");
 
       if (!tokenHash) {
-
         console.error(
-
           `[exchange-token] No token_hash in action_link for ${email}`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             error: "Unable to sign you in. Please try again.",
-
           }),
 
           {
-
             status: 500,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
-
-
 
       // 4. Exchange token_hash for a session via verifyOtp
 
       // Uses anon key (same as client-side verifyOtp). No writes to user table.
 
       const anonClient = createClient(supabaseUrl, anonKey, {
-
         auth: { autoRefreshToken: false, persistSession: false },
-
       });
 
-
-
       const { data: otpData, error: otpError } =
-
         await anonClient.auth.verifyOtp({
-
           token_hash: tokenHash,
 
           type: "magiclink",
-
         });
 
-
-
       if (otpError || !otpData?.session) {
-
         console.error(
-
           `[exchange-token] verifyOtp failed for ${email}: ${otpError?.message || "No session"}`,
-
         );
 
         return new Response(
-
           JSON.stringify({
-
             error: "Unable to sign you in. Please try again.",
 
             reason: "otp_verify_failed",
-
           }),
 
           {
-
             status: 401,
 
             headers: {
-
               ...corsHeaders,
 
               "Content-Type": "application/json",
-
             },
-
           },
-
         );
-
       }
-
-
 
       // 5. Session obtained successfully
 
       console.log(
-
         `[exchange-token] ✓ Session obtained for ${email} (verifyOtp)`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           success: true,
 
           access_token: otpData.session.access_token,
 
           refresh_token: otpData.session.refresh_token || "",
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     } catch (sessionErr) {
-
       console.error(
-
         `[exchange-token] Session creation error for ${email}: ${sessionErr.message}`,
-
       );
 
       return new Response(
-
         JSON.stringify({
-
           error: "Unable to sign you in. Please try again.",
-
         }),
 
         {
-
           status: 500,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
-
   } catch (err) {
-
     console.error("[exchange-token] Error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Failed to exchange token. Please try again.",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Handler: /view-tickets ──────────────────────────────────────────
@@ -7420,9 +5482,7 @@ async function handleExchangeToken(req) {
 // The access code is generated at ticket creation and sent in the email alongside the QR code.
 
 async function handleViewTickets(req) {
-
   try {
-
     // ── Rate limit check ──────────────────────────────────────────────────
 
     const clientIp = getClientIp(req);
@@ -7430,27 +5490,21 @@ async function handleViewTickets(req) {
     const rateCheck = checkRateLimit(clientIp);
 
     if (!rateCheck.allowed) {
-
       console.warn("[view-tickets] Rate limit exceeded for IP", clientIp);
 
       return new Response(
-
         JSON.stringify({
-
           success: false,
 
           error: "Too many attempts. Please wait before trying again.",
 
           retry_after_seconds: Math.ceil(rateCheck.resetMs / 1000),
-
         }),
 
         {
-
           status: 429,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
@@ -7458,13 +5512,9 @@ async function handleViewTickets(req) {
             "Retry-After": String(Math.ceil(rateCheck.resetMs / 1000)),
 
             "X-RateLimit-Remaining": "0",
-
           },
-
         },
-
       );
-
     }
 
     const raw = await req.json();
@@ -7475,29 +5525,32 @@ async function handleViewTickets(req) {
 
     console.log("[view-tickets] Request for:", email);
 
-
-
     if (!email || !codeInput) {
-
-      console.warn("[view-tickets] Missing fields - email:", !!email, "code:", !!codeInput);
-
-      return new Response(
-
-        JSON.stringify({ success: false, error: "Email and access code are required." }),
-
-        { status: 400, headers: { "Content-Type": "application/json",
-
-            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
-
+      console.warn(
+        "[view-tickets] Missing fields - email:",
+        !!email,
+        "code:",
+        !!codeInput,
       );
 
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Email and access code are required.",
+        }),
+
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        },
+      );
     }
 
-
-
     const supabase = getSupabaseClient();
-
-
 
     // Step 1: Find a ticket with matching access_code in metadata for this email
 
@@ -7507,7 +5560,9 @@ async function handleViewTickets(req) {
 
       .from("tickets")
 
-      .select("id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)")
+      .select(
+        "id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
+      )
 
       .eq("customer_email", email)
 
@@ -7515,41 +5570,40 @@ async function handleViewTickets(req) {
 
       .limit(1);
 
-
-
     if (ticketsErr) {
-
       console.error("[view-tickets] DB error:", ticketsErr);
 
       return new Response(
-
         JSON.stringify({ success: false, error: "Database error." }),
 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-
+        { status: 500, headers: { "Content-Type": "application/json" } },
       );
-
     }
-
-
 
     if (!tickets || tickets.length === 0) {
-
-      console.warn("[view-tickets] No match for", email, "- wrong access code or no tickets");
-
-      return new Response(
-
-        JSON.stringify({ success: false, error: "No matching ticket found. Check your email and access code and try again." }),
-
-        { status: 404, headers: { "Content-Type": "application/json",
-
-            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
-
+      console.warn(
+        "[view-tickets] No match for",
+        email,
+        "- wrong access code or no tickets",
       );
 
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "No matching ticket found. Check your email and access code and try again.",
+        }),
+
+        {
+          status: 404,
+          headers: {
+            "Content-Type": "application/json",
+
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        },
+      );
     }
-
-
 
     // Step 2: Fetch ALL tickets for this email (with QR data from metadata)
 
@@ -7557,66 +5611,59 @@ async function handleViewTickets(req) {
 
       .from("tickets")
 
-      .select("id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)")
+      .select(
+        "id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)",
+      )
 
       .eq("customer_email", email)
 
       .order("created_at", { ascending: false });
 
-
-
     if (allErr) {
-
       console.error("[view-tickets] Tickets query error:", allErr);
 
       return new Response(
-
         JSON.stringify({ success: false, error: "Failed to load tickets." }),
 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-
+        { status: 500, headers: { "Content-Type": "application/json" } },
       );
-
     }
 
-
-
-    console.log("[view-tickets] Loaded", allTickets.length, "tickets for", email);
+    console.log(
+      "[view-tickets] Loaded",
+      allTickets.length,
+      "tickets for",
+      email,
+    );
 
     // Extract QR data URIs from metadata and include access_code
 
-    const enrichedTickets = (allTickets || []).map(function(t) {
-
+    const enrichedTickets = (allTickets || []).map(function (t) {
       var qrDataUri = null;
 
       var accessCode = null;
 
       try {
-
         if (t.metadata && typeof t.metadata === "object") {
-
           if (t.metadata.qr_data_uri) qrDataUri = t.metadata.qr_data_uri;
 
           if (t.metadata.access_code) accessCode = t.metadata.access_code;
-
         } else if (typeof t.metadata === "string") {
-
           var parsed = JSON.parse(t.metadata);
 
           if (parsed.qr_data_uri) qrDataUri = parsed.qr_data_uri;
 
           if (parsed.access_code) accessCode = parsed.access_code;
-
         }
-
       } catch (_) {
-
-        console.warn("[view-tickets] Metadata parse failed for ticket", t.code, t.id);
-
+        console.warn(
+          "[view-tickets] Metadata parse failed for ticket",
+          t.code,
+          t.id,
+        );
       }
 
       return {
-
         id: t.id,
 
         code: t.code,
@@ -7639,43 +5686,48 @@ async function handleViewTickets(req) {
 
         order_id: t.order_id,
 
-        ticket_type: t.ticket_types ? { name: t.ticket_types.name, slug: t.ticket_types.slug, price: t.ticket_types.price } : null,
-
+        ticket_type: t.ticket_types
+          ? {
+              name: t.ticket_types.name,
+              slug: t.ticket_types.slug,
+              price: t.ticket_types.price,
+            }
+          : null,
       };
-
     });
 
-
-
-    console.log("[view-tickets] Returning", enrichedTickets.length, "tickets for", email);
-
-    return new Response(
-
-      JSON.stringify({ success: true, tickets: enrichedTickets }),
-
-      { status: 200, headers: { "Content-Type": "application/json",
-
-            "X-RateLimit-Remaining": String(rateCheck.remaining), } }
-
+    console.log(
+      "[view-tickets] Returning",
+      enrichedTickets.length,
+      "tickets for",
+      email,
     );
 
-  } catch (err) {
+    return new Response(
+      JSON.stringify({ success: true, tickets: enrichedTickets }),
 
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+
+          "X-RateLimit-Remaining": String(rateCheck.remaining),
+        },
+      },
+    );
+  } catch (err) {
     console.error("[view-tickets] Error:", err.message, err.stack || "");
 
     return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Server error. Please try again.",
+      }),
 
-      JSON.stringify({ success: false, error: "Server error. Please try again." }),
-
-      { status: 500, headers: { "Content-Type": "application/json" } }
-
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
-
   }
-
 }
-
-
 
 // ─── Handler: /debug-ticket
 
@@ -7684,52 +5736,37 @@ async function handleViewTickets(req) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function handleDebugTicket(req) {
-
   try {
     console.log("[handleDebugTicket] Request:");
 
     const { order_id, email, ticket_type_id, quantity } = await req.json();
 
     if (!order_id || !ticket_type_id) {
-
       return new Response(
-
         JSON.stringify({
-
           error: "Missing required fields: order_id, ticket_type_id",
-
         }),
 
         {
-
           status: 400,
 
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     const supabase = getSupabaseClient();
 
     const items = [
-
       {
-
         ticket_type_id,
 
         quantity: quantity || 1,
-
       },
-
     ];
 
     // Step 1: Try to find ticket type
@@ -7745,145 +5782,99 @@ async function handleDebugTicket(req) {
       .single();
 
     if (typeErr || !ticketType) {
-
       return new Response(
-
         JSON.stringify({
-
           step: 1,
 
           error: "Ticket type not found",
 
           db_error: typeErr,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Step 2: Try to increment sold count
 
     const { data: canSell, error: sellErr } = await supabase.rpc(
-
       "increment_ticket_sold_count",
 
       {
-
         ticket_type_id,
-
       },
-
     );
 
     if (sellErr) {
-
       return new Response(
-
         JSON.stringify({
-
           step: 2,
 
           error: "RPC call failed",
 
           db_error: sellErr,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     if (canSell === false) {
-
       return new Response(
-
         JSON.stringify({
-
           step: 2,
 
           error: "Sold out",
 
           canSell,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Step 3: Generate ticket code
 
     const { data: code, error: codeErr } = await supabase.rpc(
-
       "generate_ticket_code",
-
     );
 
     if (codeErr || !code) {
-
       return new Response(
-
         JSON.stringify({
-
           step: 3,
 
           error: "Code generation failed",
 
           db_error: codeErr,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     // Step 4: Insert ticket
@@ -7893,7 +5884,6 @@ async function handleDebugTicket(req) {
       .from("tickets")
 
       .insert({
-
         order_id,
 
         ticket_type_id,
@@ -7909,7 +5899,6 @@ async function handleDebugTicket(req) {
         customer_name: "Debug User",
 
         qr_url: `https://www.walkingfish.gm/t?t=${code}`,
-
       })
 
       .select()
@@ -7917,141 +5906,93 @@ async function handleDebugTicket(req) {
       .single();
 
     if (ticketErr) {
-
       return new Response(
-
         JSON.stringify({
-
           step: 4,
 
           error: "Ticket insert failed",
 
           db_error: ticketErr,
-
         }),
 
         {
-
           headers: {
-
             ...corsHeaders,
 
             "Content-Type": "application/json",
-
           },
-
         },
-
       );
-
     }
 
     return new Response(
-
       JSON.stringify({
-
         success: true,
 
         ticket,
 
         ticketType,
-
       }),
 
       {
-
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   } catch (err) {
-
     return new Response(
-
       JSON.stringify({
-
         error: err.message,
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-
   if (req.method === "OPTIONS") {
-
     return new Response("ok", {
-
       headers: corsHeaders,
-
     });
-
   }
 
   try {
-
     const url = new URL(req.url);
 
     const pathname = url.pathname.replace(/^\/ticketing/, ""); // strip function name prefix
 
     return await routeRequest(req, pathname || "/");
-
   } catch (err) {
-
     console.error("[ticketing] Unhandled error:", err.message, err.stack || "");
 
     return new Response(
-
       JSON.stringify({
-
         error: "Internal Server Error",
-
       }),
 
       {
-
         status: 500,
 
         headers: {
-
           ...corsHeaders,
 
           "Content-Type": "application/json",
-
         },
-
       },
-
     );
-
   }
-
 });
