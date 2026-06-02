@@ -3670,8 +3670,10 @@ async function handleViewTickets(req) {
     const raw = await req.json();
     const email = (raw.email || "").trim().toLowerCase();
     const codeInput = (raw.code || "").trim();
+    console.log("[view-tickets] Request for:", email);
 
     if (!email || !codeInput) {
+      console.warn("[view-tickets] Missing fields - email:", !!email, "code:", !!codeInput);
       return new Response(
         JSON.stringify({ success: false, error: "Email and access code are required." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -3698,6 +3700,7 @@ async function handleViewTickets(req) {
     }
 
     if (!tickets || tickets.length === 0) {
+      console.warn("[view-tickets] No match for", email, "- wrong access code or no tickets");
       return new Response(
         JSON.stringify({ success: false, error: "No matching ticket found. Check your email and access code and try again." }),
         { status: 404, headers: { "Content-Type": "application/json" } }
@@ -3719,6 +3722,7 @@ async function handleViewTickets(req) {
       );
     }
 
+    console.log("[view-tickets] Loaded", allTickets.length, "tickets for", email);
     // Extract QR data URIs from metadata and include access_code
     const enrichedTickets = (allTickets || []).map(function(t) {
       var qrDataUri = null;
@@ -3732,7 +3736,9 @@ async function handleViewTickets(req) {
           if (parsed.qr_data_uri) qrDataUri = parsed.qr_data_uri;
           if (parsed.access_code) accessCode = parsed.access_code;
         }
-      } catch (_) {}
+      } catch (_) {
+        console.warn("[view-tickets] Metadata parse failed for ticket", t.code, t.id);
+      }
       return {
         id: t.id,
         code: t.code,
@@ -3749,12 +3755,13 @@ async function handleViewTickets(req) {
       };
     });
 
+    console.log("[view-tickets] Returning", enrichedTickets.length, "tickets for", email);
     return new Response(
       JSON.stringify({ success: true, tickets: enrichedTickets }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[view-tickets] Error:", err.message);
+    console.error("[view-tickets] Error:", err.message, err.stack || "");
     return new Response(
       JSON.stringify({ success: false, error: "Server error. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
