@@ -3,7 +3,7 @@
  * Handles four views:
  *   1. Shop — ticket type listing, cart, checkout (ModemPay)
  *   2. ModemPay — create order → create intent → simulate webhook → show tickets
- *   3. Dashboard — Supabase Auth magic link, ticket display, QR codes, balances,
+ *   3. Dashboard — ticket display, QR codes, balances,
  *      transaction history
  *
  * API endpoints used (all via anon key unless JWT-authenticated):
@@ -14,7 +14,6 @@
  *   POST /functions/v1/ticketing/create-order
  *   POST /functions/v1/ticketing/create-intent
  *   POST /functions/v1/ticketing/webhook
- *   POST /auth/v1/magic_link       (anon, for magic link login)
  *   POST /auth/v1/token            (anon, for token refresh)
  */
 (function () {
@@ -426,71 +425,11 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
-     SECTION 4 — DASHBOARD: MAGIC LINK AUTH
+     SECTION 4 — DASHBOARD: SESSION AUTH
      ═══════════════════════════════════════════════════════════════════════════ */
 
   function setupDashboard() {
-    $("dashboard-login-btn").addEventListener("click", sendMagicLink);
-    $("dashboard-email").addEventListener("keydown", function (e) {
-      if (e.key === "Enter") sendMagicLink();
-    });
     $("dashboard-logout-btn").addEventListener("click", handleLogout);
-  }
-
-  /* ─── Email validation ────────────────────────────────────────── */
-  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  async function sendMagicLink() {
-    var email = $("dashboard-email").value.trim().toLowerCase();
-    var msg = $("dashboard-login-msg");
-    var btn = $("dashboard-login-btn");
-
-    if (!email) {
-      msg.textContent = "Please enter your email.";
-      return;
-    }
-
-    if (!EMAIL_RE.test(email)) {
-      msg.style.color = "#c53030";
-      msg.textContent =
-        "Please enter a valid email address (e.g. name@domain.com).";
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "Sending\u2026";
-    msg.textContent = "";
-
-    try {
-      var res = await fetch(TICKET_FN + "/send-magic-link", {
-        method: "POST",
-        headers: ANON_H,
-        body: JSON.stringify({
-          email: email,
-        }),
-      });
-
-      var d;
-      try {
-        d = await res.json();
-      } catch (_) {
-        d = {};
-      }
-
-      if (res.ok && d.success) {
-        btn.textContent = "Check your email";
-        msg.innerHTML =
-          "We sent you a sign-in link! Click it to view your tickets.";
-        msg.style.color = "";
-      } else {
-        throw new Error(d.error || "Failed to send magic link");
-      }
-    } catch (err) {
-      msg.textContent = err.message;
-      msg.style.color = "#c53030";
-      btn.disabled = false;
-      btn.textContent = "Send Magic Link";
-    }
   }
 
   /* ─── Parse login redirect (hash or query params) ───────────────────────── */
@@ -611,10 +550,6 @@
     userEmail = null;
     $("dashboard-content").style.display = "none";
     $("dashboard-login-prompt").style.display = "block";
-    $("dashboard-email").value = "";
-    $("dashboard-login-msg").textContent = "";
-    $("dashboard-login-btn").disabled = false;
-    $("dashboard-login-btn").textContent = "Send Magic Link";
 
     /* switch to shop tab */
     document.querySelectorAll("[data-tab]").forEach(function (t) {
@@ -671,48 +606,6 @@
       ]);
 
       var tickets = ticketsRes.ok ? await ticketsRes.json() : [];
-
-      /* Calculate magic link countdown (22 days from earliest ticket purchase) */
-      if (tickets && tickets.length > 0) {
-        var earliestCreated = tickets.reduce(function (min, t) {
-          return t.created_at && t.created_at < min ? t.created_at : min;
-        }, tickets[0].created_at);
-        var expiresAt =
-          new Date(earliestCreated).getTime() + 22 * 24 * 60 * 60 * 1000;
-        var now = Date.now();
-        var remainingMs = expiresAt - now;
-        if (remainingMs > 0) {
-          var remainingDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
-          var remainingHours = Math.floor(
-            (remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
-          );
-          var banner = document.getElementById("magic-link-countdown");
-          if (!banner) {
-            banner = document.createElement("div");
-            banner.id = "magic-link-countdown";
-            banner.style.cssText =
-              "background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;";
-            var dashContent = $("dashboard-content");
-            if (dashContent)
-              dashContent.insertBefore(banner, dashContent.firstChild);
-          }
-          var daysText =
-            remainingDays > 0
-              ? remainingDays +
-                " day" +
-                (remainingDays !== 1 ? "s" : "") +
-                (remainingHours > 0 ? " " + remainingHours + "h" : "")
-              : remainingHours + " hour" + (remainingHours !== 1 ? "s" : "");
-          banner.innerHTML =
-            '<div style="display:flex;align-items:center;gap:12px;">' +
-            '<span style="font-size:24px;">\u23F3</span>' +
-            '<div><strong style="font-size:15px;">Magic link expires in ' +
-            daysText +
-            "</strong>" +
-            '<p style="font-size:13px;color:var(--muted);margin:2px 0 0;">Your sign-in link from your purchase email is valid for 22 days. Request a new one anytime from the login page.</p></div></div>' +
-            '<a href="/tickets" class="btn btn-secondary" style="font-size:13px;white-space:nowrap;">Send New Link</a>';
-        }
-      }
 
       renderTickets(tickets);
 
@@ -1030,32 +923,7 @@
     });
   }
 
-  /* ─── Helper: rebuild login form after token exchange error ─────── */
-
-  function rebuildLoginForm(msg) {
-    var prompt = $("dashboard-login-prompt");
-    if (!prompt) return;
-    prompt.style.display = "block";
-    prompt.innerHTML =
-      '<div class="error-message">' +
-      escHtml(msg) +
-      '</div><p style="font-size:14px;color:var(--muted);margin:16px 0;">You can also request a fresh magic link using the form below.</p>' +
-      '<div class="login-form">' +
-      '<input type="email" id="dashboard-email" placeholder="you@example.com" required>' +
-      '<button class="btn btn-primary" id="dashboard-login-btn">Send Magic Link</button>' +
-      '<div id="dashboard-login-msg" style="font-size:13px;color:var(--muted);"></div>' +
-      "</div>";
-    var btn = $("dashboard-login-btn");
-    var input = $("dashboard-email");
-    if (btn) btn.addEventListener("click", sendMagicLink);
-    if (input) {
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") sendMagicLink();
-      });
-    }
-  }
-
-  /* ─── Persistent token magic link handler ─────────────────────────── */
+  /* ─── Helper: attempt token exchange with retry ────────────── */
 
   /* ─── Helper: attempt token exchange with retry ────────────── */
   async function exchangeTokenWithRetry(ticketToken, maxRetries) {
@@ -1160,9 +1028,7 @@
         "parts, expected 4. Token length:",
         ticketToken.length,
       );
-      /* The token is corrupted — don't even send to server. The user needs
-       * a fresh magic link. Still persist to localStorage so the server
-       * can validate it on retry. */
+      /* The token is corrupted — don't even send to server. */
     }
 
     /* Persist the ticket_token to localStorage immediately so that if the
@@ -1225,7 +1091,7 @@
 
     if (result.action_link) {
       /* Legacy fallback: redirect the browser to the action_link URL.
-       * Supabase Auth will process the magic link (GET redirect),
+       * Supabase Auth will process the redirect
        * create a session, and redirect back to /tickets#access_token=xxx */
       window.location.href = result.action_link;
       return;
@@ -1240,21 +1106,14 @@
       tokenParts: tokenParts.length,
     });
 
-    /* Show error with login form retry */
-    var userMsg = result.error || "Link expired. Please request a new one.";
-    rebuildLoginForm(userMsg);
-    /* Auto-populate email if the server decoded it from the token */
-    if (result.email) {
-      var emailInput = document.getElementById("dashboard-email");
-      if (emailInput) {
-        emailInput.value = result.email;
-        /* Show a helpful hint to click the button */
-        var hint = document.getElementById("dashboard-login-msg");
-        if (hint) {
-          hint.textContent =
-            "Click \u201cSend Magic Link\u201d to get a fresh sign-in link.";
-          hint.style.color = "";
-        }
+    /* Show error */
+    var prompt = document.getElementById("dashboard-login-prompt");
+    if (prompt) {
+      prompt.style.display = "block";
+      var msgEl = document.getElementById("dashboard-login-msg");
+      if (msgEl) {
+        msgEl.textContent = result.error || "Link expired. Please use your access code from your purchase email to view your tickets.";
+        msgEl.style.color = "#c53030";
       }
     }
   }

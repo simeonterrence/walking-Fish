@@ -371,10 +371,9 @@
     <!-- Login prompt (shown when not authenticated) -->
     <div class="dashboard-login" id="dashboard-login-prompt">
       <h3>View Your Tickets</h3>
-      <p>Enter your email to receive a magic link. No password needed — we'll send you a secure login link.</p>
+      <p>Use your 6-digit access code from your purchase confirmation email to view your tickets.</p>
       <div class="login-form">
-        <input type="email" id="dashboard-email" placeholder="you@example.com" required>
-        <button class="btn btn-primary" id="dashboard-login-btn">Send Magic Link</button>
+        <a href="/view-tickets" class="btn btn-primary" style="text-decoration:none;text-align:center;">View My Tickets</a>
         <div id="dashboard-login-msg" style="font-size:13px;color:var(--muted);"></div>
       </div>
     </div>
