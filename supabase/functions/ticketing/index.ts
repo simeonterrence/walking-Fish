@@ -163,12 +163,10 @@ async function sendMagicLinkEmail(email) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        type: "signup",
+        type: "magiclink",
         email,
         options: {
-          data: {
-            skip_smtp: true,
-          },
+          redirect_to: `${siteUrl}/tickets`,
         },
       }),
     });
@@ -3491,14 +3489,19 @@ async function handleExchangeToken(req) {
       // 3. Generate a strong temporary password
       const tempPassword = crypto.randomUUID().replace(/-/g, "") + "Aa1!";
 
-      // 4. Update the user's password via admin API
+      // 4. Update password AND confirm email in a single admin call.
+      // Some accounts are created in an unconfirmed state (e.g. via a prior
+      // signup attempt). The magic link token proves email ownership, so
+      // confirming the email here is safe. Without this, signInWithPassword
+      // fails with "Email not confirmed" even after the password is set.
       const { error: updateError } =
         await adminSupabase.auth.admin.updateUserById(userId, {
           password: tempPassword,
+          email_confirm: true,
         });
       if (updateError) {
         console.error(
-          `[exchange-token] Password update failed for ${email}: ${updateError.message}`,
+          `[exchange-token] Password/confirm update failed for ${email}: ${updateError.message}`,
         );
         return new Response(
           JSON.stringify({
