@@ -3427,10 +3427,10 @@ async function handleExchangeToken(req) {
         },
       );
     }
-    // Token is valid — create a session via password grant.
-    // Uses the admin API to set a temporary password, then signs in
-    // with email + password. Bypasses magic link OTP issues (expired/invalid
-    // tokens) and works on all browsers including iOS Safari in-app browsers.
+    // Token is valid — create a session via verifyOtp (no password grant, no race condition).
+    // Uses admin.generateLink() to get a fresh OTP token_hash, then exchanges it
+    // for a session via verifyOtp(). This avoids the password grant race condition
+    // and eliminates all writes to the Auth user table.
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const siteUrl = "https://www.walkingfish.gm";
@@ -3440,35 +3440,18 @@ async function handleExchangeToken(req) {
         auth: { autoRefreshToken: false, persistSession: false },
       });
 
-      // 2. Ensure user exists in Auth (creates if not, returns user ID)
+      // 2. Generate a fresh action_link OTP via admin API
       const { data: linkData, error: linkError } =
         await adminSupabase.auth.admin.generateLink({
           type: "magiclink",
           email: email,
           options: {
-            redirect_to: `${siteUrl}/tickets`,
+            redirect_to: `${siteUrl}/tickets`, email_confirm: true,
           },
         });
-      if (linkError) {
+      if (linkError || !linkData?.properties?.action_link) {
         console.error(
-          `[exchange-token] Generate link failed for ${email}: ${linkError.message}`,
-        );
-        return new Response(
-          JSON.stringify({
-            error: "Unable to sign you in. Please try again.",
-          }),
-          {
-            status: 500,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
-      if (!linkData?.properties?.action_link) {
-        console.error(
-          `[exchange-token] No action_link in generateLink response for ${email}`,
+          `[exchange-token] generateLink failed for ${email}: ${linkError?.message || "No action_link"}`,
         );
         return new Response(
           JSON.stringify({
@@ -3484,51 +3467,13 @@ async function handleExchangeToken(req) {
         );
       }
 
-      // Get user ID — SDK response may nest it differently across versions
-      const userId = linkData?.id || linkData?.user?.id;
-      if (!userId) {
-        console.error(
-          `[exchange-token] No user ID in generateLink response for ${email}`,
-        );
-        // Fallback: return action_link for browser redirect
-        return new Response(
-          JSON.stringify({
-            success: true,
-            action_link: linkData.properties.action_link,
-          }),
-          {
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-      }
+      // 3. Extract token_hash from the action_link URL
+      const actionUrl = new URL(linkData.properties.action_link);
+      const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
 
-      // 3. Derive a deterministic temporary password from email + secret.
-      // Using crypto.randomUUID() caused a race condition: when two concurrent
-      // invocations (e.g. iOS WKWebView + Safari) both reach this point, they
-      // generate DIFFERENT passwords. The second updateUserById overwrites the
-      // first, causing the first invocation's signInWithPassword to fail.
-      // A deterministic HMAC means all concurrent invocations set the SAME
-      // password, so every signInWithPassword attempt succeeds.
-      const tempPassword =
-        (await signMessage(tokenSecret, "temp_pw:" + email)).slice(0, 24) +
-        "Aa1!";
-
-      // 4. Update password AND confirm email in a single admin call.
-      // Some accounts are created in an unconfirmed state (e.g. via a prior
-      // signup attempt). The magic link token proves email ownership, so
-      // confirming the email here is safe. Without this, signInWithPassword
-      // fails with "Email not confirmed" even after the password is set.
-      const { error: updateError } =
-        await adminSupabase.auth.admin.updateUserById(userId, {
-          password: tempPassword,
-          email_confirm: true,
-        });
-      if (updateError) {
+      if (!tokenHash) {
         console.error(
-          `[exchange-token] Password/confirm update failed for ${email}: ${updateError.message}`,
+          `[exchange-token] No token_hash in action_link for ${email}`,
         );
         return new Response(
           JSON.stringify({
@@ -3544,44 +3489,29 @@ async function handleExchangeToken(req) {
         );
       }
 
-      // 5. Brief delay for password propagation
-      await new Promise((r) => setTimeout(r, 1000));
-
-      // 6. Sign in with password grant using the anon key
-      // Retry loop: password propagation across Supabase Auth replicas can be
-      // delayed under concurrent requests (iOS WKWebView + Safari race).
+      // 4. Exchange token_hash for a session via verifyOtp
+      // Uses anon key (same as client-side verifyOtp). No writes to user table.
       const anonClient = createClient(supabaseUrl, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
-      let signInData, signInError;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        const result = await anonClient.auth.signInWithPassword({
-          email,
-          password: tempPassword,
-        });
-        if (!result.error && result.data?.session) {
-          signInData = result.data;
-          signInError = null;
-          break;
-        }
-        signInError = result.error;
-        console.warn(
-          `[exchange-token] Sign-in attempt ${attempt}/3 failed for ${email}: ${result.error?.message || "No session"}. Retrying in 800ms...`,
-        );
-        await new Promise((r) => setTimeout(r, 800));
-      }
 
-      if (signInError || !signInData?.session) {
+      const { data: otpData, error: otpError } =
+        await anonClient.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "magiclink",
+        });
+
+      if (otpError || !otpData?.session) {
         console.error(
-          `[exchange-token] Sign-in failed for ${email} after 3 attempts: ${signInError?.message || "No session"}`,
+          `[exchange-token] verifyOtp failed for ${email}: ${otpError?.message || "No session"}`,
         );
         return new Response(
           JSON.stringify({
             error: "Unable to sign you in. Please try again.",
-            reason: "sign_in_failed",
+            reason: "otp_verify_failed",
           }),
           {
-            status: 500,
+            status: 401,
             headers: {
               ...corsHeaders,
               "Content-Type": "application/json",
@@ -3590,15 +3520,15 @@ async function handleExchangeToken(req) {
         );
       }
 
-      // 7. Session obtained successfully
+      // 5. Session obtained successfully
       console.log(
-        `[exchange-token] ✓ Session obtained for ${email} (password grant)`,
+        `[exchange-token] ✓ Session obtained for ${email} (verifyOtp)`,
       );
       return new Response(
         JSON.stringify({
           success: true,
-          access_token: signInData.session.access_token,
-          refresh_token: signInData.session.refresh_token || "",
+          access_token: otpData.session.access_token,
+          refresh_token: otpData.session.refresh_token || "",
         }),
         {
           headers: {
