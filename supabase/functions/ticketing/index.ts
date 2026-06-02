@@ -3548,22 +3548,37 @@ async function handleExchangeToken(req) {
       await new Promise((r) => setTimeout(r, 1000));
 
       // 6. Sign in with password grant using the anon key
+      // Retry loop: password propagation across Supabase Auth replicas can be
+      // delayed under concurrent requests (iOS WKWebView + Safari race).
       const anonClient = createClient(supabaseUrl, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
-      const { data: signInData, error: signInError } =
-        await anonClient.auth.signInWithPassword({
+      let signInData, signInError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const result = await anonClient.auth.signInWithPassword({
           email,
           password: tempPassword,
         });
+        if (!result.error && result.data?.session) {
+          signInData = result.data;
+          signInError = null;
+          break;
+        }
+        signInError = result.error;
+        console.warn(
+          `[exchange-token] Sign-in attempt ${attempt}/3 failed for ${email}: ${result.error?.message || "No session"}. Retrying in 800ms...`,
+        );
+        await new Promise((r) => setTimeout(r, 800));
+      }
 
       if (signInError || !signInData?.session) {
         console.error(
-          `[exchange-token] Sign-in failed for ${email}: ${signInError?.message || "No session"}`,
+          `[exchange-token] Sign-in failed for ${email} after 3 attempts: ${signInError?.message || "No session"}`,
         );
         return new Response(
           JSON.stringify({
             error: "Unable to sign you in. Please try again.",
+            reason: "sign_in_failed",
           }),
           {
             status: 500,
