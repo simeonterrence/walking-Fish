@@ -19,6 +19,7 @@ function resolveContactInbox(inquiry: string): string {
   if (s.includes("sponsor") || s.includes("partner"))  return "theevents.guy@walkingfish.gm";
   if (s.includes("media") || s.includes("press") ||
       s.includes("production"))                         return "musterpoint@walkingfish.gm";
+  if (s.includes("complaint") || s.includes("issue"))  return "hello@walkingfish.gm";
   // General Inquiry, Book an Experience → hello@
   return "hello@walkingfish.gm";
 }
