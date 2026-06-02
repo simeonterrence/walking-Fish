@@ -1653,7 +1653,11 @@
       btn.textContent = "Processing…";
     }
 
-    callEdgeFunction("/debit", { ticket_id: ticketId, amount: amount })
+    callEdgeFunction("/debit", {
+      ticket_id: ticketId,
+      amount: amount,
+      staff_code: state.scannerCode || null,
+    })
       .then(function (data) {
         if (!data.success) throw new Error(data.error || "Debit failed");
 
@@ -1700,7 +1704,11 @@
       btn.textContent = "Processing…";
     }
 
-    callEdgeFunction("/debit", { ticket_id: ticketId, amount: amount })
+    callEdgeFunction("/debit", {
+      ticket_id: ticketId,
+      amount: amount,
+      staff_code: state.scannerCode || null,
+    })
       .then(function (data) {
         if (!data.success) throw new Error(data.error || "Debit failed");
 

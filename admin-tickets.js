@@ -1886,6 +1886,132 @@ function revokeScannerCode(id) {
     });
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8b. STAFF ACTIVITY REPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function loadStaffActivity() {
+  var container = document.getElementById("staff-activity-container");
+  if (!container) return;
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading staff activity...</p>';
+
+  // Fetch all balance transactions with staff codes
+  adminQuery(
+    "/rest/v1/balance_transactions?select=staff_code,type,amount_delta,source,created_at&order=created_at.desc&staff_code=not.is.null&limit=5000",
+  )
+    .then(function (txns) {
+      if (!txns || txns.length === 0) {
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:12px;">No staff-tracked transactions yet. Debits processed from the scan page will appear here.</p>';
+        return;
+      }
+
+      // Group by staff_code
+      var staffGroups = {};
+      txns.forEach(function (t) {
+        var code = t.staff_code || "unknown";
+        if (!staffGroups[code]) {
+          staffGroups[code] = {
+            debits: 0,
+            debitCount: 0,
+            topups: 0,
+            topupCount: 0,
+            sources: {},
+          };
+        }
+        var g = staffGroups[code];
+        if (t.type === "debit") {
+          g.debits += Math.abs(t.amount_delta);
+          g.debitCount++;
+        } else if (t.type === "topup") {
+          g.topups += Math.abs(t.amount_delta);
+          g.topupCount++;
+        }
+        var src = t.source || "unknown";
+        if (!g.sources[src]) g.sources[src] = 0;
+        g.sources[src] += Math.abs(t.amount_delta);
+      });
+
+      var html =
+        '<div style="overflow-x:auto;margin-top:8px;"><table class="app-table" style="font-size:13px;">' +
+        "<thead><tr>" +
+        "<th>Staff Code</th>" +
+        "<th>Total Debits (D)</th>" +
+        "<th>Debit Count</th>" +
+        "<th>Total Top-Ups (D)</th>" +
+        "<th>Top-Up Count</th>" +
+        "<th>Combined Total (D)</th>" +
+        "</tr></thead><tbody>";
+
+      var codes = Object.keys(staffGroups).sort();
+      var grandDebits = 0,
+        grandTopups = 0;
+      codes.forEach(function (code) {
+        var g = staffGroups[code];
+        grandDebits += g.debits;
+        grandTopups += g.topups;
+        html +=
+          "<tr>" +
+          '<td><code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' +
+          escapeHtml(code) +
+          "</code></td>" +
+          '<td style="font-weight:600;color:#991B1B;">D' +
+          g.debits.toLocaleString() +
+          "</td>" +
+          "<td>" +
+          g.debitCount +
+          "</td>" +
+          '<td style="font-weight:600;color:#065F46;">D' +
+          g.topups.toLocaleString() +
+          "</td>" +
+          "<td>" +
+          g.topupCount +
+          "</td>" +
+          '<td style="font-weight:600;">D' +
+          (g.debits + g.topups).toLocaleString() +
+          "</td>" +
+          "</tr>";
+      });
+
+      // Grand total row
+      html +=
+        '<tr style="border-top:2px solid var(--accent);font-weight:700;">' +
+        '<td><strong>GRAND TOTAL</strong></td>' +
+        '<td style="color:#991B1B;">D' +
+        grandDebits.toLocaleString() +
+        "</td>" +
+        "<td>" +
+        codes.reduce(function (s, c) {
+          return s + staffGroups[c].debitCount;
+        }, 0) +
+        "</td>" +
+        '<td style="color:#065F46;">D' +
+        grandTopups.toLocaleString() +
+        "</td>" +
+        "<td>" +
+        codes.reduce(function (s, c) {
+          return s + staffGroups[c].topupCount;
+        }, 0) +
+        "</td>" +
+        '<td>D' +
+        (grandDebits + grandTopups).toLocaleString() +
+        "</td>" +
+        "</tr>";
+
+      html += "</tbody></table></div>";
+      container.innerHTML = html;
+    })
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed: ' +
+        escapeHtml(err.message) +
+        "</p>";
+    });
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
    ═══════════════════════════════════════════════════════════════════════════ */

@@ -3603,7 +3603,7 @@ async function handleMarkUsed(req) {
 
 async function handleDebit(req) {
   try {
-    const { ticket_id, amount: amount1 } = await req.json();
+    const { ticket_id, amount: amount1, staff_code } = await req.json();
 
     if (!ticket_id || !amount1 || amount1 <= 0) {
       return new Response(
@@ -3638,6 +3638,8 @@ async function handleDebit(req) {
         p_source: "booth_debit",
 
         p_notes: `Staff debit: D${amount1}`,
+
+        p_staff_code: staff_code || null,
       },
     );
 
