@@ -3328,7 +3328,7 @@ async function handleStaffAuth(req) {
 
       .from("staff_scanner_codes")
 
-      .select("id, code, label, is_active")
+      .select("id, code, label, is_active, permissions")
 
       .eq("code", code.trim().toUpperCase())
 
@@ -3401,6 +3401,8 @@ async function handleStaffAuth(req) {
         code: record.code,
 
         name: record.label || "Staff",
+
+        permissions: record.permissions || ["*"],
       }),
 
       {
@@ -5577,7 +5579,10 @@ async function handleViewTickets(req) {
       return new Response(
         JSON.stringify({ success: false, error: "Database error." }),
 
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -5627,7 +5632,10 @@ async function handleViewTickets(req) {
       return new Response(
         JSON.stringify({ success: false, error: "Failed to load tickets." }),
 
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -5727,7 +5735,10 @@ async function handleViewTickets(req) {
         error: "Server error. Please try again.",
       }),
 
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 }

@@ -16,7 +16,8 @@
     authenticated: false,
     scannerCode: null,
     scannerId: null,
-    mode: null, // 'gate' | 'debit' | 'topup' | 'bulk'
+    permissions: [],
+    mode: null, // 'gate' | 'debit' | 'topup' | 'bill' | 'bulk'
     currentTicket: null, // Currently loaded ticket after scan/lookup
     cameraStream: null,
     scanningActive: false,
@@ -41,20 +42,35 @@
   var ICON_PATHS = {
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/>',
     check: '<polyline points="4 13 9 18 20 6"/>',
-    checkcircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-    camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+    checkcircle:
+      '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    camera:
+      '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
     food: '<path d="M7 2v7a3 3 0 0 0 6 0V2"/><line x1="10" y1="9" x2="10" y2="22"/><path d="M17 2v20"/><line x1="17" y1="7" x2="15" y2="7"/>',
-    drink: '<path d="M6 2l1.5 14a4.5 4.5 0 0 0 9 0L18 2"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
-    print: '<rect x="6" y="10" width="12" height="8" rx="1.5"/><path d="M6 10V6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="8" y1="17" x2="16" y2="17"/>',
+    drink:
+      '<path d="M6 2l1.5 14a4.5 4.5 0 0 0 9 0L18 2"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
+    print:
+      '<rect x="6" y="10" width="12" height="8" rx="1.5"/><path d="M6 10V6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="8" y1="17" x2="16" y2="17"/>',
     undo: '<path d="M3 10h13a5 5 0 0 1 0 10H11"/><polyline points="7 6 3 10 7 14"/>',
-    smartphone: '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/><circle cx="12" cy="16" r="2"/>',
-    download: '<line x1="12" y1="3" x2="12" y2="16"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/>',
-    filetext: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
+    smartphone:
+      '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/><circle cx="12" cy="16" r="2"/>',
+    download:
+      '<line x1="12" y1="3" x2="12" y2="16"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/>',
+    filetext:
+      '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
   };
 
   function icon(name, size) {
     size = size || 24;
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[name] || '') + '</svg>';
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+      size +
+      '" height="' +
+      size +
+      '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      (ICON_PATHS[name] || "") +
+      "</svg>"
+    );
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -244,12 +260,14 @@
         state.scannerCode = data.code;
         state.scannerId = data.id;
         try {
+          state.permissions = data.permissions || ["*"];
           sessionStorage.setItem(
             "wf_scanner_session",
             JSON.stringify({
               code: data.code,
               id: data.id,
               name: data.name || "",
+              permissions: state.permissions,
             }),
           );
         } catch (e) {}
@@ -272,6 +290,19 @@
     hide("scanner-passcode");
     var modes = document.getElementById("scanner-modes");
     if (modes) modes.classList.add("active");
+    // Filter mode buttons by permissions
+    var isUniversal =
+      state.permissions.indexOf("*") !== -1 ||
+      state.permissions.indexOf("all") !== -1;
+    var modeBtns = modes ? modes.querySelectorAll(".mode-btn[data-mode]") : [];
+    modeBtns.forEach(function (btn) {
+      var mode = btn.getAttribute("data-mode");
+      if (isUniversal || state.permissions.indexOf(mode) !== -1) {
+        btn.style.display = "";
+      } else {
+        btn.style.display = "none";
+      }
+    });
   }
 
   function lockScanner() {
@@ -365,7 +396,7 @@
       }
       var logBtn = document.getElementById("bill-log-btn");
       if (logBtn) {
-        logBtn.innerHTML = icon('filetext', 14) + ' Log';
+        logBtn.innerHTML = icon("filetext", 14) + " Log";
         logBtn.classList.remove("active");
       }
     } else if (mode === "bulk") {
@@ -500,7 +531,9 @@
         var placeholder = document.getElementById("camera-placeholder");
         if (placeholder) {
           placeholder.innerHTML =
-            '<span class="cam-icon">' + icon('lock', 40) + '</span><p>Camera access denied.<br><span style="font-size:12px;">Use Manual Entry instead.</span></p>';
+            '<span class="cam-icon">' +
+            icon("lock", 40) +
+            '</span><p>Camera access denied.<br><span style="font-size:12px;">Use Manual Entry instead.</span></p>';
         }
       });
   }
@@ -683,7 +716,9 @@
             '</div><div class="detail">' +
             escapeHtml(typeName) +
             "</div></div>" +
-            (t.type === "activity_credit" || t.type === "food" || t.type === "drinks"
+            (t.type === "activity_credit" ||
+            t.type === "food" ||
+            t.type === "drinks"
               ? '<div class="bal">' + formatCurrency(t.balance) + "</div>"
               : '<div style="font-size:12px;color:var(--muted);">' +
                 t.status +
@@ -766,7 +801,10 @@
       statusClass = "";
     }
 
-    var hasBalance = ticket.type === "activity_credit" || ticket.type === "food" || ticket.type === "drinks";
+    var hasBalance =
+      ticket.type === "activity_credit" ||
+      ticket.type === "food" ||
+      ticket.type === "drinks";
     var headerName = escapeHtml(ticket.customer_name || "Anonymous");
 
     container.innerHTML =
@@ -832,7 +870,9 @@
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    });    var voucherEmoji = ticket.type === "food" ? icon('food', 40) : icon('drink', 40);
+    });
+    var voucherEmoji =
+      ticket.type === "food" ? icon("food", 40) : icon("drink", 40);
 
     var voucherLabel =
       ticket.type === "food" ? "Food Voucher" : "Drinks Voucher";
@@ -840,7 +880,9 @@
 
     return (
       '<div class="bill-receipt" style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:12px;text-align:center;">' +
-      '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent-text);margin-bottom:4px;">' + icon('checkcircle', 14) + ' Redeemed</div>' +
+      '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent-text);margin-bottom:4px;">' +
+      icon("checkcircle", 14) +
+      " Redeemed</div>" +
       '<div style="font-size:40px;line-height:1.2;margin:4px 0;">' +
       voucherEmoji +
       "</div>" +
@@ -853,7 +895,8 @@
       voucherLabel +
       "</div>" +
       '<div style="font-size:13px;font-weight:600;margin-top:6px;">' +
-      "Debited: " + formatCurrency(debitedAmt) +
+      "Debited: " +
+      formatCurrency(debitedAmt) +
       "</div>" +
       '<div style="font-size:11px;color:var(--muted);margin-top:8px;display:flex;justify-content:center;gap:16px;">' +
       "<span>" +
@@ -866,7 +909,8 @@
       "</span>" +
       "</div>" +
       '<button class="btn btn-secondary" id="print-receipt-btn" style="margin-top:14px;width:100%;font-size:15px;font-weight:600;padding:14px;">' +
-      icon('print', 18) + ' Print Receipt' +
+      icon("print", 18) +
+      " Print Receipt" +
       "</button>" +
       "</div>"
     );
@@ -874,7 +918,8 @@
 
   function printBillReceipt() {
     // Get the debited amount from the last bill log entry
-    var lastEntry = state.billLog.length > 0 ? state.billLog[state.billLog.length - 1] : null;
+    var lastEntry =
+      state.billLog.length > 0 ? state.billLog[state.billLog.length - 1] : null;
     var debitedAmount = lastEntry ? lastEntry.value : 0;
 
     // Snapshot ticket data before print (print() is non-blocking in some browsers)
@@ -961,7 +1006,7 @@
     if (logBtn) {
       logBtn.innerHTML = state.billLogPanelVisible
         ? "Close Log"
-        : icon('filetext', 14) + ' Log';
+        : icon("filetext", 14) + " Log";
       logBtn.classList.toggle("active", state.billLogPanelVisible);
     }
 
@@ -996,7 +1041,9 @@
     if (state.billLog.length === 0) {
       logPanel.innerHTML =
         '<div class="bill-log-empty">' +
-        '<div style="font-size:36px;margin-bottom:8px;">' + icon('smartphone', 36) + '</div>' +
+        '<div style="font-size:36px;margin-bottom:8px;">' +
+        icon("smartphone", 36) +
+        "</div>" +
         "<p>No vouchers redeemed yet this session.</p>" +
         '<p style="font-size:12px;color:var(--muted);">Scan and redeem food &amp; drinks vouchers — they\'ll appear here.</p>' +
         "</div>";
@@ -1019,10 +1066,14 @@
       "<span>Total: <strong>" +
       total +
       "</strong></span>" +
-      '<span>' + icon('food', 16) + ' <strong>' +
+      "<span>" +
+      icon("food", 16) +
+      " <strong>" +
       foodCount +
       "</strong></span>" +
-      '<span>' + icon('drink', 16) + ' <strong>' +
+      "<span>" +
+      icon("drink", 16) +
+      " <strong>" +
       drinksCount +
       "</strong></span>" +
       '<span class="bill-log-total-amount">' +
@@ -1034,7 +1085,7 @@
     // Most recent first
     var logCopy = state.billLog.slice().reverse();
     logCopy.forEach(function (entry, idx) {
-      var emoji = entry.type === "food" ? icon('food', 22) : icon('drink', 22);
+      var emoji = entry.type === "food" ? icon("food", 22) : icon("drink", 22);
       var label = entry.type === "food" ? "Food" : "Drinks";
       var originalIdx = state.billLog.length - 1 - idx;
 
@@ -1087,7 +1138,9 @@
           "</div>" +
           '<button class="bill-log-undo-btn" data-log-idx="' +
           originalIdx +
-          '" title="Undo redemption" aria-label="Undo">' + icon('undo', 16) + '</button>' +
+          '" title="Undo redemption" aria-label="Undo">' +
+          icon("undo", 16) +
+          "</button>" +
           "</div>";
       }
     });
@@ -1095,7 +1148,9 @@
     html +=
       "</div>" +
       '<div style="display:flex;gap:8px;margin-top:12px;">' +
-      '<button class="btn btn-secondary" id="bill-log-export-btn" style="flex:1;font-size:13px;">' + icon('download', 14) + ' Export CSV</button>' +
+      '<button class="btn btn-secondary" id="bill-log-export-btn" style="flex:1;font-size:13px;">' +
+      icon("download", 14) +
+      " Export CSV</button>" +
       '<button class="btn btn-secondary" id="bill-log-clear-btn" style="flex:1;font-size:13px;color:#c53030;">Clear Log</button>' +
       "</div>";
 
@@ -1207,7 +1262,8 @@
 
     showResult(
       "success",
-      icon('download', 14) + ' Exported <strong>' +
+      icon("download", 14) +
+        " Exported <strong>" +
         escapeHtml(filename) +
         "</strong> (" +
         totals.totalCount +
@@ -1313,7 +1369,8 @@
         var noteMsg = reason ? ' &#8212; "' + escapeHtml(reason) + '"' : "";
         showLogToast(
           "success",
-          icon('undo', 14) + ' Undone <strong>' +
+          icon("undo", 14) +
+            " Undone <strong>" +
             escapeHtml(entry.code) +
             "</strong>" +
             noteMsg,
@@ -1323,7 +1380,7 @@
         showLogToast("error", err.message || "Failed to undo redemption");
         if (undoBtn) {
           undoBtn.disabled = false;
-          undoBtn.innerHTML = icon('undo', 16);
+          undoBtn.innerHTML = icon("undo", 16);
         }
       });
   }
@@ -1357,9 +1414,9 @@
       return;
     }
 
-    var voucherEmoji = ticket.type === "food" ? icon('food', 36) : icon('drink', 36);
-    var voucherLabel =
-      ticket.type === "food" ? "Food Ticket" : "Drinks Ticket";
+    var voucherEmoji =
+      ticket.type === "food" ? icon("food", 36) : icon("drink", 36);
+    var voucherLabel = ticket.type === "food" ? "Food Ticket" : "Drinks Ticket";
 
     container.innerHTML =
       '<div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--accent-dim);border-radius:12px;margin-bottom:12px;">' +
@@ -1371,7 +1428,9 @@
       voucherLabel +
       "</div>" +
       '<div style="font-size:12px;color:var(--muted);">' +
-      "Balance: <strong>" + formatCurrency(ticket.balance) + "</strong>" +
+      "Balance: <strong>" +
+      formatCurrency(ticket.balance) +
+      "</strong>" +
       " &middot; " +
       escapeHtml(ticket.customer_name || "Anonymous") +
       "</div>" +
@@ -1379,20 +1438,22 @@
       "</div>" +
       '<div class="debit-form" id="bill-debit-form" style="display:block;margin-top:12px;">' +
       '<div class="amount-display">' +
-      'Current balance: <strong id="bill-current-balance">' + formatCurrency(ticket.balance) + '</strong>' +
-      '</div>' +
+      'Current balance: <strong id="bill-current-balance">' +
+      formatCurrency(ticket.balance) +
+      "</strong>" +
+      "</div>" +
       '<input type="number" id="bill-amount-input" class="input-large" placeholder="0" min="0" step="10">' +
       '<div class="preset-grid">' +
       '<button class="preset-btn" data-amount="50">D50</button>' +
       '<button class="preset-btn" data-amount="100">D100</button>' +
       '<button class="preset-btn" data-amount="200">D200</button>' +
       '<button class="preset-btn" data-amount="500">D500</button>' +
-      '</div>' +
+      "</div>" +
       '<button class="btn btn-primary" id="bill-debit-confirm-btn" style="width:100%;margin-top:12px;" disabled>' +
-      'Confirm Debit' +
-      '</button>' +
+      "Confirm Debit" +
+      "</button>" +
       '<div id="bill-debit-error" class="error-message" style="display:none;margin-top:8px;"></div>' +
-      '</div>';
+      "</div>";
   }
 
   // ─── Gate Mode ────────────────────────────────────────────────────────────
@@ -1423,7 +1484,8 @@
 
     container.innerHTML =
       '<button class="action-btn success" id="gate-mark-used-btn">' +
-      icon('checkcircle', 16) + ' Mark as Entered' +
+      icon("checkcircle", 16) +
+      " Mark as Entered" +
       "</button>" +
       '<div id="gate-error" class="error-message" style="display:none;margin-top:8px;"></div>';
   }
@@ -1467,7 +1529,8 @@
 
           showResult(
             "success",
-            icon('checkcircle', 16) + ' Redeemed <strong>' +
+            icon("checkcircle", 16) +
+              " Redeemed <strong>" +
               escapeHtml(state.currentTicket.code) +
               "</strong> (" +
               (state.currentTicket.type === "food" ? "Food" : "Drinks") +
@@ -1509,7 +1572,8 @@
           // Gate / other: show success state
           showResult(
             "success",
-            icon('checkcircle', 16) + ' Entry confirmed for <strong>' +
+            icon("checkcircle", 16) +
+              " Entry confirmed for <strong>" +
               escapeHtml(state.currentTicket.code) +
               "</strong>",
           );
@@ -1517,7 +1581,9 @@
           if (container) {
             container.innerHTML =
               '<div style="padding:16px;text-align:center;color:#2f855a;">' +
-              '<strong style="font-size:18px;">' + icon('checkcircle', 18) + ' Entered</strong><br>' +
+              '<strong style="font-size:18px;">' +
+              icon("checkcircle", 18) +
+              " Entered</strong><br>" +
               '<span style="font-size:13px;color:var(--muted);">' +
               escapeHtml(state.currentTicket.code) +
               "</span>" +
@@ -1544,7 +1610,11 @@
   // ─── Debit Mode ───────────────────────────────────────────────────────────
 
   function showDebitForm(ticket) {
-    if (ticket.type !== "activity_credit" && ticket.type !== "food" && ticket.type !== "drinks") {
+    if (
+      ticket.type !== "activity_credit" &&
+      ticket.type !== "food" &&
+      ticket.type !== "drinks"
+    ) {
       var container = document.getElementById("scanner-actions");
       if (container) {
         container.innerHTML =
@@ -1589,7 +1659,8 @@
 
         showResult(
           "success",
-          icon('checkcircle', 16) + ' Debited <strong>' +
+          icon("checkcircle", 16) +
+            " Debited <strong>" +
             formatCurrency(amount) +
             "</strong>. Remaining: " +
             formatCurrency(data.new_balance),
@@ -1660,7 +1731,8 @@
 
         showResult(
           "success",
-          icon('checkcircle', 16) + ' Debited <strong>' +
+          icon("checkcircle", 16) +
+            " Debited <strong>" +
             formatCurrency(amount) +
             "</strong> from " +
             escapeHtml(state.currentTicket.code) +
@@ -1963,7 +2035,8 @@
                 // Mark as completed
                 showResult(
                   "success",
-                  icon('checkcircle', 16) + ' Payment received! Top-up of <strong>' +
+                  icon("checkcircle", 16) +
+                    " Payment received! Top-up of <strong>" +
                     formatCurrency(amount) +
                     "</strong> confirmed.",
                 );
@@ -2057,7 +2130,8 @@
 
         showResult(
           "success",
-          icon('checkcircle', 16) + ' Top-up of <strong>' +
+          icon("checkcircle", 16) +
+            " Top-up of <strong>" +
             formatCurrency(amount) +
             "</strong> complete. New balance: " +
             formatCurrency(newBalance),
@@ -2120,7 +2194,7 @@
               '" data-price="' +
               t.price +
               '"' +
-              (soldOut ? " disabled style=\"color:var(--muted);\"" : "") +
+              (soldOut ? ' disabled style="color:var(--muted);"' : "") +
               ">" +
               escapeHtml(t.name) +
               " — " +
@@ -2217,7 +2291,8 @@
           // Show result with ticket code for paper slip
           showResult(
             "success",
-            icon('checkcircle', 16) + ' Created <strong>' +
+            icon("checkcircle", 16) +
+              " Created <strong>" +
               escapeHtml(data.ticket_code) +
               "</strong> for " +
               escapeHtml(customerName),
@@ -2323,7 +2398,8 @@
           resultEl.className = "scanner-result success";
           var successCount = data.processed || entries.length;
           resultEl.innerHTML =
-            icon('checkcircle', 16) + ' ' +
+            icon("checkcircle", 16) +
+            " " +
             successCount +
             " top-up" +
             (successCount !== 1 ? "s" : "") +
@@ -2366,6 +2442,15 @@
       if (target.closest(".mode-btn[data-mode]")) {
         var modeBtn = target.closest(".mode-btn[data-mode]");
         var mode = modeBtn.getAttribute("data-mode");
+        // Permission check
+        var isAllowed =
+          state.permissions.indexOf("*") !== -1 ||
+          state.permissions.indexOf("all") !== -1 ||
+          state.permissions.indexOf(mode) !== -1;
+        if (!isAllowed) {
+          showScannerError("You don't have permission to use this mode.");
+          return;
+        }
         selectMode(mode);
         return;
       }
@@ -2487,13 +2572,17 @@
         var presetBtn = target.closest(".preset-btn");
         var amount = presetBtn.getAttribute("data-amount");
         var isBillMode = state.mode === "bill";
-        var input = document.getElementById(isBillMode ? "bill-amount-input" : "debit-amount-input");
+        var input = document.getElementById(
+          isBillMode ? "bill-amount-input" : "debit-amount-input",
+        );
         if (input) input.value = amount;
         $$(".preset-btn").forEach(function (b) {
           b.classList.remove("selected");
         });
         presetBtn.classList.add("selected");
-        var confirmBtn = document.getElementById(isBillMode ? "bill-debit-confirm-btn" : "debit-confirm-btn");
+        var confirmBtn = document.getElementById(
+          isBillMode ? "bill-debit-confirm-btn" : "debit-confirm-btn",
+        );
         if (confirmBtn) confirmBtn.disabled = false;
         return;
       }
@@ -2503,7 +2592,8 @@
       var billAmountInput = document.getElementById("bill-amount-input");
       var activeDebitInput = null;
       if (debitInput && e.target === debitInput) activeDebitInput = debitInput;
-      if (billAmountInput && e.target === billAmountInput) activeDebitInput = billAmountInput;
+      if (billAmountInput && e.target === billAmountInput)
+        activeDebitInput = billAmountInput;
       if (activeDebitInput) {
         // handled by keydown/input
         return;
@@ -2545,7 +2635,8 @@
           );
           return;
         }
-        if (state.currentTicket) debitBillTicket(state.currentTicket.id, billAmount);
+        if (state.currentTicket)
+          debitBillTicket(state.currentTicket.id, billAmount);
         return;
       }
 

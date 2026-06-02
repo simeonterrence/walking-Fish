@@ -106,74 +106,105 @@ function loadInventory() {
     });
 }
 
-
 /* ═══════════════════════════════════════════════════════════════════════════
    1b. REDEMPTION STATS
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function loadRedemptionStats() {
-  var container = document.getElementById('redemption-container');
-  container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading redemption stats...</p>';
+  var container = document.getElementById("redemption-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading redemption stats...</p>';
 
   // Fetch all debit transactions from balance_transactions
-  adminQuery('/rest/v1/balance_transactions?select=type,amount_delta,source,created_at&order=created_at.desc')
-    .then(function(txns) {
+  adminQuery(
+    "/rest/v1/balance_transactions?select=type,amount_delta,source,created_at&order=created_at.desc",
+  )
+    .then(function (txns) {
       if (!txns || txns.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No debit transactions yet.</p>';
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No debit transactions yet.</p>';
         return;
       }
 
       // Filter only debits (negative amount_delta means money out)
-      var debits = txns.filter(function(t) { return t.type === 'debit'; });
+      var debits = txns.filter(function (t) {
+        return t.type === "debit";
+      });
       var totalRedeemed = 0;
       var totalTxns = debits.length;
 
-      debits.forEach(function(t) {
+      debits.forEach(function (t) {
         totalRedeemed += Math.abs(t.amount_delta);
       });
 
       // Group by source
       var sourceGroups = {};
-      debits.forEach(function(t) {
-        var src = t.source || 'unknown';
+      debits.forEach(function (t) {
+        var src = t.source || "unknown";
         if (!sourceGroups[src]) sourceGroups[src] = { count: 0, total: 0 };
         sourceGroups[src].count++;
         sourceGroups[src].total += Math.abs(t.amount_delta);
       });
 
-      var html = '';
+      var html = "";
       // Summary stats
-      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">' +
-        '<div class="stat-card"><div class="num" style="color:#991B1B;">D' + totalRedeemed.toLocaleString() + '</div><div class="lbl">Total Redeemed</div></div>' +
-        '<div class="stat-card"><div class="num">' + totalTxns + '</div><div class="lbl">Debit Transactions</div></div>' +
-        '<div class="stat-card"><div class="num" style="color:' + (totalTxns > 0 ? '#065F46' : 'var(--muted)') + ';">' + (totalTxns > 0 ? 'D' + Math.round(totalRedeemed / totalTxns).toLocaleString() : '-') + '</div><div class="lbl">Avg per Debit</div></div>' +
-        '</div>';
+      html +=
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">' +
+        '<div class="stat-card"><div class="num" style="color:#991B1B;">D' +
+        totalRedeemed.toLocaleString() +
+        '</div><div class="lbl">Total Redeemed</div></div>' +
+        '<div class="stat-card"><div class="num">' +
+        totalTxns +
+        '</div><div class="lbl">Debit Transactions</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:' +
+        (totalTxns > 0 ? "#065F46" : "var(--muted)") +
+        ';">' +
+        (totalTxns > 0
+          ? "D" + Math.round(totalRedeemed / totalTxns).toLocaleString()
+          : "-") +
+        '</div><div class="lbl">Avg per Debit</div></div>' +
+        "</div>";
 
       // Breakdown by source
       if (Object.keys(sourceGroups).length > 1) {
-        html += '<div style="overflow-x:auto;margin-bottom:12px;"><table class="app-table"><thead><tr>' +
-          '<th>Source</th><th>Transactions</th><th>Total Redeemed</th>' +
-          '</tr></thead><tbody>';
-        Object.keys(sourceGroups).sort().forEach(function(src) {
-          var g = sourceGroups[src];
-          html += '<tr>' +
-            '<td><span style="text-transform:capitalize;">' + escapeHtml(src.replace(/_/g, ' ')) + '</span></td>' +
-            '<td>' + g.count + '</td>' +
-            '<td><strong>D' + g.total.toLocaleString() + '</strong></td>' +
-            '</tr>';
-        });
-        html += '</tbody></table></div>';
+        html +=
+          '<div style="overflow-x:auto;margin-bottom:12px;"><table class="app-table"><thead><tr>' +
+          "<th>Source</th><th>Transactions</th><th>Total Redeemed</th>" +
+          "</tr></thead><tbody>";
+        Object.keys(sourceGroups)
+          .sort()
+          .forEach(function (src) {
+            var g = sourceGroups[src];
+            html +=
+              "<tr>" +
+              '<td><span style="text-transform:capitalize;">' +
+              escapeHtml(src.replace(/_/g, " ")) +
+              "</span></td>" +
+              "<td>" +
+              g.count +
+              "</td>" +
+              "<td><strong>D" +
+              g.total.toLocaleString() +
+              "</strong></td>" +
+              "</tr>";
+          });
+        html += "</tbody></table></div>";
       }
 
-      html += '<p style="font-size:12px;color:var(--muted);text-align:center;">Last updated: ' + new Date().toLocaleString() + '</p>';
+      html +=
+        '<p style="font-size:12px;color:var(--muted);text-align:center;">Last updated: ' +
+        new Date().toLocaleString() +
+        "</p>";
 
       container.innerHTML = html;
     })
-    .catch(function(err) {
-      container.innerHTML = '<p style="color:#DC2626;font-size:14px;">Failed to load redemption stats: ' + escapeHtml(err.message) + '</p>';
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load redemption stats: ' +
+        escapeHtml(err.message) +
+        "</p>";
     });
 }
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
    2. ORDER MANAGEMENT
@@ -1634,7 +1665,7 @@ function loadScannerCodes() {
 
       var html =
         '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
-        "<th>Code</th><th>Label</th><th>Status</th><th>Last Used</th><th>Created</th><th>Actions</th>" +
+        "<th>Code</th><th>Label</th><th>Permissions</th><th>Status</th><th>Last Used</th><th>Created</th><th>Actions</th>" +
         "</tr></thead><tbody>";
       codes.forEach(function (c) {
         var statusClass = c.is_active ? "status-approved" : "status-rejected";
@@ -1675,9 +1706,21 @@ function loadScannerCodes() {
       // Issue new code form
       html +=
         '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+        '<div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Staff Label/Name</label><input type="text" id="new-scanner-label" placeholder="e.g. Gate Alpha" style="width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue Code</button>' +
-        "</div>";
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px solid var(--border);">' +
+        '<label style="font-size:13px;font-weight:600;color:var(--muted);margin-right:8px;">Permissions:</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="gate" checked> Gate</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="debit"> Debit</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="topup"> Top-Up</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bill"> Bill</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bulk"> Bulk</label>' +
+        '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;border-left:1px solid var(--border);padding-left:12px;"><input type="checkbox" id="perm-universal" value="*"> <strong>Universal</strong> (all modes)</label>' +
+        '</div>' +
+        '</div>';
 
       container.innerHTML = html;
     })
@@ -1687,6 +1730,17 @@ function loadScannerCodes() {
         escapeHtml(err.message) +
         "</p>";
     });
+}
+
+
+function getSelectedPermissions() {
+  var universal = document.getElementById("perm-universal");
+  if (universal && universal.checked) return ["*"];
+  var perms = [];
+  document.querySelectorAll(".perm-checkbox:checked").forEach(function(cb) {
+    perms.push(cb.value);
+  });
+  return perms.length > 0 ? perms : ["*"];
 }
 
 function issueScannerCode() {
@@ -1708,7 +1762,11 @@ function issueScannerCode() {
   fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/issue_scanner_code", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ p_code: code, p_label: label || "Staff" }),
+    body: JSON.stringify({
+      p_code: code,
+      p_label: label || "Staff",
+      p_permissions: getSelectedPermissions(),
+    }),
   })
     .then(function (res) {
       if (res.ok) {
@@ -1745,6 +1803,7 @@ function issueScannerCode() {
           code: code,
           label: label || "Staff",
           is_active: true,
+          permissions: getSelectedPermissions(),
         }),
       })
         .then(function (r) {
