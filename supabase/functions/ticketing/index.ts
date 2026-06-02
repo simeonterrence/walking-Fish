@@ -141,6 +141,57 @@ async function sendEmail(payload) {
 // may not have admin.generateLink() in older versions). The link is then sent
 // via Resend's email API. This works independently of Supabase Auth's SMTP config.
 // Docs: https://supabase.com/docs/reference/api/auth-admin-generatelink
+
+// ─── Helper: send ticket email with QR images ────────────────────────────────
+// Generates a beautiful HTML email with embedded QR codes for each ticket.
+// Used for purchase confirmations, top-ups, and debit notifications.
+function renderTicketEmailHtml(tickets, title, subtitle) {
+  const siteUrl = "https://www.walkingfish.gm";
+  let ticketCards = tickets
+    .map(function (t) {
+      const qrImg = t.qrDataUri
+        ? `<img src="${t.qrDataUri}" alt="QR Code" style="width:180px;height:180px;border-radius:8px;display:block;margin:0 auto;">`
+        : `<div style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:0.08em;color:#111;text-align:center;padding:12px;">${t.code}</div>`;
+      const balanceLine = t.balance !== undefined && t.balance !== null
+        ? `<div style="font-size:13px;color:#666;margin-top:4px;">Balance: <strong>D${Number(t.balance).toLocaleString()}</strong></div>`
+        : "";
+      const ticketTypeLine = t.ticketTypeName
+        ? `<div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.05em;">${t.ticketTypeName}</div>`
+        : "";
+      return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">
+        ${ticketTypeLine}
+        <div style="font-size:16px;font-weight:700;color:#111;margin:8px 0;">${t.code}</div>
+        ${qrImg}
+        ${balanceLine}
+      </div>`;
+    })
+    .join("");
+  const link = `${siteUrl}/tickets`;
+  return `
+    <h2 style="margin:0 0 8px;">${title}</h2>
+    <p style="color:#666;margin:0 0 24px;font-size:14px;">${subtitle}</p>
+    ${ticketCards}
+    <p style="text-align:center;margin:24px 0;">
+      <a href="${link}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View My Tickets</a>
+    </p>
+    <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
+      Show the QR code at the venue gate. Need help? Visit the info desk.
+    </p>`;
+}
+
+async function sendTicketsEmail(options) {
+  const { to, subject, tickets, title, subtitle } = options;
+  try {
+    await sendEmail({
+      to,
+      subject,
+      html: emailShell(renderTicketEmailHtml(tickets, title, subtitle)),
+    });
+  } catch (e) {
+    console.error("[TicketEmail] Sending failed:", e.message);
+  }
+}
+
 async function sendMagicLinkEmail(email) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -364,6 +415,7 @@ async function createTicketsForOrder(
       created.push({
         code,
         ticketTypeSlug: ticketType.slug,
+        qrDataUri: qrDataUri,
       });
     }
   }
@@ -855,31 +907,21 @@ async function handleWebhook(req) {
           items,
           custName,
         );
-        // Send confirmation email
+        // Send confirmation email with QR images
         if (tickets.length > 0) {
-          const ticketList = tickets
-            .map(
-              (t) =>
-                `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
-            )
-            .join("");
-          await sendEmail({
+          const emailTickets = tickets.map(function (t) {
+            return {
+              code: t.code,
+              qrDataUri: t.qrDataUri,
+              ticketTypeName: t.ticketTypeSlug,
+            };
+          });
+          await sendTicketsEmail({
             to: email,
             subject: "Your tickets are ready! — Walking-Fish",
-            html: emailShell(`
-              <h2 style="margin:0 0 8px;">Ticket Created at Venue</h2>
-              <p style="color:#666;margin:0 0 24px;">
-                Your ticket was created at the Piroake Fest booth. Payment collected on-site.
-              </p>
-              <h3 style="margin:0 0 12px;">Your Tickets</h3>
-              <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
-              <p style="margin-top:20px;">
-                <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-              </p>
-              <p style="margin-top:12px;font-size:12px;color:#999;">
-                Show your ticket QR at the gate. Need help? Visit the info desk.
-              </p>
-            `),
+            tickets: emailTickets,
+            title: "Ticket Created at Venue",
+            subtitle: "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
           });
           // Send magic link so user can auto-login to their dashboard
           sendMagicLinkEmail(email);
@@ -1162,25 +1204,31 @@ async function handleWebhook(req) {
             })
             .catch(() => {});
         }
-        // Send top-up confirmation email
-        await sendEmail({
+        // Send top-up confirmation email with QR + balance
+        const topupFinalBalance = newBalance > 0 ? newBalance : (ticket.balance || 0) + topupAmount;
+        // Fetch ticket metadata to get QR data URI for the email
+        let qrDataUri = null;
+        try {
+          const { data: ticketMeta } = await supabase
+            .from("tickets")
+            .select("metadata")
+            .eq("code", ticketCode)
+            .maybeSingle();
+          if (ticketMeta?.metadata?.qr_data_uri) {
+            qrDataUri = ticketMeta.metadata.qr_data_uri;
+          }
+        } catch (_) {}
+        await sendTicketsEmail({
           to: order.email,
           subject: "Credits Added! Top-Up Confirmed — Walking-Fish",
-          html: emailShell(`
-            <h2 style="margin:0 0 8px;">Top-Up Successful</h2>
-            <p style="color:#666;margin:0 0 24px;">
-              Your top-up of <strong>D${topupAmount}</strong> has been added to ticket <strong>${ticketCode}</strong>.
-            </p>
-            <p style="color:#666;margin:0 0 24px;">
-              New balance: <strong>D${newBalance > 0 ? newBalance : (ticket.balance || 0) + topupAmount}</strong>
-            </p>
-            <p style="margin-top:20px;">
-              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-            </p>
-            <p style="margin-top:12px;font-size:12px;color:#999;">
-              Need help? Visit the info desk at Piroake Fest 2026.
-            </p>
-          `),
+          tickets: [{
+            code: ticketCode,
+            qrDataUri: qrDataUri || null,
+            ticketTypeName: "Top-Up",
+            balance: topupFinalBalance,
+          }],
+          title: "Top-Up Successful",
+          subtitle: `Added D${topupAmount}. New balance: D${topupFinalBalance.toLocaleString()}`,
         });
         console.log(
           `[Webhook] ✓ Top-up order ${order.id} — ticket ${ticketCode} +D${topupAmount}`,
@@ -1291,29 +1339,21 @@ async function handleWebhook(req) {
           })
           .catch(() => {});
       }
-      // ─── Send confirmation email ───────────────────────────────────────
+      // ─── Send confirmation email with QR images ──────────────────────
       if (tickets.length > 0) {
-        const ticketList = tickets
-          .map(
-            (t) =>
-              `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
-          )
-          .join("");
-        await sendEmail({
+        const emailTickets = tickets.map(function (t) {
+          return {
+            code: t.code,
+            qrDataUri: t.qrDataUri,
+            ticketTypeName: t.ticketTypeSlug,
+          };
+        });
+        await sendTicketsEmail({
           to: customerEmail,
           subject: "Your tickets are ready! — Walking-Fish",
-          html: emailShell(`
-            <h2 style="margin:0 0 8px;">Payment Confirmed</h2>
-            <p style="color:#666;margin:0 0 24px;">Your order <strong>#${order.id.slice(0, 8)}</strong> has been paid.</p>
-            <h3 style="margin:0 0 12px;">Your Tickets</h3>
-            <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
-            <p style="margin-top:20px;">
-              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-            </p>
-            <p style="margin-top:12px;font-size:12px;color:#999;">
-              Tap the link above or scan the QR code at the venue. Need help? Visit the info desk.
-            </p>
-          `),
+          tickets: emailTickets,
+          title: "Payment Confirmed",
+          subtitle: `Order #${order.id.slice(0, 8)} — your tickets and QR codes are ready.`,
         });
         // Send magic link so user can auto-login to their dashboard
         sendMagicLinkEmail(customerEmail);
@@ -1994,22 +2034,36 @@ async function handleConfirmPayment(req) {
       } else {
         newBalance = balance;
       }
-      // Send receipt email
+      // Send receipt email with QR + balance
       const customerEmail = email || order.email;
       if (customerEmail) {
-        await sendEmail({
+        // Fetch ticket metadata for QR image
+        let qrDataUri = null;
+        let ticketCode = ticket_id;
+        try {
+          const { data: ticketMeta } = await supabase
+            .from("tickets")
+            .select("code, metadata")
+            .eq("id", ticket_id)
+            .maybeSingle();
+          if (ticketMeta) ticketCode = ticketMeta.code;
+          if (ticketMeta?.metadata?.qr_data_uri) {
+            qrDataUri = ticketMeta.metadata.qr_data_uri;
+          }
+        } catch (_) {}
+        await sendTicketsEmail({
           to: customerEmail,
           subject: "Top-Up Confirmed — Walking-Fish",
-          html: emailShell(`
-            <h2 style="margin:0 0 8px;">Top-Up Successful</h2>
-            <p style="color:#666;margin:0 0 24px;">
-              Your top-up of <strong>D${amount_delta}</strong> has been processed.
-            </p>
-            ${newBalance !== null ? `<p style="color:#666;margin:0 0 24px;">New balance: <strong>D${newBalance}</strong></p>` : ""}
-            <p style="margin-top:20px;">
-              <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-            </p>
-          `),
+          tickets: [{
+            code: ticketCode,
+            qrDataUri: qrDataUri || null,
+            ticketTypeName: "Top-Up",
+            balance: newBalance,
+          }],
+          title: "Top-Up Successful",
+          subtitle: newBalance !== null
+            ? `Added D${amount_delta}. New balance: D${Number(newBalance).toLocaleString()}`
+            : `Added D${amount_delta}.`,
         });
       }
     }
@@ -2350,6 +2404,35 @@ async function handleDebit(req) {
         },
       );
     }
+    // Send debit notification email to customer
+    try {
+      const { data: debitTicket } = await supabase
+        .from("tickets")
+        .select("code, customer_email, metadata, type")
+        .eq("id", ticket_id)
+        .maybeSingle();
+      if (debitTicket?.customer_email) {
+        let qrDataUri = null;
+        if (debitTicket.metadata?.qr_data_uri) {
+          qrDataUri = debitTicket.metadata.qr_data_uri;
+        }
+        await sendTicketsEmail({
+          to: debitTicket.customer_email,
+          subject: "Debit Notification — Walking-Fish",
+          tickets: [{
+            code: debitTicket.code,
+            qrDataUri: qrDataUri || null,
+            ticketTypeName: debitTicket.type || "",
+            balance: newBalance,
+          }],
+          title: "Debit Processed",
+          subtitle: `D${amount1} was deducted from ${debitTicket.code}. Remaining balance: D${Number(newBalance).toLocaleString()}`,
+        });
+      }
+    } catch (e) {
+      console.warn(`[debit] Email notification failed: ${e.message}`);
+    }
+
     console.log(
       `[debit] ✓ Ticket ${ticket_id} debited D${amount1}, new balance D${newBalance}`,
     );
@@ -2418,7 +2501,7 @@ async function handleBulkTopup(req) {
         // Find the ticket
         const { data: ticket, error: ticketErr } = await supabase
           .from("tickets")
-          .select("id, code, balance, customer_email, customer_name, status")
+          .select("id, code, balance, customer_email, customer_name, status, metadata")
           .eq("code", normalizedCode)
           .maybeSingle();
         if (ticketErr || !ticket) {
@@ -2456,26 +2539,23 @@ async function handleBulkTopup(req) {
           });
           continue;
         }
-        // Try to send receipt email
+        // Try to send receipt email with QR + balance
         if (ticket.customer_email) {
-          await sendEmail({
+          let qrDataUri = null;
+          if (ticket.metadata?.qr_data_uri) {
+            qrDataUri = ticket.metadata.qr_data_uri;
+          }
+          await sendTicketsEmail({
             to: ticket.customer_email,
             subject: "Top-Up Confirmed — Walking-Fish",
-            html: emailShell(`
-              <h2 style="margin:0 0 8px;">Top-Up Successful</h2>
-              <p style="color:#666;margin:0 0 24px;">
-                Your ticket <strong>${normalizedCode}</strong> has been topped up by <strong>D${amount1}</strong>.
-              </p>
-              <p style="color:#666;margin:0 0 24px;">
-                New balance: <strong>D${newBalance}</strong>
-              </p>
-              <p style="margin-top:20px;">
-                <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-              </p>
-              <p style="margin-top:12px;font-size:12px;color:#999;">
-                Processed at the booth. Need help? Visit the info desk.
-              </p>
-            `),
+            tickets: [{
+              code: normalizedCode,
+              qrDataUri: qrDataUri || null,
+              ticketTypeName: ticket.type || "",
+              balance: newBalance,
+            }],
+            title: "Top-Up Successful",
+            subtitle: `Added D${amount1}. New balance: D${Number(newBalance).toLocaleString()}. Processed at the booth.`,
           });
         }
         results.push({
@@ -3019,28 +3099,20 @@ async function handleRegenerateTickets(req) {
         },
       );
     }
-    // Send confirmation email
-    const ticketList = tickets
-      .map(
-        (t) =>
-          `<li><strong>${t.ticketTypeSlug}</strong>: <code style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:14px;">${t.code}</code></li>`,
-      )
-      .join("");
-    await sendEmail({
+    // Send confirmation email with QR images
+    const emailTickets = tickets.map(function (t) {
+      return {
+        code: t.code,
+        qrDataUri: t.qrDataUri,
+        ticketTypeName: t.ticketTypeSlug,
+      };
+    });
+    await sendTicketsEmail({
       to: order.email,
       subject: "Your tickets are ready! — Walking-Fish",
-      html: emailShell(`
-        <h2 style="margin:0 0 8px;">Tickets Re-Generated</h2>
-        <p style="color:#666;margin:0 0 24px;">Your order <strong>#${order.id.slice(0, 8)}</strong> tickets have been re-issued.</p>
-        <h3 style="margin:0 0 12px;">Your Tickets</h3>
-        <ul style="padding-left:20px;line-height:1.8;">${ticketList}</ul>
-        <p style="margin-top:20px;">
-          <a href="https://www.walkingfish.gm/tickets" style="background:#e85d3a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500;">View My Tickets</a>
-        </p>
-        <p style="margin-top:12px;font-size:12px;color:#999;">
-          Tap the link above or scan the QR code at the venue. Apologies for the delay!
-        </p>
-      `),
+      tickets: emailTickets,
+      title: "Tickets Re-Generated",
+      subtitle: `Order #${order.id.slice(0, 8)} — your tickets have been re-issued.`,
     });
     // Send magic link so user can auto-login to their dashboard
     sendMagicLinkEmail(order.email);
