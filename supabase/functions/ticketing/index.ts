@@ -149,6 +149,7 @@ async function sendEmail(payload) {
 // Used for purchase confirmations, top-ups, and debit notifications.
 function renderTicketEmailHtml(tickets, title, subtitle) {
   const siteUrl = "https://www.walkingfish.gm";
+  const viewTicketsLink = `${siteUrl}/view-tickets`;
   let ticketCards = tickets
     .map(function (t) {
       const qrImg = t.qrDataUri
@@ -160,24 +161,34 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
       const ticketTypeLine = t.ticketTypeName
         ? `<div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.05em;">${t.ticketTypeName}</div>`
         : "";
+      const codeLine = t.accessCode
+        ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:13px;color:#666;">Access Code: <strong style="font-family:monospace;font-size:18px;letter-spacing:0.15em;color:#111;">${t.accessCode}</strong></div>`
+        : "";
       return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">
         ${ticketTypeLine}
         <div style="font-size:16px;font-weight:700;color:#111;margin:8px 0;">${t.code}</div>
         ${qrImg}
         ${balanceLine}
+        ${codeLine}
       </div>`;
     })
     .join("");
-  const link = `${siteUrl}/tickets`;
   return `
     <h2 style="margin:0 0 8px;">${title}</h2>
     <p style="color:#666;margin:0 0 24px;font-size:14px;">${subtitle}</p>
+    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0;font-size:14px;color:#5d4037;text-align:center;">
+        <strong>Your Access Code:</strong> Use the code above on
+        <a href="${viewTicketsLink}" style="color:#e85d3a;font-weight:600;">walkingfish.gm/view-tickets</a>
+        to view your tickets anytime.
+      </p>
+    </div>
     ${ticketCards}
     <p style="text-align:center;margin:24px 0;">
-      <a href="${link}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View My Tickets</a>
+      <a href="${viewTicketsLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View My Tickets</a>
     </p>
     <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
-      Show the QR code at the venue gate. Need help? Visit the info desk.
+      Show the QR code at the venue gate. Your access code lets you log in at walkingfish.gm/view-tickets.
     </p>`;
 }
 
@@ -374,6 +385,7 @@ async function createTicketsForOrder(
       }
       const qrContent = `https://www.walkingfish.gm/t?t=${code}`;
       const qrDataUri = await generateQRDataUri(qrContent);
+      const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
       const initialBalance =
         ticketType.type === "activity_credit" ||
         ticketType.type === "food" ||
@@ -393,6 +405,7 @@ async function createTicketsForOrder(
           qr_url: qrContent,
           metadata: {
             qr_data_uri: qrDataUri,
+            access_code: accessCode,
           },
         })
         .select()
@@ -418,6 +431,7 @@ async function createTicketsForOrder(
         code,
         ticketTypeSlug: ticketType.slug,
         qrDataUri: qrDataUri,
+        accessCode: accessCode,
       });
     }
   }
@@ -916,6 +930,7 @@ async function handleWebhook(req) {
               code: t.code,
               qrDataUri: t.qrDataUri,
               ticketTypeName: t.ticketTypeSlug,
+              accessCode: t.accessCode,
             };
           });
           await sendTicketsEmail({
@@ -3648,73 +3663,72 @@ async function handleExchangeToken(req) {
   }
 }
 // ─── Handler: /view-tickets ──────────────────────────────────────────
-// Public endpoint: verify email + ticket code, return all tickets for that email
+// Public endpoint: verify email + 6-digit access code, return all tickets for that email
+// The access code is generated at ticket creation and sent in the email alongside the QR code.
 async function handleViewTickets(req) {
   try {
     const raw = await req.json();
     const email = (raw.email || "").trim().toLowerCase();
-    const code = (raw.code || "").trim().toUpperCase();
+    const codeInput = (raw.code || "").trim();
 
-    if (!email || !code) {
+    if (!email || !codeInput) {
       return new Response(
-        JSON.stringify({ success: false, error: "Email and ticket code are required." }),
+        JSON.stringify({ success: false, error: "Email and access code are required." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Step 1: Verify the ticket code belongs to this email
-    const { data: ticket, error: ticketErr } = await supabase
+    // Step 1: Find a ticket with matching access_code in metadata for this email
+    // We use the metadata->>access_code JSONB filter to find the ticket
+    const { data: tickets, error: ticketsErr } = await supabase
       .from("tickets")
-      .select("id, code, customer_email")
-      .eq("code", code)
-      .maybeSingle();
+      .select("id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)")
+      .eq("customer_email", email)
+      .filter("metadata->>access_code", "eq", codeInput)
+      .limit(1);
 
-    if (ticketErr) {
-      console.error("[view-tickets] DB error:", ticketErr);
+    if (ticketsErr) {
+      console.error("[view-tickets] DB error:", ticketsErr);
       return new Response(
         JSON.stringify({ success: false, error: "Database error." }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    if (!ticket) {
+    if (!tickets || tickets.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "Ticket not found. Check your code and try again." }),
+        JSON.stringify({ success: false, error: "No matching ticket found. Check your email and access code and try again." }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    if ((ticket.customer_email || "").toLowerCase() !== email) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Email does not match this ticket." }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Step 2: Fetch all tickets for this email (with QR data from metadata)
-    const { data: tickets, error: ticketsErr } = await supabase
+    // Step 2: Fetch ALL tickets for this email (with QR data from metadata)
+    const { data: allTickets, error: allErr } = await supabase
       .from("tickets")
       .select("id, code, type, status, balance, created_at, customer_name, metadata, qr_url, order_id, ticket_types!left(name, slug, price)")
       .eq("customer_email", email)
       .order("created_at", { ascending: false });
 
-    if (ticketsErr) {
-      console.error("[view-tickets] Tickets query error:", ticketsErr);
+    if (allErr) {
+      console.error("[view-tickets] Tickets query error:", allErr);
       return new Response(
         JSON.stringify({ success: false, error: "Failed to load tickets." }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Extract QR data URIs from metadata
-    const enrichedTickets = (tickets || []).map(function(t) {
+    // Extract QR data URIs from metadata and include access_code
+    const enrichedTickets = (allTickets || []).map(function(t) {
       var qrDataUri = null;
+      var accessCode = null;
       try {
-        if (t.metadata && typeof t.metadata === "object" && t.metadata.qr_data_uri) {
-          qrDataUri = t.metadata.qr_data_uri;
+        if (t.metadata && typeof t.metadata === "object") {
+          if (t.metadata.qr_data_uri) qrDataUri = t.metadata.qr_data_uri;
+          if (t.metadata.access_code) accessCode = t.metadata.access_code;
         } else if (typeof t.metadata === "string") {
           var parsed = JSON.parse(t.metadata);
           if (parsed.qr_data_uri) qrDataUri = parsed.qr_data_uri;
+          if (parsed.access_code) accessCode = parsed.access_code;
         }
       } catch (_) {}
       return {
@@ -3726,6 +3740,7 @@ async function handleViewTickets(req) {
         created_at: t.created_at,
         customer_name: t.customer_name,
         qr_data_uri: qrDataUri,
+        access_code: accessCode,
         qr_url: t.qr_url,
         order_id: t.order_id,
         ticket_type: t.ticket_types ? { name: t.ticket_types.name, slug: t.ticket_types.slug, price: t.ticket_types.price } : null,

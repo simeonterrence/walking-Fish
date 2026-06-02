@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="View your Piroake Fest 2026 tickets. Enter the email and ticket code from your purchase confirmation to see your QR codes and balances.">
+<meta name="description" content="View your Piroake Fest 2026 tickets. Enter the email and 6-digit access code from your purchase confirmation to see your QR codes and balances.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://anigcqdquakinlzvyaur.supabase.co; frame-src 'none'; frame-ancestors 'none';">
 <meta property="og:title" content="View My Tickets | Walking-Fish Group">
 <meta property="og:description" content="View your Piroake Fest 2026 tickets and QR codes.">
@@ -193,11 +193,11 @@
   <div class="view-tickets-form" id="login-section">
     <div class="form-card">
       <h2>Access Your Tickets</h2>
-      <p class="desc">Use the email address and ticket code from your purchase confirmation email.</p>
+      <p class="desc">Use the email address and 6-digit access code from your purchase confirmation email.</p>
 
       <div class="code-hint">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Your ticket code looks like <strong>TKT-A1B2C3</strong>. It's in the email with your QR code.
+        Your 6-digit access code is at the bottom of each ticket card in your purchase confirmation email.
       </div>
 
       <form id="view-tickets-form" autocomplete="off">
@@ -206,9 +206,9 @@
           <input type="email" id="vt-email" placeholder="you@example.com" required autocomplete="email">
         </div>
         <div class="form-group">
-          <label for="vt-code">Ticket Code</label>
-          <input type="text" id="vt-code" placeholder="e.g. TKT-A1B2C3" required autocomplete="off" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:0.06em;">
-          <p class="hint">Enter the ticket code from your email. It starts with "TKT-" followed by 6 characters.</p>
+          <label for="vt-code">Access Code (6-digit PIN)</label>
+          <input type="text" id="vt-code" placeholder="e.g. 482916" inputmode="numeric" pattern="[0-9]{6}" required autocomplete="off" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:0.06em;">
+          <p class="hint">Enter the 6-digit access code from your email. Each ticket has its own code — any one works.</p>
         </div>
         <button type="submit" class="btn btn-primary" id="vt-submit-btn">View My Tickets</button>
         <div class="error-msg" id="vt-error"></div>
@@ -224,7 +224,7 @@
   <div class="tickets-results" id="results-section">
     <button class="back-link" id="back-to-login-btn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      Use a different code
+      Use a different access code
     </button>
 
     <div class="results-header">
@@ -354,7 +354,7 @@
     }
 
     if (code.length < 6) {
-      showError("That code looks too short. The full ticket code should be something like TKT-A1B2C3.");
+      showError("That access code looks too short. Please enter all 6 digits from your email.");
       codeInput.focus();
       return;
     }
@@ -376,7 +376,7 @@
       try { data = await res.json(); } catch (_) { data = {}; }
 
       if (!res.ok || !data.success) {
-        showError(data.error || "Could not find tickets. Double-check your email and code.");
+        showError(data.error || "Could not find tickets. Double-check your email and access code (it's 6 digits).");
         submitBtn.disabled = false;
         submitBtn.textContent = "View My Tickets";
         return;
