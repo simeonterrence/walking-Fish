@@ -474,7 +474,10 @@ function lockScanner() {
     var counterBadge = document.getElementById("bill-counter-badge");
     if (counterBadge) counterBadge.style.display = "none";
     var modes = document.getElementById("scanner-modes");
-    if (modes) modes.classList.add("active");
+    if (modes) {
+      modes.style.display = "";
+      modes.classList.add("active");
+    }
     state.mode = null;
     state.currentTicket = null;
   }
