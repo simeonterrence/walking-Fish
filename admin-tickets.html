@@ -358,8 +358,7 @@
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
                         <h3 style="margin:0;">Superadmin Revenue Report</h3>
                         <button id="export-superadmin-csv-btn" class="action-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Export CSV</button>
-                    </div>
-                    <p
+                    </div>                        <p
                         style="
                             font-size: 13px;
                             color: var(--muted);
@@ -370,6 +369,19 @@
                         ticket type. Fixed fees are per ticket sold; percentage fees
                         are based on the ticket price.
                     </p>
+                    <!-- Date range filter -->
+                    <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:12px;font-weight:500;display:block;margin-bottom:3px;color:var(--muted);">From</label>
+                            <input type="date" id="report-start-date" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;font-weight:500;display:block;margin-bottom:3px;color:var(--muted);">To</label>
+                            <input type="date" id="report-end-date" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">
+                        </div>
+                        <button id="apply-report-filter" class="action-btn" style="background:var(--accent);color:#fff;border:none;min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Apply Filter</button>
+                        <button id="clear-report-filter-btn" class="action-btn" style="background:transparent;border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Clear</button>
+                    </div>
                     <div id="superadmin-report-container">
                         <p style="color: var(--muted); font-size: 14px">
                             Loading report...

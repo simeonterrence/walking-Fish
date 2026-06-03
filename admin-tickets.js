@@ -2154,13 +2154,25 @@ function loadStaffActivity() {
    9. SUPERADMIN REVENUE REPORT
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function loadSuperadminReport() {
+function loadSuperadminReport(startDate, endDate) {
   var container = document.getElementById("superadmin-report-container");
   if (!container) return;
   container.innerHTML =
     '<p style="color:var(--muted);font-size:14px;">Loading superadmin revenue report...</p>';
 
   _superadminReportCache = []; // reset cache
+
+  // Read dates from DOM if not passed
+  if (startDate === undefined) {
+    var startEl = document.getElementById("report-start-date");
+    startDate = startEl ? startEl.value : "";
+  }
+  if (endDate === undefined) {
+    var endEl = document.getElementById("report-end-date");
+    endDate = endEl ? endEl.value : "";
+  }
+
+  var hasDateFilter = startDate && endDate;
 
   adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
     .then(function (types) {
@@ -2170,79 +2182,130 @@ function loadSuperadminReport() {
         return;
       }
 
-      var grandEarnings = 0;
-      var grandSold = 0;
-      var byFeeType = { fixed: 0, percentage: 0, none: 0 };
-
-      var html =
-        '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table">' +
-        "<thead><tr>" +
-        "<th>Ticket Type</th>" +
-        "<th>Price</th>" +
-        "<th>Sold</th>" +
-        "<th>Fee Type</th>" +
-        "<th>Fee Value</th>" +
-        "<th>Fee per Ticket</th>" +
-        "<th>Est. Earnings</th>" +
-        "</tr></thead><tbody>";
-
+      // Build a lookup map for ticket types (id -> type)
+      var typeMap = {};
       types.forEach(function (t) {
-        if (t.sold === 0 && t.is_active === false) return; // skip inactive with no sales
-        var feeType = t.superadmin_fee_type || "none";
-        var feeVal = t.superadmin_fee_value || 0;
-        var feePerTicket = 0;
-
-        if (feeType === "fixed" && feeVal > 0) {
-          feePerTicket = feeVal;
-        } else if (feeType === "percentage" && feeVal > 0) {
-          feePerTicket = Math.round((t.price * feeVal) / 100);
-        }
-
-        var earnings = feePerTicket * t.sold;
-        grandEarnings += earnings;
-        grandSold += t.sold;
-
-        var feeTypeLabel = feeType === "fixed" ? "Fixed" : feeType === "percentage" ? "% of Price" : "None";
-        var feeValDisplay = feeType === "none" || feeVal === 0 ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal;
-        var feePerDisplay = feePerTicket > 0 ? "D" + feePerTicket : "—";
-        var earningDisplay = earnings > 0 ? "D" + earnings.toLocaleString() : "D0";
-
-        if (feeType === "fixed") byFeeType.fixed += earnings;
-        else if (feeType === "percentage") byFeeType.percentage += earnings;
-        else byFeeType.none += earnings;
-
-        // Cache for CSV export
-        _superadminReportCache.push({
-          name: t.name,
-          price: t.price,
-          sold: t.sold,
-          feeTypeLabel: feeTypeLabel,
-          feeValDisplay: feeValDisplay,
-          feePerTicket: feePerTicket,
-          earnings: earnings,
-        });
-
-        html += "<tr>" +
-          "<td><strong>" + escapeHtml(t.name) + "</strong></td>" +
-          "<td>D" + t.price + "</td>" +
-          "<td>" + t.sold + "</td>" +
-          "<td><span style="font-size:13px;color:var(--muted);">" + feeTypeLabel + "</span></td>" +
-          "<td><span style="font-size:13px;color:var(--muted);">" + feeValDisplay + "</span></td>" +
-          "<td>" + feePerDisplay + "</td>" +
-          '<td style="font-weight:600;color:#065F46;">' + earningDisplay + "</td>" +
-          "</tr>";
+        typeMap[t.id] = t;
       });
 
-      // Grand total row
-      html += "<tr style="border-top:2px solid var(--accent);font-weight:700;">" +
-        "<td><strong style="color:var(--accent);">TOTAL</strong></td>" +
-        "<td></td>" +
-        "<td>" + grandSold + "</td>" +
-        "<td></td><td></td><td></td>" +
+      // If date filter is active, query tickets in the date range
+      var ticketPromise;
+      if (hasDateFilter) {
+        // Build end date: include full day by appending 23:59:59
+        var endDateTime = endDate + "T23:59:59Z";
+        var path = "/rest/v1/tickets?select=ticket_type_id&created_at=gte." + startDate + "&created_at=lte." + endDateTime;
+        ticketPromise = adminQuery(path).then(function (tickets) {
+          // Count tickets per type
+          var counts = {};
+          (tickets || []).forEach(function (tkt) {
+            var tid = tkt.ticket_type_id;
+            counts[tid] = (counts[tid] || 0) + 1;
+          });
+          return counts;
+        });
+      } else {
+        ticketPromise = Promise.resolve(null);
+      }
+
+      return ticketPromise.then(function (ticketCounts) {
+        var grandEarnings = 0;
+        var grandSold = 0;
+        var byFeeType = { fixed: 0, percentage: 0, none: 0 };
+
+        var html =
+          '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table">' +
+          "<thead><tr>" +
+          "<th>Ticket Type</th>" +
+          "<th>Price</th>" +
+          "<th>Sold</th>" +
+          "<th>Fee Type</th>" +
+          "<th>Fee Value</th>" +
+          "<th>Fee per Ticket</th>" +
+          "<th>Est. Earnings</th>" +
+          "</tr></thead><tbody>";
+
+        types.forEach(function (t) {
+          // Determine sold count for this type
+          var soldInRange;
+          if (hasDateFilter && ticketCounts) {
+            soldInRange = ticketCounts[t.id] || 0;
+          } else {
+            soldInRange = t.sold;
+          }
+
+          if (soldInRange === 0 && !hasDateFilter && t.is_active === false) return; // skip inactive with no sales (cumulative only)
+          if (soldInRange === 0) return; // skip types with no sales in range
+
+          var feeType = t.superadmin_fee_type || "none";
+          var feeVal = t.superadmin_fee_value || 0;
+          var feePerTicket = 0;
+
+          if (feeType === "fixed" && feeVal > 0) {
+            feePerTicket = feeVal;
+          } else if (feeType === "percentage" && feeVal > 0) {
+            feePerTicket = Math.round((t.price * feeVal) / 100);
+          }
+
+          var earnings = feePerTicket * soldInRange;
+          grandEarnings += earnings;
+          grandSold += soldInRange;
+
+          var feeTypeLabel = feeType === "fixed" ? "Fixed" : feeType === "percentage" ? "% of Price" : "None";
+          var feeValDisplay = feeType === "none" || feeVal === 0 ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal;
+          var feePerDisplay = feePerTicket > 0 ? "D" + feePerTicket : "—";
+          var earningDisplay = earnings > 0 ? "D" + earnings.toLocaleString() : "D0";
+
+          if (feeType === "fixed") byFeeType.fixed += earnings;
+          else if (feeType === "percentage") byFeeType.percentage += earnings;
+          else byFeeType.none += earnings;
+
+          // Cache for CSV export
+          _superadminReportCache.push({
+            name: t.name,
+            price: t.price,
+            sold: soldInRange,
+            soldTotal: t.sold,
+            feeTypeLabel: feeTypeLabel,
+            feeValDisplay: feeValDisplay,
+            feePerTicket: feePerTicket,
+            earnings: earnings,
+          });
+
+          html += "<tr>" +
+            "<td><strong>" + escapeHtml(t.name) + "</strong></td>" +
+            "<td>D" + t.price + "</td>" +
+            "<td>" + soldInRange + "</td>" +
+            "<td><span style="font-size:13px;color:var(--muted);">" + feeTypeLabel + "</span></td>" +
+            "<td><span style="font-size:13px;color:var(--muted);">" + feeValDisplay + "</span></td>" +
+            "<td>" + feePerDisplay + "</td>" +
+            '<td style="font-weight:600;color:#065F46;">' + earningDisplay + "</td>" +
+            "</tr>";
+        });
+
+        if (grandSold === 0) {
+          html += "<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">No ticket sales found" +
+            (hasDateFilter ? " in this date range" : "") +
+            ".</td></tr>";
+        }
+
+        // Grand total row
+        html += "<tr style="border-top:2px solid var(--accent);font-weight:700;">" +
+          "<td><strong style="color:var(--accent);">TOTAL</strong></td>" +
+          "<td></td>" +
+          "<td>" + grandSold + "</td>" +
+          "<td></td><td></td><td></td>" +
         '<td style="color:#065F46;">D' + grandEarnings.toLocaleString() + "</td>" +
         "</tr>";
 
       html += "</tbody></table></div>";
+
+      // Period indicator
+      var periodText = hasDateFilter
+        ? '<p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Showing sales from <strong>' + startDate + '</strong> to <strong>' + endDate + '</strong>. ' +
+          '<a href="#" id="clear-report-filter" style="color:var(--accent);text-decoration:underline;cursor:pointer;">Clear filter</a></p>'
+        : '<p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Showing <strong>all-time</strong> sales (cumulative). Use the date filter above to view a specific period.</p>';
+
+      html = periodText + html;
 
       // Summary cards
       html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;">' +
@@ -2252,6 +2315,7 @@ function loadSuperadminReport() {
         "</div>";
 
       container.innerHTML = html;
+    });
     })
     .catch(function (err) {
       container.innerHTML =
@@ -2270,8 +2334,17 @@ function exportSuperadminReportCSV() {
     return;
   }
 
+  // Determine date range label for filename and header
+  var startEl = document.getElementById("report-start-date");
+  var endEl = document.getElementById("report-end-date");
+  var startDate = startEl ? startEl.value : "";
+  var endDate = endEl ? endEl.value : "";
+  var hasFilter = startDate && endDate;
+  var dateLabel = hasFilter ? startDate + " to " + endDate : "all-time";
+
   // CSV header
-  var csv = "\uFEFFTicket Type,Price,Sold,Fee Type,Fee Value,Fee per Ticket (D),Est. Earnings (D)\n";
+  var csv = "\uFEFFPeriod: " + dateLabel + "\n";
+  csv += "Ticket Type,Price,Sold,Fee Type,Fee Value,Fee per Ticket (D),Est. Earnings (D)\n";
 
   _superadminReportCache.forEach(function (row) {
     // Escape fields that might contain commas or quotes
@@ -2297,12 +2370,15 @@ function exportSuperadminReportCSV() {
   }, { sold: 0, earnings: 0 });
   csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "\n";
 
-  // Trigger download
+  // Trigger download with date-range-aware filename
+  var filename = hasFilter
+    ? "superadmin-revenue-" + startDate + "_to_" + endDate + ".csv"
+    : "superadmin-revenue-all-time-" + new Date().toISOString().slice(0, 10) + ".csv";
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url;
-  a.download = "superadmin-revenue-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -2578,6 +2654,26 @@ document.addEventListener("click", function (e) {
   // Export superadmin report CSV
   if (e.target.id === "export-superadmin-csv-btn") {
     exportSuperadminReportCSV();
+  }
+
+  // Apply date filter to superadmin report
+  if (e.target.id === "apply-report-filter") {
+    var sl = document.getElementById("report-start-date");
+    var el = document.getElementById("report-end-date");
+    var sv = sl ? sl.value : "";
+    var ev = el ? el.value : "";
+    if (!sv || !ev) { alert("Please select both a start date and an end date."); return; }
+    if (sv > ev) { alert("Start date cannot be after end date."); return; }
+    loadSuperadminReport(sv, ev);
+  }
+
+  // Clear date filter (also handles inline clear link)
+  if (e.target.id === "clear-report-filter-btn" || e.target.id === "clear-report-filter") {
+    var s2 = document.getElementById("report-start-date");
+    var e2 = document.getElementById("report-end-date");
+    if (s2) s2.value = "";
+    if (e2) e2.value = "";
+    loadSuperadminReport();
   }
 
   // Add ticket type
