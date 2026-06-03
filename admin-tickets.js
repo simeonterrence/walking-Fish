@@ -128,7 +128,7 @@ function loadInventory() {
         }
         ebHtml += '</div></div>';
         return ebHtml;
-      })() : '') +
+      })() : '');
 
       // Per-type table
       html +=
@@ -241,7 +241,7 @@ function loadInventory() {
             "<div style=\"margin-top:6px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;\">" +
             "<div style=\"height:100%;width:" + fillPct + "%;background:" + fillColor + ";border-radius:4px;transition:width .5s;\"></div></div>" +
             "<div style=\"font-size:12px;font-weight:600;color:" + fillColor + ";margin-top:4px;\">" + fillPct + "% fill</div>" +
-            "</div>";
+            '</div>';
         });
 
         // Grand total card
@@ -2336,22 +2336,22 @@ function loadSuperadminReport(startDate, endDate) {
             "<td><strong>" + escapeHtml(t.name) + "</strong></td>" +
             "<td>D" + t.price + "</td>" +
             "<td>" + soldInRange + "</td>" +
-            "<td><span style="font-size:13px;color:var(--muted);">" + feeTypeLabel + "</span></td>" +
-            "<td><span style="font-size:13px;color:var(--muted);">" + feeValDisplay + "</span></td>" +
+            '<td><span style="font-size:13px;color:var(--muted);">' + feeTypeLabel + '</span></td>' +
+            '<td><span style="font-size:13px;color:var(--muted);">' + feeValDisplay + '</span></td>' +
             "<td>" + feePerDisplay + "</td>" +
             '<td style="font-weight:600;color:#065F46;">' + earningDisplay + "</td>" +
             "</tr>";
         });
 
         if (grandSold === 0) {
-          html += "<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">No ticket sales found" +
+          html += '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">No ticket sales found' +
             (hasDateFilter ? " in this date range" : "") +
             ".</td></tr>";
         }
 
         // Grand total row
-        html += "<tr style="border-top:2px solid var(--accent);font-weight:700;">" +
-          "<td><strong style="color:var(--accent);">TOTAL</strong></td>" +
+        html += '<tr style="border-top:2px solid var(--accent);font-weight:700;">' +
+          '<td><strong style="color:var(--accent);">TOTAL</strong></td>' +
           "<td></td>" +
           "<td>" + grandSold + "</td>" +
           "<td></td><td></td><td></td>" +
@@ -2410,7 +2410,9 @@ function loadSuperadminReport(startDate, endDate) {
         });
         pmHtml += "</div>";
         return pmHtml;
-      })(      // ── Earnings breakdown by ticket type (bar chart) ──
+      })() : '');
+
+      // ── Earnings breakdown by ticket type (bar chart) ──
       html += (_superadminReportCache.length > 0 ? (function() {
         // Sort by earnings descending
         var sorted = _superadminReportCache.slice().sort(function (a, b) { return b.earnings - a.earnings; });
@@ -2457,7 +2459,7 @@ function loadSuperadminReport(startDate, endDate) {
         return ebHtml;
       })() : '');
 
-) : '');
+
 
       // ── Order-level detail table (only when date filter active) ──
       html += (hasDateFilter && _superadminOrderCache.length > 0 ? (function() {
@@ -2497,7 +2499,7 @@ function loadSuperadminReport(startDate, endDate) {
         return detailHtml;
       })() : '');
 
-      container.innerHTML = html;";
+      container.innerHTML = html;
     });
     })
     .catch(function (err) {
@@ -2552,12 +2554,9 @@ function exportSuperadminReportCSV() {
     var totals = _superadminReportCache.reduce(function (acc, r) {
     return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings, revenue: acc.revenue + (r.price * r.sold) };
   }, { sold: 0, earnings: 0, revenue: 0 });
-  csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "
-";
-  csv += "Gross Revenue (with fees),,," + totals.revenue + ",,," + "
-";
-  csv += "Net Revenue (without fees),,," + (totals.revenue - totals.earnings) + ",,," + "
-";
+  csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "\n";
+  csv += "Gross Revenue (with fees),,," + totals.revenue + ",,," + "\n";
+  csv += "Net Revenue (without fees),,," + (totals.revenue - totals.earnings) + ",,," + "\n";
   // —— Order-level detail section
   csv += "\n";
   if (hasFilter && _superadminOrderCache && _superadminOrderCache.length > 0) {
@@ -2579,6 +2578,7 @@ function exportSuperadminReportCSV() {
         var s = String(v == null ? "" : v);
         if (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1) {
           return '"' + s.replace(/"/g, '""') + '"';
+        }
         return s;
       }
 
@@ -2597,6 +2597,7 @@ function exportSuperadminReportCSV() {
         esc(pmLabel) + "," +
         esc(feePerTicketVal > 0 ? "D" + feePerTicketVal : "—") + "," +
         esc(feePerTicketVal > 0 ? "D" + earningsVal : "D0") + "\n";
+      });
 
     // Add total row for order-level detail
     var totalOrderCount = _superadminOrderCache.length;
@@ -3225,10 +3226,10 @@ function getEdgeFunctionToken() {
     var today = new Date();
     var todayStr = toStr(today);
 
-    var html = "<div class="drp-header">" +
-      "<button class="drp-nav" data-action="prev">&larr;</button>" +
-      "<span class="drp-month">" + monthNames[m] + " " + y + "</span>" +
-      "<button class="drp-nav" data-action="next">&rarr;</button>" +
+    var html = '<div class="drp-header">' +
+      '<button class="drp-nav" data-action="prev">&larr;</button>' +
+      '<span class="drp-month">' + monthNames[m] + " " + y + "</span>" +
+      '<button class="drp-nav" data-action="next">&rarr;</button>' +
       "</div>";
 
     html += "<table><thead><tr>";
@@ -3259,16 +3260,16 @@ function getEdgeFunctionToken() {
         cls += " drp-selected";
       }
 
-      html += "<td><button class="" + cls + "" data-date="" + dateStr + "">" + d + "</button></td>";
+      html += '<td><button class="' + cls + '" data-date="' + dateStr + '">' + d + '</button></td>';
       if ((firstDay + d) % 7 === 0 && d < daysInMonth) {
         html += "</tr><tr>";
       }
     }
 
     html += "</tr></tbody></table>";
-    html += "<div class="drp-footer">" +
-      "<button class="drp-today-btn" data-action="today">Today</button>" +
-      "<button class="drp-close-btn" data-action="close">Close</button>" +
+    html += '<div class="drp-footer">' +
+      '<button class="drp-today-btn" data-action="today">Today</button>' +
+      '<button class="drp-close-btn" data-action="close">Close</button>' +
       "</div>";
 
     popup.innerHTML = html;
