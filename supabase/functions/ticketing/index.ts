@@ -6143,9 +6143,9 @@ async function handleCancelTransfer(req) {
 
     // Check authorization
 
-    const authResult = await isTicketingRequestAuthorized(req);
+    const authorized = await isTicketingRequestAuthorized(req);
 
-    if (!authResult.authorized) {
+    if (!authorized) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -6178,24 +6178,6 @@ async function handleCancelTransfer(req) {
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // Check that the request user is the sender
-
-    const jwtEmail = authResult.email ? authResult.email.toLowerCase() : null;
-
-    if (
-      jwtEmail &&
-      transfer.from_email &&
-      jwtEmail !== transfer.from_email.toLowerCase()
-    ) {
-      return new Response(
-        JSON.stringify({ error: "You can only cancel your own transfers" }),
-        {
-          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );

@@ -28,10 +28,26 @@ function loadInventory() {
       }
 
       var totalCap = 0,
-        totalSold = 0;
+        totalSold = 0,
+        totalEarnings = 0,
+        fixedEarnings = 0,
+        pctEarnings = 0;
       types.forEach(function (t) {
         totalCap += t.capacity;
         totalSold += t.sold;
+        // Calculate superadmin earnings
+        var feeType = t.superadmin_fee_type || "none";
+        var feeVal = t.superadmin_fee_value || 0;
+        var feePerTicket = 0;
+        if (feeType === "fixed" && feeVal > 0) {
+          feePerTicket = feeVal;
+        } else if (feeType === "percentage" && feeVal > 0) {
+          feePerTicket = Math.round((t.price * feeVal) / 100);
+        }
+        var earnings = feePerTicket * t.sold;
+        totalEarnings += earnings;
+        if (feeType === "fixed") fixedEarnings += earnings;
+        else if (feeType === "percentage") pctEarnings += earnings;
       });
 
       var html = "";
@@ -52,7 +68,21 @@ function loadInventory() {
         '<div class="stat-card"><div class="num">' +
         (totalCap > 0 ? Math.round((totalSold / totalCap) * 100) : 0) +
         '%</div><div class="lbl">Fill Rate</div></div>' +
-        "</div>";
+        "</div>" +
+
+      // Superadmin earnings summary
+      (totalEarnings > 0 ?
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;padding:12px;background:var(--accent-dim);border:1px solid var(--border);border-radius:12px;">' +
+        '<div style="text-align:center;"><div class="num" style="font-size:24px;color:#065F46;">D' +
+        totalEarnings.toLocaleString() +
+        '</div><div class="lbl" style="font-size:11px;">Est. Superadmin Earnings</div></div>' +
+        '<div style="text-align:center;"><div class="num" style="font-size:24px;color:#1E40AF;">D' +
+        (fixedEarnings > 0 ? fixedEarnings.toLocaleString() : '0') +
+        '</div><div class="lbl" style="font-size:11px;">From Fixed Fees</div></div>' +
+        '<div style="text-align:center;"><div class="num" style="font-size:24px;color:#7C3AED;">D' +
+        (pctEarnings > 0 ? pctEarnings.toLocaleString() : '0') +
+        '</div><div class="lbl" style="font-size:11px;">From % Fees</div></div>' +
+        "</div>" : '') +
 
       // Per-type table
       html +=
