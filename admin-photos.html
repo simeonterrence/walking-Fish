@@ -304,12 +304,12 @@
 </div>
 
 <script src="supabase-config.min.js?v=3"></script>
-<script src="vendor-auth.min.js?v=7"></script>
+<script src="vendor-auth.min.js?v=8"></script>
 <script src="admin-photos.min.js?v=13"></script>
 <script>
 (function() {
   var session = getSession();
-  if (session.type !== 'admin') {
+  if (session.type !== 'admin' && session.type !== 'super-admin') {
     window.location.href = '/login';
   }
 })();

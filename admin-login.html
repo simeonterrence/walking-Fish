@@ -97,7 +97,7 @@
 
 </main>
 
-<script src="vendor-auth.min.js?v=7"></script>
+<script src="vendor-auth.min.js?v=8"></script>
 <script>
 document.getElementById('admin-login-form').addEventListener('submit', function(e) {
   e.preventDefault();
@@ -107,7 +107,7 @@ document.getElementById('admin-login-form').addEventListener('submit', function(
   errorEl.style.display = 'none';
 
   authLogin(email, password).then(function(session) {
-    if (session.role !== 'admin_role') {
+    if (session.role !== 'admin_role' && session.role !== 'super_admin_role') {
       errorEl.textContent = 'Not an admin account.';
       errorEl.style.display = 'block';
       clearSession();

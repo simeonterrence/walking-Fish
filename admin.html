@@ -474,6 +474,153 @@
                     </div>
                 </details>
 
+                <!-- Manage Admins (super_admin_role only) -->
+                <details
+                    id="manage-admins-section"
+                    style="
+                        display: none;
+                        margin: 32px 0;
+                        border-top: 1px solid var(--border);
+                        padding-top: 24px;
+                    "
+                >
+                    <summary
+                        style="
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: var(--muted);
+                        "
+                    >
+                        Manage Admins
+                        <span
+                            style="
+                                font-size: 12px;
+                                color: var(--accent);
+                                font-weight: 400;
+                            "
+                            >— superadmin only</span
+                        >
+                    </summary>
+                    <div style="margin-top: 16px">
+                        <p
+                            style="
+                                font-size: 14px;
+                                color: var(--muted);
+                                margin-bottom: 16px;
+                            "
+                        >
+                            Create and revoke admin accounts for other users.
+                            Admin accounts have the same access as you except
+                            they cannot create or revoke other admins.
+                        </p>
+
+                        <!-- Create Admin Form -->
+                        <div
+                            style="
+                                max-width: 400px;
+                                margin-bottom: 24px;
+                                padding: 16px;
+                                border: 1px solid var(--border);
+                                border-radius: 8px;
+                                background: var(--surface);
+                            "
+                        >
+                            <h4
+                                style="
+                                    font-size: 14px;
+                                    margin-bottom: 12px;
+                                "
+                            >
+                                Create New Admin
+                            </h4>
+                            <form id="create-admin-form">
+                                <div class="form-group">
+                                    <label for="admin-email"
+                                        >Email</label
+                                    >
+                                    <input
+                                        type="email"
+                                        id="admin-email"
+                                        placeholder="newadmin@example.com"
+                                        required
+                                        style="
+                                            width: 100%;
+                                            padding: 8px 12px;
+                                            border: 1px solid var(--border);
+                                            border-radius: 6px;
+                                            font-family: var(--font-body);
+                                            font-size: 14px;
+                                        "
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-password"
+                                        >Temporary Password</label
+                                    >
+                                    <input
+                                        type="password"
+                                        id="admin-password"
+                                        placeholder="Min 8 characters"
+                                        required
+                                        minlength="8"
+                                        style="
+                                            width: 100%;
+                                            padding: 8px 12px;
+                                            border: 1px solid var(--border);
+                                            border-radius: 6px;
+                                            font-family: var(--font-body);
+                                            font-size: 14px;
+                                        "
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary"
+                                    style="
+                                        padding: 8px 20px;
+                                        font-size: 13px;
+                                        justify-content: center;
+                                    "
+                                    id="create-admin-btn"
+                                >
+                                    Create Admin
+                                </button>
+                                <p
+                                    id="create-admin-error"
+                                    style="
+                                        color: #dc2626;
+                                        font-size: 13px;
+                                        display: none;
+                                        margin-top: 8px;
+                                    "
+                                ></p>
+                                <p
+                                    id="create-admin-success"
+                                    style="
+                                        color: #065f46;
+                                        font-size: 13px;
+                                        display: none;
+                                        margin-top: 8px;
+                                    "
+                                ></p>
+                            </form>
+                        </div>
+
+                        <!-- Admin List -->
+                        <div id="admins-container" style="overflow-x: auto">
+                            <p
+                                style="
+                                    color: var(--muted);
+                                    font-size: 14px;
+                                "
+                            >
+                                Loading admins...
+                            </p>
+                        </div>
+                    </div>
+                </details>
+
                 <!-- ════════════════════════════════════════════════════════════════ -->
                 <!-- TICKETING MANAGEMENT -->
                 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -942,12 +1089,12 @@
             </div>
         </div>
         <script src="supabase-config.js?v=2"></script>
-        <script src="vendor-auth.js?v=6"></script>
+        <script src="vendor-auth.js?v=7"></script>
         <script src="admin-tickets.js?v=4"></script>
         <script>
             (function () {
                 var session = getSession();
-                if (session.type !== "admin") {
+                if (session.type !== "admin" && session.type !== "super-admin") {
                     window.location.href = "/login";
                 }
             })();
@@ -1225,6 +1372,7 @@
                 loadScannerCodes();
                 loadStaffActivity();
                 loadComplaints();
+                initAdminManagement();
 
                 document
                     .getElementById("logout-btn")
@@ -1594,6 +1742,189 @@
                 content.innerHTML = detailsHtml;
 
                 document.getElementById("app-modal").classList.add("open");
+            }
+
+            // ═════════════════════════════════════════════════════════════╗
+            // ADMIN MANAGEMENT (super_admin_role only)                    ║
+            // ═════════════════════════════════════════════════════════════╝
+
+            function initAdminManagement() {
+                var session = getSession();
+                if (session.type !== "super-admin") return;
+
+                // Show the Manage Admins section
+                document.getElementById("manage-admins-section").style.display = "";
+
+                // Load existing admins
+                loadAdmins();
+
+                // Create admin form handler
+                document.getElementById("create-admin-form").addEventListener("submit", function (e) {
+                    e.preventDefault();
+                    var email = document.getElementById("admin-email").value.trim();
+                    var password = document.getElementById("admin-password").value;
+                    var errorEl = document.getElementById("create-admin-error");
+                    var successEl = document.getElementById("create-admin-success");
+                    var btn = document.getElementById("create-admin-btn");
+
+                    errorEl.style.display = "none";
+                    successEl.style.display = "none";
+
+                    if (!email || !password) {
+                        errorEl.textContent = "Fill in all fields.";
+                        errorEl.style.display = "block";
+                        return;
+                    }
+                    if (password.length < 8) {
+                        errorEl.textContent = "Password must be at least 8 characters.";
+                        errorEl.style.display = "block";
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.textContent = "Creating...";
+
+                    createAdminUser(email, password)
+                        .then(function () {
+                            successEl.textContent = "Admin created successfully. They can now sign in at /login.";
+                            successEl.style.display = "block";
+                            document.getElementById("admin-email").value = "";
+                            document.getElementById("admin-password").value = "";
+                            loadAdmins();
+                        })
+                        .catch(function (err) {
+                            errorEl.textContent = err.message || "Failed to create admin.";
+                            errorEl.style.display = "block";
+                        })
+                        .then(function () {
+                            btn.disabled = false;
+                            btn.textContent = "Create Admin";
+                        });
+                });
+            }
+
+            function loadAdmins() {
+                var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+                if (!svcKey && typeof getServiceKey === "function") {
+                    svcKey = getServiceKey(true);
+                }
+                if (!svcKey) {
+                    document.getElementById("admins-container").innerHTML =
+                        '<p style="color:#DC2626;font-size:14px;">Service key required to manage admins.</p>';
+                    return;
+                }
+
+                fetch(SUPABASE_URL + "/rest/v1/admin_list", {
+                    headers: {
+                        Authorization: "Bearer " + svcKey,
+                        apikey: SUPABASE_ANON_KEY,
+                    },
+                })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error("Failed to load admin list.");
+                        return r.json();
+                    })
+                    .then(function (users) {
+                        var container = document.getElementById("admins-container");
+                        if (!users || users.length === 0) {
+                            container.innerHTML =
+                                '<p style="color:var(--muted);font-size:14px;">No admin accounts found.</p>';
+                            return;
+                        }
+
+                        var sessionUser = getStoredSession().user;
+                        var currentUserId = sessionUser && sessionUser.id;
+
+                        var html = '<table class="app-table"><thead><tr><th>Email</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+                        users.forEach(function (u) {
+                            var role = u.role || (u.app_metadata && u.app_metadata.role) || "unknown";
+                            var isSelf = String(u.id) === String(currentUserId);
+                            var createdDate = u.created_at ? new Date(u.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "-";
+                            var roleLabel = role === "super_admin_role" ? "Superadmin" : "Admin";
+                            var roleClass = role === "super_admin_role" ? "status-approved" : "status-pending";
+
+                            html += "<tr>" +
+                                "<td><strong>" + escapeHtml(u.email) + "</strong></td>" +
+                                '<td><span class="status-badge ' + roleClass + '">' + roleLabel + "</span></td>" +
+                                "<td><span style=\"font-size:13px;color:var(--muted);\">" + createdDate + "</span></td>" +
+                                "<td>";
+
+                            if (!isSelf && role !== "super_admin_role") {
+                                html += '<button class="action-btn action-reject admin-revoke-admin-btn" data-user-id="' + u.id + '" data-email="' + escapeHtml(u.email) + '">Revoke Admin</button>';
+                            } else if (isSelf) {
+                                html += '<span style="font-size:13px;color:var(--muted);">You</span>';
+                            } else {
+                                html += '<span style="font-size:13px;color:var(--muted);">—</span>';
+                            }
+
+                            html += "</td></tr>";
+                        });
+                        html += "</tbody></table>";
+                        container.innerHTML = html;
+                    })
+                    .catch(function (err) {
+                        document.getElementById("admins-container").innerHTML =
+                            '<p style="color:#DC2626;font-size:14px;">' + escapeHtml(err.message) + "</p>";
+                    });
+            }
+
+            function createAdminUser(email, password) {
+                var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+                if (!svcKey && typeof getServiceKey === "function") {
+                    svcKey = getServiceKey(true);
+                }
+                if (!svcKey) return Promise.reject(new Error("Service role key is required to create admin users."));
+
+                // Create the user via Supabase Auth Admin API
+                return fetch(SUPABASE_URL + "/auth/v1/admin/users", {
+                    method: "POST",
+                    headers: {
+                        Authorization: "Bearer " + svcKey,
+                        apikey: SUPABASE_ANON_KEY,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        email_confirm: true,
+                        app_metadata: { role: "admin_role" },
+                    }),
+                }).then(function (r) {
+                    if (!r.ok) {
+                        return r.json().then(function (errData) {
+                            throw new Error(errData.msg || errData.message || errData.error || "Failed to create admin user.");
+                        });
+                    }
+                    return r.json();
+                });
+            }
+
+            function revokeAdminUser(userId) {
+                var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+                if (!svcKey && typeof getServiceKey === "function") {
+                    svcKey = getServiceKey(true);
+                }
+                if (!svcKey) return Promise.reject(new Error("Service role key is required."));
+
+                // Demote the user by changing their role - keeps their account intact
+                return fetch(SUPABASE_URL + "/auth/v1/admin/users/" + encodeURIComponent(userId), {
+                    method: "PUT",
+                    headers: {
+                        Authorization: "Bearer " + svcKey,
+                        apikey: SUPABASE_ANON_KEY,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        app_metadata: { role: "" },
+                    }),
+                }).then(function (r) {
+                    if (!r.ok) {
+                        return r.json().then(function (errData) {
+                            throw new Error(errData.msg || errData.message || "Failed to revoke admin.");
+                        });
+                    }
+                    return true;
+                });
             }
 
             // ═════════════════════════════════════════════════════════════╗
@@ -2123,6 +2454,24 @@
                         .catch(function (err) {
                             alert("Error: " + err.message);
                             loadComplaints();
+                        });
+                }
+
+                // Revoke admin button
+                if (e.target.classList.contains("admin-revoke-admin-btn")) {
+                    var userId = e.target.getAttribute("data-user-id");
+                    var email = e.target.getAttribute("data-email");
+                    if (!confirm('Revoke admin access for "' + email + '"? This will delete their account and they will no longer be able to sign in.')) return;
+                    if (!confirm("Are you sure? This cannot be undone.")) return;
+                    e.target.disabled = true;
+                    e.target.textContent = "Revoking...";
+                    revokeAdminUser(userId)
+                        .then(function () {
+                            loadAdmins();
+                        })
+                        .catch(function (err) {
+                            alert(err.message || "Failed to revoke admin.");
+                            loadAdmins();
                         });
                 }
 

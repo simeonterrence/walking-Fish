@@ -460,13 +460,14 @@
         </main>
 
         <script src="supabase-config.js?v=2"></script>
-        <script src="vendor-auth.js?v=6"></script>
+        <script src="vendor-auth.js?v=7"></script>
         <script src="admin-tickets.js?v=4"></script>
         <script>
             (function () {
                 var session = getSession();
                 if (
                     session.type !== "admin" &&
+                    session.type !== "super-admin" &&
                     session.role !== "ticketing_role"
                 ) {
                     window.location.href = "/login";

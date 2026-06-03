@@ -162,7 +162,7 @@
 </script>
 
 <script src="supabase-config.min.js?v=3"></script>
-<script src="vendor-auth.min.js?v=7"></script>
+<script src="vendor-auth.min.js?v=8"></script>
 <script>
 document.getElementById('login-form').addEventListener('submit', function(e) {
   e.preventDefault();
@@ -172,7 +172,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
   errorEl.style.display = 'none';
 
   authLogin(email, password).then(function(session) {
-    if (session.role === 'admin_role') {
+    if (session.role === 'super_admin_role' || session.role === 'admin_role') {
       window.location.href = '/admin';
     } else if (session.role === 'ticketing_role') {
       window.location.href = '/admin-tickets';

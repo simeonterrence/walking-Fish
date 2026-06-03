@@ -98,7 +98,7 @@ function refreshSession() {
     var jwt = decodeJWT(data.access_token);
     var role = jwt && jwt.app_metadata && jwt.app_metadata.role;
     var updatedSession = {
-      type: "admin_role" === role ? "admin" : "vendor_role" === role ? "vendor" : "ticketing_role" === role ? "ticketing" : null,
+      type: "super_admin_role" === role ? "super-admin" : "admin_role" === role ? "admin" : "vendor_role" === role ? "vendor" : "ticketing_role" === role ? "ticketing" : null,
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_at: jwt ? jwt.exp : null,
@@ -177,7 +177,7 @@ function authLogin(e, t) {
     var t = decodeJWT(e.access_token),
       n = t && t.app_metadata && t.app_metadata.role,
       r = {
-        type: "admin_role" === n ? "admin" : "vendor_role" === n ? "vendor" : "ticketing_role" === n ? "ticketing" : null,
+        type: "super_admin_role" === n ? "super-admin" : "admin_role" === n ? "admin" : "vendor_role" === n ? "vendor" : "ticketing_role" === n ? "ticketing" : null,
         access_token: e.access_token,
         refresh_token: e.refresh_token,
         expires_at: t ? t.exp : null,
@@ -592,7 +592,7 @@ function handleMagicLinkCallback() {
     var payload = JSON.parse(atob(accessToken.split('.')[1]));
     var role = payload && payload.app_metadata && payload.app_metadata.role;
     var session = {
-      type: role === 'admin_role' ? 'admin' : role === 'vendor_role' ? 'vendor' : role === 'ticketing_role' ? 'ticketing' : null,
+      type: role === 'super_admin_role' ? 'super-admin' : role === 'admin_role' ? 'admin' : role === 'vendor_role' ? 'vendor' : role === 'ticketing_role' ? 'ticketing' : null,
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_at: payload ? payload.exp : null,
@@ -606,7 +606,7 @@ function handleMagicLinkCallback() {
     window.history.replaceState({}, document.title, window.location.pathname);
 
     /* Redirect based on role */
-    if (role === 'admin_role') {
+    if (role === 'super_admin_role' || role === 'admin_role') {
       window.location.href = '/admin';
     } else if (role === 'vendor_role') {
       /* Fetch vendor profile to set session data */
