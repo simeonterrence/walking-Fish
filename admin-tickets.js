@@ -31,7 +31,8 @@ function loadInventory() {
         totalSold = 0,
         totalEarnings = 0,
         fixedEarnings = 0,
-        pctEarnings = 0;
+        pctEarnings = 0,
+        typeEarnings = [];
       types.forEach(function (t) {
         totalCap += t.capacity;
         totalSold += t.sold;
@@ -48,6 +49,7 @@ function loadInventory() {
         totalEarnings += earnings;
         if (feeType === "fixed") fixedEarnings += earnings;
         else if (feeType === "percentage") pctEarnings += earnings;
+        if (earnings > 0) typeEarnings.push({ name: t.name, earnings: earnings });
       });
 
       var html = "";
@@ -83,6 +85,50 @@ function loadInventory() {
         (pctEarnings > 0 ? pctEarnings.toLocaleString() : '0') +
         '</div><div class="lbl" style="font-size:11px;">From % Fees</div></div>' +
         "</div>" : '') +
+
+      // Earnings breakdown by ticket type
+      (typeEarnings.length > 0 ? (function() {
+        // Sort by earnings descending
+        typeEarnings.sort(function (a, b) { return b.earnings - a.earnings; });
+        var topEarnings = typeEarnings[0] ? typeEarnings[0].earnings : 1;
+        var maxShow = 6;
+        var showTypes = typeEarnings.slice(0, maxShow);
+        var restSum = 0;
+        if (typeEarnings.length > maxShow) {
+          for (var ri = maxShow; ri < typeEarnings.length; ri++) {
+            restSum += typeEarnings[ri].earnings;
+          }
+        }
+        var ebHtml = '<div style="margin-bottom:24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+          '<h4 style="font-size:14px;margin-bottom:14px;color:var(--fg);">Superadmin Earnings by Ticket Type</h4>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;">';
+        var barColors = ["#065F46", "#1E40AF", "#7C3AED", "#B45309", "#059669", "#DB2777"];
+        showTypes.forEach(function (te, idx) {
+          var pct = Math.round((te.earnings / totalEarnings) * 100);
+          var color = barColors[idx % barColors.length];
+          ebHtml += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:13px;font-weight:500;">' + escapeHtml(te.name) + '</span>' +
+            '<span style="font-size:13px;font-weight:600;color:' + color + ';">D' + te.earnings.toLocaleString() + ' <span style="font-weight:400;color:var(--muted);font-size:12px;">(' + pct + '%)</span></span>' +
+            '</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:6px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:6px;transition:width .6s ease;"></div></div>' +
+            '</div>';
+        });
+        if (restSum > 0) {
+          var restPct = Math.round((restSum / totalEarnings) * 100);
+          ebHtml += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:13px;font-weight:500;color:var(--muted);">' + (typeEarnings.length - maxShow) + ' other type' + (typeEarnings.length - maxShow !== 1 ? 's' : '') + '</span>' +
+            '<span style="font-size:13px;font-weight:600;color:var(--muted);">D' + restSum.toLocaleString() + ' <span style="font-weight:400;font-size:12px;">(' + restPct + '%)</span></span>' +
+            '</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:6px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + restPct + '%;background:var(--muted);border-radius:6px;transition:width .6s ease;"></div></div>' +
+            '</div>';
+        }
+        ebHtml += '</div></div>';
+        return ebHtml;
+      })() : '') +
 
       // Per-type table
       html +=
