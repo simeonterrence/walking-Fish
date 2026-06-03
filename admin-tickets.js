@@ -2404,7 +2404,45 @@ function loadSuperadminReport(startDate, endDate) {
         return pmHtml;
       })() : '');
 
-      container.innerHTML = html;
+      // ── Order-level detail table (only when date filter active) ──
+      html += (hasDateFilter && _superadminOrderCache.length > 0 ? (function() {
+        var feeLookup = {};
+        _superadminReportCache.forEach(function (r) {
+          feeLookup[r.name] = { feePerTicket: r.feePerTicket };
+        });
+        var detailHtml = '';
+        detailHtml += '<details style="margin-top:20px;">' +
+          '<summary style="cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);padding:8px 0;">' +
+          'Order Details <span style="font-weight:400;font-size:13px;color:var(--muted);">(' + _superadminOrderCache.length + ' tickets)</span></summary>' +
+          '<div style="overflow-x:auto;margin-top:8px;"><table class="app-table" style="font-size:13px;"><thead><tr>' +
+          '<th>Order ID</th><th>Customer</th><th>Ticket Code</th><th>Type</th><th>Date</th><th>Payment</th><th>Fee/Ticket</th><th>Earnings</th>' +
+          '</tr></thead><tbody>';
+        var totalFeeEarnings = 0;
+        _superadminOrderCache.forEach(function (tkt) {
+          var feeInfo = feeLookup[tkt.ticketTypeName] || { feePerTicket: 0 };
+          var feePerTicketVal = feeInfo.feePerTicket || 0;
+          totalFeeEarnings += feePerTicketVal;
+          var pmDisplay = tkt.paymentMethod === "modempay" ? "ModemPay" : tkt.paymentMethod === "wave_transfer" || tkt.paymentMethod === "wave" ? "Wave" : tkt.paymentMethod === "cash" ? "Cash" : "—";
+          detailHtml += '<tr>' +
+            '<td><code style="font-size:11px;">#' + (tkt.orderId ? tkt.orderId.slice(0, 8) : '—') + '</code></td>' +
+            '<td><span style="font-size:12px;">' + escapeHtml(tkt.customerEmail || '—') + '</span></td>' +
+            '<td><code style="font-size:11px;background:#f0f0f0;padding:1px 5px;border-radius:3px;">' + escapeHtml(tkt.ticketCode || '') + '</code></td>' +
+            '<td>' + escapeHtml(tkt.ticketTypeName) + '</td>' +
+            '<td><span style="font-size:12px;color:var(--muted);">' + (tkt.purchaseDate ? tkt.purchaseDate.slice(0, 10) : '') + '</span></td>' +
+            '<td><span style="font-size:12px;">' + pmDisplay + '</span></td>' +
+            '<td>' + (feePerTicketVal > 0 ? 'D' + feePerTicketVal : '—') + '</td>' +
+            '<td style="font-weight:600;color:#065F46;">' + (feePerTicketVal > 0 ? 'D' + feePerTicketVal : 'D0') + '</td>' +
+            '</tr>';
+        });
+        detailHtml += '<tr style="border-top:2px solid var(--accent);font-weight:700;">' +
+          '<td colspan="6" style="text-align:right;color:var(--accent);">TOTAL</td>' +
+          '<td></td>' +
+          '<td style="color:#065F46;">D' + totalFeeEarnings.toLocaleString() + '</td></tr>';
+        detailHtml += '</tbody></table></div></details>';
+        return detailHtml;
+      })() : '');
+
+      container.innerHTML = html;";
     });
     })
     .catch(function (err) {
