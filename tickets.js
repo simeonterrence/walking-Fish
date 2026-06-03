@@ -49,6 +49,7 @@
   let orderId = null;
   let orderTotal = 0;
   let userEmail = null; // set after login hash is parsed
+  let ticketAssignments = {}; // { [ticketTypeId]: [{ email: string, name: string }, ...] }
 
   const $ = function (id) {
     return document.getElementById(id);
@@ -260,6 +261,7 @@
     section.classList.add("active");
     var email = $("checkout-email").value.trim().toLowerCase();
     $("checkout-btn").disabled = !email || total <= 0;
+    renderAssignments();
   }
 
   function escHtml(s) {
@@ -267,6 +269,115 @@
     var d = document.createElement("div");
     d.appendChild(document.createTextNode(s));
     return d.innerHTML;
+  }
+
+  /* ─── Email Assignment UI ───────────────────────────────────────────── */
+
+  function collectAssignments() {
+    var result = {};
+    var ids = Object.keys(cart).filter(function (id) {
+      return cart[id] > 0;
+    });
+    ids.forEach(function (ticketTypeId) {
+      var qty = cart[ticketTypeId];
+      var emails = [];
+      for (var i = 0; i < qty; i++) {
+        var input = document.getElementById(
+          "assign-email-" + ticketTypeId + "-" + i,
+        );
+        var nameInput = document.getElementById(
+          "assign-name-" + ticketTypeId + "-" + i,
+        );
+        var val = input ? input.value.trim().toLowerCase() : "";
+        var nameVal = nameInput ? nameInput.value.trim() : "";
+        emails.push({
+          email: val || null, // null means use the buyer's email
+          name: nameVal || null,
+        });
+      }
+      result[ticketTypeId] = emails;
+    });
+    return result;
+  }
+
+  function renderAssignments() {
+    var container = $("email-assignment-forms");
+    if (!container) return;
+
+    var buyerEmail = ($("checkout-email").value || "").trim().toLowerCase();
+    var ids = Object.keys(cart).filter(function (id) {
+      return cart[id] > 0;
+    });
+
+    var totalTickets = 0;
+    ids.forEach(function (id) {
+      totalTickets += cart[id];
+    });
+
+    if (totalTickets <= 1) {
+      $("email-assignment-section").style.display = "none";
+      return;
+    }
+
+    $("email-assignment-section").style.display = "block";
+
+    var html = "";
+    ids.forEach(function (ticketTypeId) {
+      var t = ticketTypes.find(function (tt) {
+        return tt.id === ticketTypeId;
+      });
+      if (!t) return;
+      var qty = cart[ticketTypeId];
+
+      html += '<div style="margin-bottom:12px;">';
+      html +=
+        '<p style="font-size:13px;font-weight:500;margin-bottom:8px;">' +
+        escHtml(t.name) +
+        " × " +
+        qty +
+        "</p>";
+
+      for (var i = 0; i < qty; i++) {
+        html +=
+          '<div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">';
+        html +=
+          '<span style="font-size:12px;color:var(--muted);min-width:20px;">#' +
+          (i + 1) +
+          "</span>";
+        html +=
+          '<input type="email" id="assign-email-' +
+          ticketTypeId +
+          "-" +
+          i +
+          '" placeholder="friend@example.com" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-body);outline:none;" oninput="updateAssignHint()">';
+        html +=
+          '<input type="text" id="assign-name-' +
+          ticketTypeId +
+          "-" +
+          i +
+          '" placeholder="Name" style="flex:0.5;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-body);outline:none;" oninput="updateAssignHint()">';
+        html += "</div>";
+      }
+      html += "</div>";
+    });
+
+    html +=
+      '<p id="assign-hint" style="font-size:12px;color:var(--muted);margin:4px 0 0;">Leave blank to send to your email: <strong>' +
+      escHtml(buyerEmail) +
+      "</strong></p>";
+
+    container.innerHTML = html;
+  }
+
+  function updateAssignHint() {
+    var buyerEmail = ($("checkout-email").value || "").trim().toLowerCase();
+    var hint = $("assign-hint");
+    if (hint) {
+      hint.innerHTML =
+        "Leave blank to send to your email: <strong>" +
+        escHtml(buyerEmail || "not set") +
+        "</strong>";
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -302,6 +413,7 @@
     $("checkout-email").addEventListener("input", function () {
       var email = $("checkout-email").value.trim();
       $("checkout-btn").disabled = !email || orderTotal <= 0;
+      renderAssignments();
     });
 
     $("checkout-btn").addEventListener("click", handleCheckout);
@@ -341,6 +453,9 @@
       return;
     }
 
+    // Collect assignments from UI
+    var assignments = collectAssignments();
+
     var items = Object.keys(cart)
       .filter(function (id) {
         return cart[id] > 0;
@@ -363,6 +478,7 @@
           email: email,
           customer_name: name,
           items: items,
+          assignments: assignments,
         }),
       });
       var orderData = await orderRes.json();
@@ -696,6 +812,13 @@
         '">' +
         (qrDataUri ? "Show QR" : "View Code") +
         "</button>" +
+        '<button class="btn btn-secondary" style="font-size:13px;" onclick="openTransferModal(\'' +
+        t.id +
+        "','" +
+        escHtml(t.code) +
+        "','" +
+        escHtml(typeName) +
+        "')\">Transfer</button>" +
         "</div>" +
         "</div>" +
         '<div id="qr-' +
@@ -781,6 +904,100 @@
         );
       })
       .join("");
+  }
+
+  /* ─── Transfer Functions ────────────────────────────────────────────── */
+
+  function openTransferModal(ticketId, ticketCode, ticketTypeName) {
+    var modal = $("transfer-modal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    $("transfer-ticket-code").textContent = ticketCode;
+    $("transfer-ticket-type").textContent = ticketTypeName;
+    $("transfer-ticket-code").setAttribute("data-ticket-id", ticketId);
+    $("transfer-email").value = "";
+    $("transfer-message").value = "";
+    $("transfer-error").style.display = "none";
+    $("transfer-submit-btn").disabled = false;
+    $("transfer-submit-btn").textContent = "Transfer";
+  }
+
+  function closeTransferModal() {
+    var modal = $("transfer-modal");
+    if (modal) modal.style.display = "none";
+  }
+
+  async function submitTransfer() {
+    var ticketId = $("transfer-ticket-code").getAttribute("data-ticket-id");
+    var toEmail = $("transfer-email").value.trim().toLowerCase();
+    var message = $("transfer-message").value.trim();
+    var errEl = $("transfer-error");
+    var btn = $("transfer-submit-btn");
+
+    errEl.style.display = "none";
+
+    if (!toEmail || !toEmail.includes("@")) {
+      errEl.textContent = "Please enter a valid email address.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+
+    try {
+      var raw = sessionStorage.getItem("wf_ticket_session");
+      if (!raw) throw new Error("Not logged in");
+      var s = JSON.parse(raw);
+
+      var res = await fetch(TICKET_FN + "/initiate-transfer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: "Bearer " + s.access_token,
+        },
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          to_email: toEmail,
+          message: message || undefined,
+        }),
+      });
+
+      var data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to initiate transfer");
+      }
+
+      // Show success
+      btn.textContent = "Transferred!";
+      setTimeout(function () {
+        closeTransferModal();
+      }, 1500);
+
+      // Show success notification
+      showGift(
+        "Ticket Transfer Initiated",
+        "An email has been sent to " +
+          escHtml(toEmail) +
+          " with instructions to claim the ticket.",
+        "success",
+      );
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Transfer";
+    }
+  }
+
+  function showGift(title, message, type) {
+    // Use existing gift.js functionality if available
+    if (typeof window.showGiftMessage === "function") {
+      window.showGiftMessage(title, message);
+    } else {
+      alert(title + "\n\n" + message);
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════

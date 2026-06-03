@@ -84,6 +84,18 @@ async function routeRequest(req, pathname) {
     case "/staff-activity":
       return handleStaffActivity(req);
 
+    case "/initiate-transfer":
+      return handleInitiateTransfer(req);
+
+    case "/claim-transfer":
+      return handleClaimTransfer(req);
+
+    case "/cancel-transfer":
+      return handleCancelTransfer(req);
+
+    case "/check-transfer":
+      return handleCheckTransfer(req);
+
     default:
       return new Response(
         JSON.stringify({
@@ -394,6 +406,8 @@ async function createTicketsForOrder(
   items,
 
   customerName,
+
+  assignments,
 ) {
   const created = [];
 
@@ -437,7 +451,24 @@ async function createTicketsForOrder(
     }
 
     for (let i = 0; i < item.quantity; i++) {
-      // Generate ticket code
+      // Determine per-ticket email & name from assignments if available
+
+      const ticketEmail =
+        assignments &&
+        assignments[item.ticket_type_id] &&
+        assignments[item.ticket_type_id][i]
+          ? assignments[item.ticket_type_id][i].email.trim().toLowerCase()
+          : email;
+
+      const ticketName =
+        assignments &&
+        assignments[item.ticket_type_id] &&
+        assignments[item.ticket_type_id][i] &&
+        assignments[item.ticket_type_id][i].name
+          ? assignments[item.ticket_type_id][i].name
+          : i === 0
+            ? customerName || null
+            : null;
 
       const { data: code } = await supabase.rpc("generate_ticket_code");
 
@@ -531,9 +562,9 @@ async function createTicketsForOrder(
 
           uses_remaining: ticketType.max_uses > 1 ? ticketType.max_uses : null,
 
-          customer_email: email,
+          customer_email: ticketEmail,
 
-          customer_name: customerName || null,
+          customer_name: ticketName,
 
           qr_url: qrContent,
 
@@ -590,6 +621,10 @@ async function createTicketsForOrder(
         qrImageUrl: qrImageUrl,
 
         balance: ticket.balance,
+
+        email: ticketEmail,
+
+        name: ticketName,
       });
     }
   }
@@ -1298,6 +1333,8 @@ async function handleWebhook(req) {
 
         const items = orderMetadata.items || [];
 
+        const assignments = orderMetadata.assignments || null;
+
         const custName =
           customer_name || orderMetadata.customer_name || undefined;
 
@@ -1311,43 +1348,63 @@ async function handleWebhook(req) {
           items,
 
           custName,
+
+          assignments,
         );
 
-        // Send confirmation email with QR images
+        // Group tickets by email and send individual confirmations
 
         if (tickets.length > 0) {
-          const emailTickets = tickets.map(function (t) {
-            return {
-              code: t.code,
+          const ticketsByEmail = {};
 
-              qrDataUri: t.qrDataUri,
+          for (const t of tickets) {
+            const tEmail = t.email || email;
 
-              qrImageUrl: t.qrImageUrl,
+            if (!ticketsByEmail[tEmail]) {
+              ticketsByEmail[tEmail] = [];
+            }
 
-              ticketTypeName: t.ticketTypeSlug,
+            ticketsByEmail[tEmail].push(t);
+          }
 
-              accessCode: t.accessCode,
-            };
-          });
+          for (const [recipientEmail, recipientTickets] of Object.entries(
+            ticketsByEmail,
+          )) {
+            const emailTickets = recipientTickets.map(function (t) {
+              return {
+                code: t.code,
 
-          await sendTicketsEmail({
-            to: email,
+                qrDataUri: t.qrDataUri,
 
-            subject: "Your tickets are ready! — Walking-Fish",
+                qrImageUrl: t.qrImageUrl,
 
-            tickets: emailTickets,
+                ticketTypeName: t.ticketTypeSlug,
 
-            title: "Ticket Created at Venue",
+                accessCode: t.accessCode,
+              };
+            });
 
-            subtitle:
-              "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
-          });
+            await sendTicketsEmail({
+              to: recipientEmail,
+
+              subject: "Your tickets are ready! — Walking-Fish",
+
+              tickets: emailTickets,
+
+              title: "Ticket Created at Venue",
+
+              subtitle:
+                "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
+            });
+          }
         }
 
         // Return ticket codes for the frontend to show
 
         const firstCode = tickets.length > 0 ? tickets[0].code : null;
-        const allCodes = tickets.map(function (t) { return t.code; });
+        const allCodes = tickets.map(function (t) {
+          return t.code;
+        });
 
         console.log(
           `[Webhook] ✓ Manual order ${order_id} paid, ${tickets.length} tickets created${firstCode ? " (" + firstCode + ")" : ""}`,
@@ -1859,6 +1916,8 @@ async function handleWebhook(req) {
 
       const customerName = orderMetadata.customer_name || undefined;
 
+      const assignments = orderMetadata.assignments || null;
+
       const customerEmail = order.email;
 
       if (!items || items.length === 0) {
@@ -1899,6 +1958,8 @@ async function handleWebhook(req) {
         items,
 
         customerName,
+
+        assignments,
       );
 
       if (tickets.length === 0) {
@@ -1975,34 +2036,50 @@ async function handleWebhook(req) {
           .catch(() => {});
       }
 
-      // ─── Send confirmation email with QR images ──────────────────────
+      // ─── Send confirmation emails with QR images ──────────────────────
 
       if (tickets.length > 0) {
-        const emailTickets = tickets.map(function (t) {
-          return {
-            code: t.code,
+        const ticketsByEmail = {};
 
-            qrDataUri: t.qrDataUri,
+        for (const t of tickets) {
+          const tEmail = t.email || customerEmail;
 
-            qrImageUrl: t.qrImageUrl,
+          if (!ticketsByEmail[tEmail]) {
+            ticketsByEmail[tEmail] = [];
+          }
 
-            ticketTypeName: t.ticketTypeSlug,
+          ticketsByEmail[tEmail].push(t);
+        }
 
-            accessCode: t.accessCode,
-          };
-        });
+        for (const [recipientEmail, recipientTickets] of Object.entries(
+          ticketsByEmail,
+        )) {
+          const emailTickets = recipientTickets.map(function (t) {
+            return {
+              code: t.code,
 
-        await sendTicketsEmail({
-          to: customerEmail,
+              qrDataUri: t.qrDataUri,
 
-          subject: "Your tickets are ready! — Walking-Fish",
+              qrImageUrl: t.qrImageUrl,
 
-          tickets: emailTickets,
+              ticketTypeName: t.ticketTypeSlug,
 
-          title: "Payment Confirmed",
+              accessCode: t.accessCode,
+            };
+          });
 
-          subtitle: `Order #${order.id.slice(0, 8)} — your tickets and QR codes are ready.`,
-        });
+          await sendTicketsEmail({
+            to: recipientEmail,
+
+            subject: "Your tickets are ready! — Walking-Fish",
+
+            tickets: emailTickets,
+
+            title: "Payment Confirmed",
+
+            subtitle: `Order #${order.id.slice(0, 8)} — your tickets and QR codes are ready.`,
+          });
+        }
       }
 
       console.log(
@@ -2269,6 +2346,8 @@ async function handleCreateOrder(req) {
       ticket_code,
 
       topup_amount,
+
+      assignments,
     } = await req.json();
 
     const email = (rawEmail || "").trim().toLowerCase();
@@ -2361,6 +2440,80 @@ async function handleCreateOrder(req) {
           quantity: item.quantity,
         });
       }
+
+      // Validate assignments if provided
+
+      if (assignments) {
+        if (typeof assignments !== "object" || Array.isArray(assignments)) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "Assignments must be an object mapping ticket_type_id to arrays",
+            }),
+
+            {
+              status: 400,
+
+              headers: {
+                ...corsHeaders,
+
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        }
+
+        for (const item of validatedItems) {
+          const typeAssignments = assignments[item.ticket_type_id];
+
+          if (typeAssignments) {
+            if (
+              !Array.isArray(typeAssignments) ||
+              typeAssignments.length !== item.quantity
+            ) {
+              return new Response(
+                JSON.stringify({
+                  error: `Assignments for ${item.ticket_type_id}: array length (${typeAssignments?.length || 0}) must match quantity (${item.quantity})`,
+                }),
+
+                {
+                  status: 400,
+
+                  headers: {
+                    ...corsHeaders,
+
+                    "Content-Type": "application/json",
+                  },
+                },
+              );
+            }
+
+            // Validate each assignment has required fields
+
+            for (let ai = 0; ai < typeAssignments.length; ai++) {
+              const a = typeAssignments[ai];
+
+              if (!a || !a.email) {
+                return new Response(
+                  JSON.stringify({
+                    error: `Assignment at index ${ai} for ${item.ticket_type_id} is missing required field: email`,
+                  }),
+
+                  {
+                    status: 400,
+
+                    headers: {
+                      ...corsHeaders,
+
+                      "Content-Type": "application/json",
+                    },
+                  },
+                );
+              }
+            }
+          }
+        }
+      }
     }
 
     // Build metadata with top-up fields if applicable
@@ -2369,6 +2522,8 @@ async function handleCreateOrder(req) {
       items: validatedItems,
 
       customer_name: customer_name || null,
+
+      assignments: assignments || null,
     };
 
     if (isTopUp) {
@@ -4545,6 +4700,8 @@ async function handleRegenerateTickets(req) {
 
     const customerName = orderMetadata.customer_name || undefined;
 
+    const assignments = orderMetadata.assignments || null;
+
     const tickets = await createTicketsForOrder(
       supabase,
 
@@ -4555,6 +4712,8 @@ async function handleRegenerateTickets(req) {
       items,
 
       customerName,
+
+      assignments,
     );
 
     if (tickets.length === 0) {
@@ -4577,33 +4736,49 @@ async function handleRegenerateTickets(req) {
       );
     }
 
-    // Send confirmation email with QR images
+    // Send confirmation emails with QR images
 
-    const emailTickets = tickets.map(function (t) {
-      return {
-        code: t.code,
+    const ticketsByEmail = {};
 
-        qrDataUri: t.qrDataUri,
+    for (const t of tickets) {
+      const tEmail = t.email || order.email;
 
-        qrImageUrl: t.qrImageUrl,
+      if (!ticketsByEmail[tEmail]) {
+        ticketsByEmail[tEmail] = [];
+      }
 
-        ticketTypeName: t.ticketTypeSlug,
+      ticketsByEmail[tEmail].push(t);
+    }
 
-        accessCode: t.accessCode,
-      };
-    });
+    for (const [recipientEmail, recipientTickets] of Object.entries(
+      ticketsByEmail,
+    )) {
+      const emailTickets = recipientTickets.map(function (t) {
+        return {
+          code: t.code,
 
-    await sendTicketsEmail({
-      to: order.email,
+          qrDataUri: t.qrDataUri,
 
-      subject: "Your tickets are ready! — Walking-Fish",
+          qrImageUrl: t.qrImageUrl,
 
-      tickets: emailTickets,
+          ticketTypeName: t.ticketTypeSlug,
 
-      title: "Tickets Re-Generated",
+          accessCode: t.accessCode,
+        };
+      });
 
-      subtitle: `Order #${order.id.slice(0, 8)} — your tickets have been re-issued.`,
-    });
+      await sendTicketsEmail({
+        to: recipientEmail,
+
+        subject: "Your tickets are ready! — Walking-Fish",
+
+        tickets: emailTickets,
+
+        title: "Tickets Re-Generated",
+
+        subtitle: `Order #${order.id.slice(0, 8)} — your tickets have been re-issued.`,
+      });
+    }
 
     console.log(
       `[regenerate-tickets] ✓ Order ${order.id} — ${tickets.length} tickets re-generated`,

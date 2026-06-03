@@ -2130,6 +2130,8 @@ function loadSuperadminReport() {
   container.innerHTML =
     '<p style="color:var(--muted);font-size:14px;">Loading superadmin revenue report...</p>';
 
+  _superadminReportCache = []; // reset cache
+
   adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
     .then(function (types) {
       if (!types || types.length === 0) {
@@ -2179,6 +2181,17 @@ function loadSuperadminReport() {
         else if (feeType === "percentage") byFeeType.percentage += earnings;
         else byFeeType.none += earnings;
 
+        // Cache for CSV export
+        _superadminReportCache.push({
+          name: t.name,
+          price: t.price,
+          sold: t.sold,
+          feeTypeLabel: feeTypeLabel,
+          feeValDisplay: feeValDisplay,
+          feePerTicket: feePerTicket,
+          earnings: earnings,
+        });
+
         html += "<tr>" +
           "<td><strong>" + escapeHtml(t.name) + "</strong></td>" +
           "<td>D" + t.price + "</td>" +
@@ -2215,6 +2228,55 @@ function loadSuperadminReport() {
         '<p style="color:#DC2626;font-size:14px;">Failed to load: ' +
         escapeHtml(err.message) + "</p>";
     });
+}
+
+// ─── Export Superadmin Report CSV ─────────────────────────────────────
+
+var _superadminReportCache = null;
+
+function exportSuperadminReportCSV() {
+  if (!_superadminReportCache || _superadminReportCache.length === 0) {
+    alert("No report data to export. Load the report first.");
+    return;
+  }
+
+  // CSV header
+  var csv = "Ticket Type,Price,Sold,Fee Type,Fee Value,Fee per Ticket (D),Est. Earnings (D)\n";
+
+  _superadminReportCache.forEach(function (row) {
+    // Escape fields that might contain commas or quotes
+    function esc(v) {
+      var s = String(v == null ? "" : v);
+      if (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+    csv += esc(row.name) + "," +
+      esc(row.price) + "," +
+      esc(row.sold) + "," +
+      esc(row.feeTypeLabel) + "," +
+      esc(row.feeValDisplay) + "," +
+      esc(row.feePerTicket) + "," +
+      esc(row.earnings) + "\n";
+  });
+
+  // Add total row
+  var totals = _superadminReportCache.reduce(function (acc, r) {
+    return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings };
+  }, { sold: 0, earnings: 0 });
+  csv += "TOTAL,,,," + totals.sold + "," + totals.earnings + "\n";
+
+  // Trigger download
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "superadmin-revenue-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
@@ -2481,6 +2543,11 @@ document.addEventListener("click", function (e) {
   // Issue scanner code
   if (e.target.id === "issue-scanner-code-btn") {
     issueScannerCode();
+  }
+
+  // Export superadmin report CSV
+  if (e.target.id === "export-superadmin-csv-btn") {
+    exportSuperadminReportCSV();
   }
 
   // Add ticket type

@@ -74,6 +74,7 @@
     { "source": "/scan", "destination": "/scan.html" },
     { "source": "/admin-tickets", "destination": "/admin-tickets.html" },
     { "source": "/view-tickets", "destination": "/view-tickets.html" },
+    { "source": "/claim-ticket", "destination": "/claim-ticket.html" },
     { "source": "/admin-photos", "destination": "/admin-photos.html" }
   ]
 }
