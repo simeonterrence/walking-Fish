@@ -96,9 +96,6 @@ async function routeRequest(req, pathname) {
     case "/check-transfer":
       return handleCheckTransfer(req);
 
-    case "/test-email":
-      return handleTestEmail(req);
-
     default:
       return new Response(
         JSON.stringify({
@@ -6235,50 +6232,6 @@ async function handleCancelTransfer(req) {
 
     return new Response(
       JSON.stringify({ error: "Failed to cancel transfer" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-}
-
-// Handler: /check-transfer
-
-// ─── Handler: /test-email
-
-// Temporary debug endpoint to test email delivery.
-
-async function handleTestEmail(req) {
-  try {
-    const { to } = await req.json();
-    const testEmail = to || "admin@walkingfish.gm";
-
-    const result = await sendEmail({
-      to: testEmail,
-      subject: "Test Email from Walking-Fish Ticketing",
-      html: emailShell(
-        "<h2>Test Email</h2><p>If you received this, the email service is working correctly.</p><p>Sent at: " +
-          new Date().toISOString() +
-          "</p>",
-      ),
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Test email sent to " + testEmail,
-        result: result || "sent",
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  } catch (err) {
-    console.error("[test-email] Error:", err.message);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

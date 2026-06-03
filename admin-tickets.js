@@ -2184,16 +2184,28 @@ function loadSuperadminReport(startDate, endDate) {
 
       // If date filter is active, query tickets in the date range
       var ticketPromise;
+      _superadminOrderCache = [];
       if (hasDateFilter) {
         // Build end date: include full day by appending 23:59:59
         var endDateTime = endDate + "T23:59:59Z";
-        var path = "/rest/v1/tickets?select=ticket_type_id&created_at=gte." + startDate + "&created_at=lte." + endDateTime;
+        var path = "/rest/v1/tickets?select=ticket_type_id,id,order_id,code,customer_email,created_at,ticket_types!inner(name,slug,price)&created_at=gte." + startDate + "&created_at=lte." + endDateTime + "&order=created_at.desc";
         ticketPromise = adminQuery(path).then(function (tickets) {
-          // Count tickets per type
+          // Count tickets per type and store order-level detail
           var counts = {};
           (tickets || []).forEach(function (tkt) {
             var tid = tkt.ticket_type_id;
             counts[tid] = (counts[tid] || 0) + 1;
+            // Store order-level data for CSV export
+            _superadminOrderCache.push({
+              orderId: tkt.order_id,
+              customerEmail: tkt.customer_email,
+              ticketCode: tkt.code,
+              ticketTypeName: tkt.ticket_types ? tkt.ticket_types.name : "Unknown",
+              ticketTypeSlug: tkt.ticket_types ? tkt.ticket_types.slug : "",
+              ticketTypePrice: tkt.ticket_types ? tkt.ticket_types.price : 0,
+              purchaseDate: tkt.created_at,
+              ticketTypeId: tid,
+            });
           });
           return counts;
         });
@@ -2321,6 +2333,7 @@ function loadSuperadminReport(startDate, endDate) {
 // ─── Export Superadmin Report CSV ─────────────────────────────────────
 
 var _superadminReportCache = null;
+var _superadminOrderCache = null;
 
 function exportSuperadminReportCSV() {
   if (!_superadminReportCache || _superadminReportCache.length === 0) {
@@ -2363,6 +2376,43 @@ function exportSuperadminReportCSV() {
     return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings };
   }, { sold: 0, earnings: 0 });
   csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "\n";
+
+  // —— Order-level detail section
+  csv += "\n";
+  if (hasFilter && _superadminOrderCache && _superadminOrderCache.length > 0) {
+    csv += "Order Details (tickets purchased in this period)\n";
+    csv += "Order ID,Customer Email,Ticket Code,Ticket Type,Purchase Date,Fee per Ticket (D),Est. Earnings (D)\n";
+
+    // Build a lookup of fee config per ticket type
+    var feeLookup = {};
+    _superadminReportCache.forEach(function (r) {
+      feeLookup[r.name] = { feePerTicket: r.feePerTicket, feeType: r.feeTypeLabel };
+    });
+
+    _superadminOrderCache.forEach(function (tkt) {
+      var feeInfo = feeLookup[tkt.ticketTypeName] || { feePerTicket: 0 };
+      var feePerTicketVal = feeInfo.feePerTicket || 0;
+      var earningsVal = feePerTicketVal;
+
+      function esc(v) {
+        var s = String(v == null ? "" : v);
+        if (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1) {
+          return '"' + s.replace(/"/g, '""') + '"'};
+        return s;
+      }
+
+      csv += esc(tkt.orderId) + "," +
+        esc(tkt.customerEmail) + "," +
+        esc(tkt.ticketCode) + "," +
+        esc(tkt.ticketTypeName) + "," +
+        esc(tkt.purchaseDate ? tkt.purchaseDate.slice(0, 10) : "") + "," +
+        esc(feePerTicketVal > 0 ? "D" + feePerTicketVal : "—") + "," +
+        esc(feePerTicketVal > 0 ? "D" + earningsVal : "D0") + "\n";
+    });
+  } else if (!hasFilter) {
+    csv += "Order-level detail is only available when a date filter is applied.\n";
+    csv += "Set a date range above the report and click Apply Filter, then export again.\n";
+  }
 
   // Trigger download with date-range-aware filename
   var filename = hasFilter
