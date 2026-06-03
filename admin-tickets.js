@@ -57,7 +57,7 @@ function loadInventory() {
       // Per-type table
       html +=
         '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-        "<th>Ticket Type</th><th>Type</th><th>Price</th><th>Sold</th><th>Capacity</th><th>Fill</th><th>Status</th>" +
+        "<th>Ticket Type</th><th>Type</th><th>Price</th><th>Fee</th><th>Sold</th><th>Capacity</th><th>Fill</th><th>Status</th>" +
         "</tr></thead><tbody>";
       types.forEach(function (t) {
         var fillPct =
@@ -77,6 +77,13 @@ function loadInventory() {
           "<td><strong>D" +
           t.price +
           "</strong></td>" +
+          '<td><span style="font-size:12px;color:var(--muted);">' +
+          (t.superadmin_fee_value > 0 && t.superadmin_fee_type === "fixed"
+            ? "D" + t.superadmin_fee_value
+            : t.superadmin_fee_value > 0 && t.superadmin_fee_type === "percentage"
+              ? t.superadmin_fee_value + "%"
+              : "—") +
+          "</span></td>" +
           '<td><span style="font-weight:600;">' +
           t.sold +
           "</span></td>" +
