@@ -883,10 +883,10 @@ function loadTicketTypes() {
           t.price +
           "</strong></td>" +
           '<td><span style="font-size:12px;color:var(--muted);">' +
-          (t.superadmin_fee_type === "fixed"
-            ? "D" + (t.superadmin_fee_value || 0)
-            : t.superadmin_fee_type === "percentage"
-              ? (t.superadmin_fee_value || 0) + "%"
+          (t.superadmin_fee_value > 0 && t.superadmin_fee_type === "fixed"
+            ? "D" + t.superadmin_fee_value
+            : t.superadmin_fee_value > 0 && t.superadmin_fee_type === "percentage"
+              ? t.superadmin_fee_value + "%"
               : "—") +
           "</span></td>" +
           "<td>" +
@@ -957,7 +957,7 @@ function loadTicketTypes() {
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label><input type="number" id="new-ticket-price" value="0" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label><input type="number" id="new-ticket-capacity" value="100" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label><input type="number" id="new-ticket-sort" value="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
-        '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Superadmin Fee</label><div style="display:flex;gap:4px;"><select id="new-ticket-fee-type" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"><option value="fixed">Fixed (D)</option><option value="percentage">Percentage (%)</option><option value="none">None</option></select><input type="number" id="new-ticket-fee-value" value="0" min="0" style="width:70px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div></div>' +
+        (getSession().type === "super-admin" ? '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Superadmin Fee</label><div style="display:flex;gap:4px;"><select id="new-ticket-fee-type" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"><option value="fixed">Fixed (D)</option><option value="percentage">Percentage (%)</option><option value="none">None</option></select><input type="number" id="new-ticket-fee-value" value="0" min="0" style="width:70px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div></div>' : '') +
         '<div style="display:flex;align-items:end;"><button id="add-ticket-type-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Add Ticket Type</button></div>' +
         "</div>";
 
@@ -1087,6 +1087,7 @@ function showTicketTypeEditModal(typeData) {
     typeData.capacity +
     '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
     "</div>" +
+    (getSession().type === "super-admin" ?
     '<div style="margin-bottom:12px;">' +
     '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Superadmin Fee</label>' +
     '<div style="display:flex;gap:8px;">' +
@@ -1105,7 +1106,7 @@ function showTicketTypeEditModal(typeData) {
     (typeData.feeValue || 0) +
     '" min="0" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
     "</div>" +
-    "</div>" +
+    "</div>" : '') +
     '<div style="margin-bottom:16px;">' +
     '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label>' +
     '<input type="number" id="edit-type-sort" value="' +
@@ -2150,9 +2151,9 @@ function loadSuperadminReport() {
         var feeVal = t.superadmin_fee_value || 0;
         var feePerTicket = 0;
 
-        if (feeType === "fixed") {
+        if (feeType === "fixed" && feeVal > 0) {
           feePerTicket = feeVal;
-        } else if (feeType === "percentage") {
+        } else if (feeType === "percentage" && feeVal > 0) {
           feePerTicket = Math.round((t.price * feeVal) / 100);
         }
 
@@ -2161,7 +2162,7 @@ function loadSuperadminReport() {
         grandSold += t.sold;
 
         var feeTypeLabel = feeType === "fixed" ? "Fixed" : feeType === "percentage" ? "% of Price" : "None";
-        var feeValDisplay = feeType === "none" ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal;
+        var feeValDisplay = feeType === "none" || feeVal === 0 ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal;
         var feePerDisplay = feePerTicket > 0 ? "D" + feePerTicket : "—";
         var earningDisplay = earnings > 0 ? "D" + earnings.toLocaleString() : "D0";
 
