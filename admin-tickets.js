@@ -2802,7 +2802,7 @@ document.addEventListener("click", function (e) {
     loadSuperadminReport(sv, ev);
   }
 
-  // Clear date filter (also handles inline clear link)
+    // Clear date filter (also handles inline clear link)
   if (e.target.id === "clear-report-filter-btn" || e.target.id === "clear-report-filter") {
     if (e.target.id === "clear-report-filter") e.preventDefault();
     var s2 = document.getElementById("report-start-date");
@@ -2812,7 +2812,47 @@ document.addEventListener("click", function (e) {
     loadSuperadminReport();
   }
 
-  // Add ticket type
+  // Preset date range buttons
+  if (e.target.classList.contains("preset-date-btn")) {
+    var range = e.target.getAttribute("data-range");
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = now.getMonth();
+    var d = now.getDate();
+    var start, end;
+
+    function toDateStr(date) {
+      var yy = date.getFullYear();
+      var mm = String(date.getMonth() + 1).padStart(2, "0");
+      var dd = String(date.getDate()).padStart(2, "0");
+      return yy + "-" + mm + "-" + dd;
+    }
+
+    if (range === "today") {
+      start = toDateStr(now);
+      end = toDateStr(now);
+    } else if (range === "this-week") {
+      // Monday of this week
+      var dayOfWeek = now.getDay();
+      var diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      var monday = new Date(y, m, d + diffToMon);
+      start = toDateStr(monday);
+      end = toDateStr(now);
+    } else if (range === "this-month") {
+      start = y + "-" + String(m + 1).padStart(2, "0") + "-01";
+      end = toDateStr(now);
+    }
+
+    if (start && end) {
+      var sEl = document.getElementById("report-start-date");
+      var eEl = document.getElementById("report-end-date");
+      if (sEl) sEl.value = start;
+      if (eEl) eEl.value = end;
+      loadSuperadminReport(start, end);
+    }
+  }
+
+// Add ticket type
   if (e.target.id === "add-ticket-type-btn") {
     addTicketType();
   }
