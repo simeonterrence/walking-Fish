@@ -2188,7 +2188,7 @@ function loadSuperadminReport(startDate, endDate) {
       if (hasDateFilter) {
         // Build end date: include full day by appending 23:59:59
         var endDateTime = endDate + "T23:59:59Z";
-        var path = "/rest/v1/tickets?select=ticket_type_id,id,order_id,code,customer_email,created_at,ticket_types!inner(name,slug,price)&created_at=gte." + startDate + "&created_at=lte." + endDateTime + "&order=created_at.desc";
+        var path = "/rest/v1/tickets?select=ticket_type_id,id,order_id,code,customer_email,created_at,ticket_types!inner(name,slug,price),orders!left(payment_method)&created_at=gte." + startDate + "&created_at=lte." + endDateTime + "&order=created_at.desc";
         ticketPromise = adminQuery(path).then(function (tickets) {
           // Count tickets per type and store order-level detail
           var counts = {};
@@ -2205,6 +2205,7 @@ function loadSuperadminReport(startDate, endDate) {
               ticketTypePrice: tkt.ticket_types ? tkt.ticket_types.price : 0,
               purchaseDate: tkt.created_at,
               ticketTypeId: tid,
+              paymentMethod: tkt.orders ? tkt.orders.payment_method : null,
             });
           });
           return counts;
@@ -2318,7 +2319,44 @@ function loadSuperadminReport(startDate, endDate) {
         '<div class="stat-card"><div class="num" style="color:#065F46;">D' + grandEarnings.toLocaleString() + '</div><div class="lbl">Total Est. Superadmin Earnings</div></div>' +
         '<div class="stat-card"><div class="num" style="color:#1E40AF;">D' + (byFeeType.fixed > 0 ? byFeeType.fixed.toLocaleString() : '0') + '</div><div class="lbl">From Fixed Fees</div></div>' +
         '<div class="stat-card"><div class="num" style="color:#7C3AED;">D' + (byFeeType.percentage > 0 ? byFeeType.percentage.toLocaleString() : '0') + '</div><div class="lbl">From %% Fees</div></div>' +
-        "</div>";
+        "</div>" +
+
+      // Payment method breakdown (only available with date filter / order data)
+      (hasDateFilter && _superadminOrderCache.length > 0 ? (function() {
+        var pmEarnings = {};
+        var pmLabels = { modempay: "ModemPay", wave_transfer: "Wave Transfer", wave: "Wave (On-site)", cash: "Cash" };
+        var pmOrders = {};
+        _superadminOrderCache.forEach(function (tkt) {
+          var pm = tkt.paymentMethod || "unpaid";
+          if (!pmEarnings[pm]) { pmEarnings[pm] = 0; pmOrders[pm] = {}; }
+          pmOrders[pm][tkt.orderId] = true;
+        });
+        // Calculate earnings for each payment method by matching with fee config
+        var feeLookup = {};
+        _superadminReportCache.forEach(function (r) {
+          feeLookup[r.name] = { feePerTicket: r.feePerTicket };
+        });
+        _superadminOrderCache.forEach(function (tkt) {
+          var feeInfo = feeLookup[tkt.ticketTypeName] || { feePerTicket: 0 };
+          var feePerTicketVal = feeInfo.feePerTicket || 0;
+          var pm = tkt.paymentMethod || "unpaid";
+          pmEarnings[pm] += feePerTicketVal;
+        });
+        // Build cards in a consistent order
+        var pmOrder = ["modempay", "wave_transfer", "wave", "cash", "unpaid"];
+        var pmColors = { modempay: "#1E40AF", wave_transfer: "#065F46", wave: "#059669", cash: "#92400E", unpaid: "var(--muted)" };
+        var pmHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:16px;padding:12px;background:var(--accent-dim);border:1px solid var(--border);border-radius:12px;">' +
+          '<div style="grid-column:1/-1;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">By Payment Method</div>';
+        pmOrder.forEach(function (pm) {
+          if (pmEarnings[pm] && pmEarnings[pm] > 0) {
+            var label = pmLabels[pm] || pm.charAt(0).toUpperCase() + pm.slice(1);
+            var orderCount = pmOrders[pm] ? Object.keys(pmOrders[pm]).length : 0;
+            pmHtml += '<div style="text-align:center;"><div class="num" style="font-size:22px;color:' + pmColors[pm] + ';">D' + pmEarnings[pm].toLocaleString() + '</div><div class="lbl" style="font-size:11px;">' + label + ' (' + orderCount + ' order' + (orderCount !== 1 ? 's' : '') + ')</div></div>';
+          }
+        });
+        pmHtml += "</div>";
+        return pmHtml;
+      })() : '');
 
       container.innerHTML = html;
     });
@@ -2381,7 +2419,7 @@ function exportSuperadminReportCSV() {
   csv += "\n";
   if (hasFilter && _superadminOrderCache && _superadminOrderCache.length > 0) {
     csv += "Order Details (tickets purchased in this period)\n";
-    csv += "Order ID,Customer Email,Ticket Code,Ticket Type,Purchase Date,Fee per Ticket (D),Est. Earnings (D)\n";
+    csv += "Order ID,Customer Email,Ticket Code,Ticket Type,Purchase Date,Payment Method,Fee per Ticket (D),Est. Earnings (D)\n";
 
     // Build a lookup of fee config per ticket type
     var feeLookup = {};
@@ -2401,14 +2439,21 @@ function exportSuperadminReportCSV() {
         return s;
       }
 
+      var pmLabel = "";
+      if (tkt.paymentMethod === "modempay") pmLabel = "ModemPay";
+      else if (tkt.paymentMethod === "wave_transfer") pmLabel = "Wave Transfer";
+      else if (tkt.paymentMethod === "wave") pmLabel = "Wave (On-site)";
+      else if (tkt.paymentMethod === "cash") pmLabel = "Cash";
+      else pmLabel = "—";
+
       csv += esc(tkt.orderId) + "," +
         esc(tkt.customerEmail) + "," +
         esc(tkt.ticketCode) + "," +
         esc(tkt.ticketTypeName) + "," +
         esc(tkt.purchaseDate ? tkt.purchaseDate.slice(0, 10) : "") + "," +
+        esc(pmLabel) + "," +
         esc(feePerTicketVal > 0 ? "D" + feePerTicketVal : "—") + "," +
         esc(feePerTicketVal > 0 ? "D" + earningsVal : "D0") + "\n";
-    });
   } else if (!hasFilter) {
     csv += "Order-level detail is only available when a date filter is applied.\n";
     csv += "Set a date range above the report and click Apply Filter, then export again.\n";
