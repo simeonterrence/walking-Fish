@@ -863,7 +863,7 @@ function loadTicketTypes() {
 
       var html =
         '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
-        "<th>Name</th><th>Slug</th><th>Type</th><th>Price</th><th>Capacity</th><th>Sold</th><th>Status</th><th>Actions</th>" +
+        "<th>Name</th><th>Slug</th><th>Type</th><th>Price</th><th>Capacity</th><th>Sold</th><th>Fee</th><th>Status</th><th>Actions</th>" +
         "</tr></thead><tbody>";
       types.forEach(function (t) {
         var statusClass = t.is_active ? "status-approved" : "status-rejected";
@@ -882,6 +882,13 @@ function loadTicketTypes() {
           "<td><strong>D" +
           t.price +
           "</strong></td>" +
+          '<td><span style="font-size:12px;color:var(--muted);">' +
+          (t.superadmin_fee_type === "fixed"
+            ? "D" + (t.superadmin_fee_value || 0)
+            : t.superadmin_fee_type === "percentage"
+              ? (t.superadmin_fee_value || 0) + "%"
+              : "—") +
+          "</span></td>" +
           "<td>" +
           t.capacity +
           "</td>" +
@@ -904,6 +911,10 @@ function loadTicketTypes() {
           t.type +
           '" data-price="' +
           t.price +
+          '" data-fee-type="' +
+          (t.superadmin_fee_type || "fixed") +
+          '" data-fee-value="' +
+          (t.superadmin_fee_value || 0) +
           '" data-capacity="' +
           t.capacity +
           '" data-sort="' +
@@ -946,6 +957,7 @@ function loadTicketTypes() {
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Price (D)</label><input type="number" id="new-ticket-price" value="0" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Capacity</label><input type="number" id="new-ticket-capacity" value="100" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
         '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label><input type="number" id="new-ticket-sort" value="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
+        '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Superadmin Fee</label><div style="display:flex;gap:4px;"><select id="new-ticket-fee-type" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"><option value="fixed">Fixed (D)</option><option value="percentage">Percentage (%)</option><option value="none">None</option></select><input type="number" id="new-ticket-fee-value" value="0" min="0" style="width:70px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div></div>' +
         '<div style="display:flex;align-items:end;"><button id="add-ticket-type-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Add Ticket Type</button></div>' +
         "</div>";
 
@@ -1075,6 +1087,25 @@ function showTicketTypeEditModal(typeData) {
     typeData.capacity +
     '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
     "</div>" +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Superadmin Fee</label>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<select id="edit-type-fee-type" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    '<option value="fixed"' +
+    (typeData.feeType === "fixed" ? " selected" : "") +
+    '">Fixed (D)</option>' +
+    '<option value="percentage"' +
+    (typeData.feeType === "percentage" ? " selected" : "") +
+    '">Percentage (%)</option>' +
+    '<option value="none"' +
+    (typeData.feeType === "none" || !typeData.feeType ? " selected" : "") +
+    '">None</option>' +
+    "</select>" +
+    '<input type="number" id="edit-type-fee-value" value="' +
+    (typeData.feeValue || 0) +
+    '" min="0" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    "</div>" +
+    "</div>" +
     '<div style="margin-bottom:16px;">' +
     '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Sort Order</label>' +
     '<input type="number" id="edit-type-sort" value="' +
@@ -1108,6 +1139,15 @@ function saveTicketTypeEdit(typeId, data) {
   if (data.price !== undefined) payload.price = parseInt(data.price);
   if (data.capacity !== undefined) payload.capacity = parseInt(data.capacity);
   if (data.sort !== undefined) payload.sort_order = parseInt(data.sort);
+  if (data.feeType !== undefined) {
+    if (data.feeType === "none") {
+      payload.superadmin_fee_type = "fixed";
+      payload.superadmin_fee_value = 0;
+    } else {
+      payload.superadmin_fee_type = data.feeType;
+      payload.superadmin_fee_value = parseInt(data.feeValue) || 0;
+    }
+  }
 
   return fetchWithAuth(
     SUPABASE_URL + "/rest/v1/ticket_types?id=eq." + encodeURIComponent(typeId),
@@ -1233,6 +1273,8 @@ function addTicketType() {
     document.getElementById("new-ticket-price").value = "0";
     document.getElementById("new-ticket-capacity").value = "100";
     document.getElementById("new-ticket-sort").value = "0";
+    document.getElementById("new-ticket-fee-type").value = "fixed";
+    document.getElementById("new-ticket-fee-value").value = "0";
   }
 
   // Try RPC first (works with ticketing_role JWT), fall back to service key
@@ -1246,6 +1288,8 @@ function addTicketType() {
       p_price: price,
       p_capacity: capacity,
       p_sort_order: sortOrder,
+      p_superadmin_fee_type: document.getElementById("new-ticket-fee-type").value === "none" ? "fixed" : document.getElementById("new-ticket-fee-type").value,
+      p_superadmin_fee_value: document.getElementById("new-ticket-fee-type").value === "none" ? 0 : (parseInt(document.getElementById("new-ticket-fee-value").value) || 0),
     }),
   })
     .then(function (res) {
@@ -1290,6 +1334,8 @@ function addTicketType() {
           sold: 0,
           is_active: true,
           sort_order: sortOrder,
+          superadmin_fee_type: document.getElementById("new-ticket-fee-type").value === "none" ? "fixed" : document.getElementById("new-ticket-fee-type").value,
+          superadmin_fee_value: document.getElementById("new-ticket-fee-type").value === "none" ? 0 : (parseInt(document.getElementById("new-ticket-fee-value").value) || 0),
         }),
       })
         .then(function (r) {
@@ -2063,6 +2109,103 @@ function loadStaffActivity() {
     });
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. SUPERADMIN REVENUE REPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function loadSuperadminReport() {
+  var container = document.getElementById("superadmin-report-container");
+  if (!container) return;
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading superadmin revenue report...</p>';
+
+  adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
+    .then(function (types) {
+      if (!types || types.length === 0) {
+        container.innerHTML =
+          '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
+        return;
+      }
+
+      var grandEarnings = 0;
+      var grandSold = 0;
+      var byFeeType = { fixed: 0, percentage: 0, none: 0 };
+
+      var html =
+        '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table">' +
+        "<thead><tr>" +
+        "<th>Ticket Type</th>" +
+        "<th>Price</th>" +
+        "<th>Sold</th>" +
+        "<th>Fee Type</th>" +
+        "<th>Fee Value</th>" +
+        "<th>Fee per Ticket</th>" +
+        "<th>Est. Earnings</th>" +
+        "</tr></thead><tbody>";
+
+      types.forEach(function (t) {
+        if (t.sold === 0 && t.is_active === false) return; // skip inactive with no sales
+        var feeType = t.superadmin_fee_type || "none";
+        var feeVal = t.superadmin_fee_value || 0;
+        var feePerTicket = 0;
+
+        if (feeType === "fixed") {
+          feePerTicket = feeVal;
+        } else if (feeType === "percentage") {
+          feePerTicket = Math.round((t.price * feeVal) / 100);
+        }
+
+        var earnings = feePerTicket * t.sold;
+        grandEarnings += earnings;
+        grandSold += t.sold;
+
+        var feeTypeLabel = feeType === "fixed" ? "Fixed" : feeType === "percentage" ? "% of Price" : "None";
+        var feeValDisplay = feeType === "none" ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal;
+        var feePerDisplay = feePerTicket > 0 ? "D" + feePerTicket : "—";
+        var earningDisplay = earnings > 0 ? "D" + earnings.toLocaleString() : "D0";
+
+        if (feeType === "fixed") byFeeType.fixed += earnings;
+        else if (feeType === "percentage") byFeeType.percentage += earnings;
+        else byFeeType.none += earnings;
+
+        html += "<tr>" +
+          "<td><strong>" + escapeHtml(t.name) + "</strong></td>" +
+          "<td>D" + t.price + "</td>" +
+          "<td>" + t.sold + "</td>" +
+          "<td><span style="font-size:13px;color:var(--muted);">" + feeTypeLabel + "</span></td>" +
+          "<td><span style="font-size:13px;color:var(--muted);">" + feeValDisplay + "</span></td>" +
+          "<td>" + feePerDisplay + "</td>" +
+          '<td style="font-weight:600;color:#065F46;">' + earningDisplay + "</td>" +
+          "</tr>";
+      });
+
+      // Grand total row
+      html += "<tr style="border-top:2px solid var(--accent);font-weight:700;">" +
+        "<td><strong style="color:var(--accent);">TOTAL</strong></td>" +
+        "<td></td>" +
+        "<td>" + grandSold + "</td>" +
+        "<td></td><td></td><td></td>" +
+        '<td style="color:#065F46;">D' + grandEarnings.toLocaleString() + "</td>" +
+        "</tr>";
+
+      html += "</tbody></table></div>";
+
+      // Summary cards
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;">' +
+        '<div class="stat-card"><div class="num" style="color:#065F46;">D' + grandEarnings.toLocaleString() + '</div><div class="lbl">Total Est. Superadmin Earnings</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:#1E40AF;">D' + (byFeeType.fixed > 0 ? byFeeType.fixed.toLocaleString() : '0') + '</div><div class="lbl">From Fixed Fees</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:#7C3AED;">D' + (byFeeType.percentage > 0 ? byFeeType.percentage.toLocaleString() : '0') + '</div><div class="lbl">From %% Fees</div></div>' +
+        "</div>";
+
+      container.innerHTML = html;
+    })
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load: ' +
+        escapeHtml(err.message) + "</p>";
+    });
+}
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2097,6 +2240,8 @@ document.addEventListener("click", function (e) {
       price: btn.getAttribute("data-price"),
       capacity: btn.getAttribute("data-capacity"),
       sort: btn.getAttribute("data-sort"),
+      feeType: btn.getAttribute("data-fee-type"),
+      feeValue: btn.getAttribute("data-fee-value"),
     });
   }
 
@@ -2117,6 +2262,8 @@ document.addEventListener("click", function (e) {
       price: document.getElementById("edit-type-price").value,
       capacity: document.getElementById("edit-type-capacity").value,
       sort: document.getElementById("edit-type-sort").value,
+      feeType: document.getElementById("edit-type-fee-type").value,
+      feeValue: document.getElementById("edit-type-fee-value").value,
     };
 
     if (!data.name || !data.slug) {

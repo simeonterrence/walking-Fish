@@ -808,6 +808,29 @@
                                 </p>
                             </div>
                         </div>
+
+                        <!-- Superadmin Revenue Report -->
+                        <div class="ticket-section" id="superadmin-report-section" style="display:none;">
+                            <h3 style="margin-top: 24px">
+                                Superadmin Revenue Report
+                            </h3>
+                            <p
+                                style="
+                                    font-size: 13px;
+                                    color: var(--muted);
+                                    margin-bottom: 8px;
+                                "
+                            >
+                                Estimated earnings from superadmin fees configured on each
+                                ticket type. Fixed fees are calculated per ticket sold;
+                                percentage fees are based on the ticket price.
+                            </p>
+                            <div id="superadmin-report-container">
+                                <p style="color: var(--muted); font-size: 14px">
+                                    Loading report...
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </details>
                 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1090,7 +1113,7 @@
         </div>
         <script src="supabase-config.js?v=2"></script>
         <script src="vendor-auth.js?v=7"></script>
-        <script src="admin-tickets.js?v=4"></script>
+        <script src="admin-tickets.js?v=5"></script>
         <script>
             (function () {
                 var session = getSession();
@@ -1372,6 +1395,13 @@
                 loadScannerCodes();
                 loadStaffActivity();
                 loadComplaints();
+
+                // Show superadmin report and init if super-admin
+                var sessionType = getSession().type;
+                if (sessionType === "super-admin") {
+                    document.getElementById("superadmin-report-section").style.display = "";
+                    loadSuperadminReport();
+                }
                 initAdminManagement();
 
                 document
