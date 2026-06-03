@@ -2657,8 +2657,57 @@
                         }),
                 );
 
-                return Promise.all(promises).then(function (sections) {
-                    var csvRows = [];
+                // 8. Superadmin Earnings Summary (superadmin only)
+                var session = getStoredSession();
+                if (session && session.type === "super-admin") {
+                    promises.push(
+                        adminQuery("/rest/v1/ticket_types?order=sort_order.asc&select=*")
+                        .then(function (types) {
+                            var rows = [];
+                            var grandEarnings = 0;
+                            (types || []).forEach(function (t) {
+                                var feeType = t.superadmin_fee_type || "none";
+                                var feeVal = t.superadmin_fee_value || 0;
+                                var feePerTicket = 0;
+                                if (feeType === "fixed" && feeVal > 0) {
+                                    feePerTicket = feeVal;
+                                } else if (feeType === "percentage" && feeVal > 0) {
+                                    feePerTicket = Math.round((t.price * feeVal) / 100);
+                                }
+                                var earnings = feePerTicket * t.sold;
+                                grandEarnings += earnings;
+                                if (earnings > 0 || t.is_active) {
+                                    rows.push({
+                                        "Ticket Type": t.name,
+                                        "Price (D)": t.price,
+                                        "Sold": t.sold,
+                                        "Fee Type": feeType === "fixed" ? "Fixed" : feeType === "percentage" ? "% of Price" : "None",
+                                        "Fee Value": feeType === "none" || feeVal === 0 ? "—" : feeType === "percentage" ? feeVal + "%" : "D" + feeVal,
+                                        "Fee per Ticket (D)": feePerTicket > 0 ? feePerTicket : 0,
+                                        "Est. Earnings (D)": earnings,
+                                    });
+                                }
+                            });
+                            // Add grand total row
+                            var totalSold = types.reduce(function (s, t) { return s + t.sold; }, 0);
+                            rows.push({
+                                "Ticket Type": "TOTAL",
+                                "Price (D)": "",
+                                "Sold": totalSold,
+                                "Fee Type": "",
+                                "Fee Value": "",
+                                "Fee per Ticket (D)": "",
+                                "Est. Earnings (D)": grandEarnings,
+                            });
+                            return { label: "Superadmin Earnings Summary", data: rows };
+                        })
+                        .catch(function () {
+                            return { label: "Superadmin Earnings Summary", data: [] };
+                        }),
+                    );
+                }
+
+                return Promise.all(promises).then(function (sections) {                    var csvRows = [];
                     var now = new Date()
                         .toISOString()
                         .replace(/T/, " ")
