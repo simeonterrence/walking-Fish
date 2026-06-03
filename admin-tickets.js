@@ -3137,3 +3137,253 @@ function getEdgeFunctionToken() {
   }
   return svcKey || "";
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. CUSTOM DATE RANGE CALENDAR PICKER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+(function() {
+  // Inject calendar styles
+  var styleEl = document.createElement("style");
+  styleEl.textContent = "#date-range-picker{" +
+    "position:fixed;z-index:9999;background:var(--surface,#fff);border:1px solid var(--border,#ddd);" +
+    "border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);padding:16px;width:280px;" +
+    "font-family:var(--font-body,system-ui);display:none;" +
+    "}" +
+    "#date-range-picker .drp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}" +
+    "#date-range-picker .drp-nav{background:none;border:none;font-size:18px;cursor:pointer;" +
+    "width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;" +
+    "color:var(--fg,#333);transition:background .15s;}" +
+    "#date-range-picker .drp-nav:hover{background:var(--accent-dim,#f0f0f0);}" +
+    "#date-range-picker .drp-month{font-size:14px;font-weight:600;}" +
+    "#date-range-picker table{width:100%;border-collapse:collapse;}" +
+    "#date-range-picker th{font-size:11px;color:var(--muted,#888);font-weight:500;padding:2px 0;text-align:center;}" +
+    "#date-range-picker td{text-align:center;padding:0;}" +
+    "#date-range-picker .drp-day{width:36px;height:32px;border:none;background:none;cursor:pointer;" +
+    "font-size:13px;border-radius:8px;transition:all .15s;color:var(--fg,#333);" +
+    "display:flex;align-items:center;justify-content:center;margin:1px auto;font-family:var(--font-body);}" +
+    "#date-range-picker .drp-day:hover{background:var(--accent-dim,#f0f0f0);}" +
+    "#date-range-picker .drp-day.drp-today{font-weight:700;color:var(--accent,#c05);}" +
+    "#date-range-picker .drp-day.drp-selected{background:var(--accent,#c05);color:#fff;font-weight:600;}" +
+    "#date-range-picker .drp-day.drp-in-range{background:var(--accent-dim,#fce4ec);}" +
+    "#date-range-picker .drp-day.drp-start{border-radius:8px 0 0 8px;background:var(--accent,#c05);color:#fff;}" +
+    "#date-range-picker .drp-day.drp-end{border-radius:0 8px 8px 0;background:var(--accent,#c05);color:#fff;}" +
+    "#date-range-picker .drp-day.drp-other-month{color:var(--muted,#ccc);}" +
+    "#date-range-picker .drp-footer{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#eee);}" +
+    "#date-range-picker .drp-today-btn{background:none;border:none;cursor:pointer;font-size:12px;" +
+    "color:var(--accent,#c05);font-weight:500;padding:4px 10px;border-radius:6px;transition:background .15s;font-family:var(--font-body);}" +
+    "#date-range-picker .drp-today-btn:hover{background:var(--accent-dim,#fce4ec);}" +
+    "#date-range-picker .drp-close-btn{background:none;border:none;cursor:pointer;font-size:12px;" +
+    "color:var(--muted,#888);padding:4px 10px;border-radius:6px;transition:background .15s;font-family:var(--font-body);}" +
+    "#date-range-picker .drp-close-btn:hover{background:var(--accent-dim,#f0f0f0);}";
+  document.head.appendChild(styleEl);
+
+  var startInput = document.getElementById("report-start-date");
+  var endInput = document.getElementById("report-end-date");
+  if (!startInput || !endInput) return;
+
+  var popup = null;
+  var activeInput = null;
+  var viewDate = new Date();
+  var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  function toStr(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2,"0");
+    var dd = String(d.getDate()).padStart(2,"0");
+    return y + "-" + m + "-" + dd;
+  }
+
+  function parseDate(str) {
+    if (!str) return null;
+    var parts = str.split("-");
+    if (parts.length !== 3) return null;
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+
+  function closePopup() {
+    if (popup) popup.style.display = "none";
+  }
+
+  function buildCalendar() {
+    if (!popup) {
+      popup = document.createElement("div");
+      popup.id = "date-range-picker";
+      document.body.appendChild(popup);
+    }
+
+    var y = viewDate.getFullYear();
+    var m = viewDate.getMonth();
+    var firstDay = new Date(y, m, 1).getDay();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var startVal = startInput.value;
+    var endVal = endInput.value;
+    var startDate = parseDate(startVal);
+    var endDate = parseDate(endVal);
+    var today = new Date();
+    var todayStr = toStr(today);
+
+    var html = "<div class="drp-header">" +
+      "<button class="drp-nav" data-action="prev">&larr;</button>" +
+      "<span class="drp-month">" + monthNames[m] + " " + y + "</span>" +
+      "<button class="drp-nav" data-action="next">&rarr;</button>" +
+      "</div>";
+
+    html += "<table><thead><tr>";
+    for (var di = 0; di < 7; di++) {
+      html += "<th>" + dayNames[di][0] + "</th>";
+    }
+    html += "</tr></thead><tbody><tr>";
+
+    // Empty cells before first day
+    for (var e = 0; e < firstDay; e++) {
+      html += "<td></td>";
+    }
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateObj = new Date(y, m, d);
+      var dateStr = toStr(dateObj);
+      var cls = "drp-day";
+      if (dateStr === todayStr) cls += " drp-today";
+      if (startDate && endDate && dateStr >= startVal && dateStr <= endVal) {
+        if (startVal === endVal && dateStr === startVal) {
+          cls += " drp-selected";
+        } else {
+          cls += " drp-in-range";
+          if (dateStr === startVal) cls = cls.replace("drp-in-range","") + " drp-start drp-selected";
+          if (dateStr === endVal) cls += " drp-end drp-selected";
+        }
+      } else if (startDate && !endDate && dateStr === startVal) {
+        cls += " drp-selected";
+      }
+
+      html += "<td><button class="" + cls + "" data-date="" + dateStr + "">" + d + "</button></td>";
+      if ((firstDay + d) % 7 === 0 && d < daysInMonth) {
+        html += "</tr><tr>";
+      }
+    }
+
+    html += "</tr></tbody></table>";
+    html += "<div class="drp-footer">" +
+      "<button class="drp-today-btn" data-action="today">Today</button>" +
+      "<button class="drp-close-btn" data-action="close">Close</button>" +
+      "</div>";
+
+    popup.innerHTML = html;
+  }
+
+  function positionPopup(input) {
+    if (!popup) return;
+    var rect = input.getBoundingClientRect();
+    var top = rect.bottom + window.scrollY + 4;
+    var left = rect.left + window.scrollX;
+    // Keep on screen
+    var pw = 280;
+    if (left + pw > window.innerWidth - 10) {
+      left = window.innerWidth - pw - 10;
+    }
+    popup.style.top = top + "px";
+    popup.style.left = left + "px";
+    popup.style.display = "block";
+  }
+
+  function onDateClick(dateStr) {
+    if (!activeInput) return;
+    var isStart = activeInput.id === "report-start-date";
+
+    if (isStart) {
+      startInput.value = dateStr;
+      // If end is before start, clear end
+      if (endInput.value && endInput.value < dateStr) {
+        endInput.value = "";
+      }
+      // Auto-focus end input
+      endInput.focus();
+      activeInput = endInput;
+    } else {
+      // Ensure end is after start
+      if (startInput.value && dateStr < startInput.value) {
+        startInput.value = dateStr;
+        endInput.value = startInput.value;
+      } else {
+        endInput.value = dateStr;
+      }
+      // Auto-apply filter if both dates selected
+      if (startInput.value && endInput.value) {
+        var applyBtn = document.getElementById("apply-report-filter");
+        if (applyBtn) applyBtn.click();
+      }
+      closePopup();
+    }
+    buildCalendar();
+  }
+
+  function onPopupClick(e) {
+    var target = e.target;
+    var action = target.getAttribute("data-action");
+    var dateVal = target.getAttribute("data-date");
+
+    if (dateVal) {
+      onDateClick(dateVal);
+      return;
+    }
+
+    if (action === "prev") {
+      viewDate.setMonth(viewDate.getMonth() - 1);
+      buildCalendar();
+    } else if (action === "next") {
+      viewDate.setMonth(viewDate.getMonth() + 1);
+      buildCalendar();
+    } else if (action === "today") {
+      var now = new Date();
+      onDateClick(toStr(now));
+    } else if (action === "close") {
+      closePopup();
+    }
+  }
+
+  function onInputClick(e) {
+    var input = e.target;
+    if (input.id !== "report-start-date" && input.id !== "report-end-date") return;
+
+    activeInput = input;
+    // Set viewDate to the input's value or today
+    var parsed = parseDate(input.value);
+    if (parsed && !isNaN(parsed.getTime())) {
+      viewDate = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+    } else {
+      viewDate = new Date();
+      viewDate.setDate(1);
+    }
+    buildCalendar();
+    positionPopup(input);
+  }
+
+  // Consolidated click handler: outside click closes, popup clicks dispatch actions
+  document.addEventListener("click", function(e) {
+    if (!popup || popup.style.display !== "block") return;
+    if (popup.contains(e.target)) {
+      onPopupClick(e);
+      return;
+    }
+    if (e.target.id === "report-start-date" || e.target.id === "report-end-date") return;
+    closePopup();
+  });
+
+  // ESC key to close
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") closePopup();
+  });
+
+  // Bind click on date inputs
+  startInput.addEventListener("click", onInputClick);
+  endInput.addEventListener("click", onInputClick);
+  startInput.addEventListener("focus", onInputClick);
+  endInput.addEventListener("focus", onInputClick);
+
+  // Prevent native browser date picker by making inputs readonly
+  startInput.setAttribute("readonly", "true");
+  endInput.setAttribute("readonly", "true");
+})();
