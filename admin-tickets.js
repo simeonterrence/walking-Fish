@@ -72,8 +72,8 @@ function loadInventory() {
         '%</div><div class="lbl">Fill Rate</div></div>' +
         "</div>" +
 
-      // Superadmin earnings summary
-      (totalEarnings > 0 ?
+      // Superadmin earnings summary (superadmin only)
+      (getSession().type === "super-admin" && totalEarnings > 0 ?
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;padding:12px;background:var(--accent-dim);border:1px solid var(--border);border-radius:12px;">' +
         '<div style="text-align:center;"><div class="num" style="font-size:24px;color:#065F46;">D' +
         totalEarnings.toLocaleString() +
@@ -86,8 +86,8 @@ function loadInventory() {
         '</div><div class="lbl" style="font-size:11px;">From % Fees</div></div>' +
         "</div>" : '') +
 
-      // Earnings breakdown by ticket type
-      (typeEarnings.length > 0 ? (function() {
+      // Earnings breakdown by ticket type (superadmin only)
+      (getSession().type === "super-admin" && typeEarnings.length > 0 ? (function() {
         // Sort by earnings descending
         typeEarnings.sort(function (a, b) { return b.earnings - a.earnings; });
         var topEarnings = typeEarnings[0] ? typeEarnings[0].earnings : 1;
