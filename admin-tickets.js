@@ -1875,6 +1875,13 @@ function loadScannerCodes() {
           "<td>" +
           escapeHtml(c.label || "-") +
           "</td>" +
+          (function(perms) {
+            if (!perms || perms.length === 0) return '<td><span style="font-size:12px;color:var(--muted);">—</span></td>';
+            if (perms.length === 1 && perms[0] === "*") return '<td><span style="font-size:12px;font-weight:500;color:var(--accent);">Universal</span></td>';
+            var labels = { gate: "Gate", debit: "Debit", topup: "Top-Up", bill: "Bill", bulk: "Bulk" };
+            var display = perms.map(function(p) { return labels[p] || p; }).join(", ");
+            return '<td><span style="font-size:12px;color:var(--muted);">' + display + '</span></td>';
+          })(c.permissions) +
           '<td><span class="status-badge ' +
           statusClass +
           '">' +
