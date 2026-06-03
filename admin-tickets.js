@@ -49,7 +49,7 @@ function loadInventory() {
         totalEarnings += earnings;
         if (feeType === "fixed") fixedEarnings += earnings;
         else if (feeType === "percentage") pctEarnings += earnings;
-        if (earnings > 0) typeEarnings.push({ name: t.name, earnings: earnings });
+        if (earnings > 0) typeEarnings.push({ name: t.name, slug: t.slug, earnings: earnings });
       });
 
       var html = "";
@@ -106,7 +106,7 @@ function loadInventory() {
         showTypes.forEach(function (te, idx) {
           var pct = Math.round((te.earnings / totalEarnings) * 100);
           var color = barColors[idx % barColors.length];
-          ebHtml += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+          ebHtml += '<div onclick="document.getElementById(\'earnings-type-' + te.slug + '\').scrollIntoView({behavior:\'smooth\',block:\'center\'});" style="display:flex;flex-direction:column;gap:3px;cursor:pointer;" title="Click to view in detailed table">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
             '<span style="font-size:13px;font-weight:500;">' + escapeHtml(te.name) + '</span>' +
             '<span style="font-size:13px;font-weight:600;color:' + color + ';">D' + te.earnings.toLocaleString() + ' <span style="font-weight:400;color:var(--muted);font-size:12px;">(' + pct + '%)</span></span>' +
@@ -297,7 +297,7 @@ function loadInventory() {
             var share = grandSold > 0 ? Math.round((t.sold / grandSold) * 100) : 0;
             grandTotalTypes++;
 
-            html += "<tr>" +
+            html += "<tr id=\"earnings-type-" + t.slug + "\">" +
               "<td></td>" +
               "<td><span style=\"font-size:13px;\">" + escapeHtml(t.name) + "</span></td>" +
               "<td><span style=\"font-weight:600;\">" + t.sold + "</span></td>" +
