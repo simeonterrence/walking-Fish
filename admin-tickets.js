@@ -2542,7 +2542,15 @@ function exportSuperadminReportCSV() {
         esc(pmLabel) + "," +
         esc(feePerTicketVal > 0 ? "D" + feePerTicketVal : "—") + "," +
         esc(feePerTicketVal > 0 ? "D" + earningsVal : "D0") + "\n";
-  } else if (!hasFilter) {
+
+    // Add total row for order-level detail
+    var totalOrderCount = _superadminOrderCache.length;
+    var totalFees = _superadminOrderCache.reduce(function (acc, tkt) {
+      var fi = feeLookup[tkt.ticketTypeName] || { feePerTicket: 0 };
+      return acc + (fi.feePerTicket || 0);
+    }, 0);
+    csv += "TOTAL," + totalOrderCount + ",,," + totalFees + "," + totalFees + "\n";
+    } else if (!hasFilter) {
     csv += "Order-level detail is only available when a date filter is applied.\n";
     csv += "Set a date range above the report and click Apply Filter, then export again.\n";
   }
