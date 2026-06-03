@@ -2397,7 +2397,7 @@ function exportSuperadminReportCSV() {
       function esc(v) {
         var s = String(v == null ? "" : v);
         if (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1) {
-          return '"' + s.replace(/"/g, '""') + '"'};
+          return '"' + s.replace(/"/g, '""') + '"';
         return s;
       }
 
