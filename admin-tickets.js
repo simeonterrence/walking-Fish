@@ -973,6 +973,12 @@ function loadTicketTypes() {
           "<td><strong>D" +
           t.price +
           "</strong></td>" +
+          "<td>" +
+          t.capacity +
+          "</td>" +
+          "<td>" +
+          t.sold +
+          "</td>" +
           '<td><span style="font-size:12px;color:var(--muted);">' +
           (t.superadmin_fee_value > 0 && t.superadmin_fee_type === "fixed"
             ? "D" + t.superadmin_fee_value
@@ -980,12 +986,6 @@ function loadTicketTypes() {
               ? t.superadmin_fee_value + "%"
               : "—") +
           "</span></td>" +
-          "<td>" +
-          t.capacity +
-          "</td>" +
-          "<td>" +
-          t.sold +
-          "</td>" +
           '<td><span class="status-badge ' +
           statusClass +
           '">' +
