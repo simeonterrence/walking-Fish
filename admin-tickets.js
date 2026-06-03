@@ -325,22 +325,30 @@ function loadInventory() {
 
         html += "</tbody></table></div>";
 
-        // ─── Revenue distribution bar ───
+                // ─── Revenue distribution bar ───
         if (grandRev > 0 && shownCategories.length > 1) {
-          html += "<div style=\"margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;\">" +
-            "<h4 style=\"font-size:14px;margin-bottom:12px;\">Revenue Distribution by Category</h4>" +
-            "<div style=\"display:flex;flex-direction:column;gap:8px;\">";
-          var pieColors = ["#065F46", "#1E40AF", "#92400E", "#991B1B", "#6B7280", "#7C3AED"];
+          html += "<div style=\"margin-top:20px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;\">" +
+            "<h4 style=\"font-size:14px;margin-bottom:16px;\">Revenue Distribution by Category</h4>" +
+            "<div style=\"display:flex;flex-direction:column;gap:14px;\">";
+          var barColors = ["#065F46", "#1E40AF", "#92400E", "#991B1B", "#6B7280", "#7C3AED"];
+          var maxRevenue = 0;
+          shownCategories.forEach(function (catKey) {
+            var cat = categories[catKey];
+            if (cat.totalRevenue > maxRevenue) maxRevenue = cat.totalRevenue;
+          });
           shownCategories.forEach(function (catKey, idx) {
             var cat = categories[catKey];
             var pct = grandRev > 0 ? Math.round((cat.totalRevenue / grandRev) * 100) : 0;
             if (pct < 1) return;
-            var color = pieColors[idx % pieColors.length];
-            html += "<div style=\"display:flex;align-items:center;gap:10px;\">" +
-              "<span style=\"width:12px;height:12px;border-radius:3px;background:" + color + ";flex-shrink:0;\"></span>" +
-              "<span style=\"font-size:13px;flex:1;\">" + escapeHtml(cat.label) + "</span>" +
-              "<span style=\"font-size:13px;font-weight:600;\">" + pct + "%</span>" +
-              "<span style=\"font-size:13px;color:var(--muted);\">D" + cat.totalRevenue.toLocaleString() + "</span>" +
+            var color = barColors[idx % barColors.length];
+            var barWidthPct = maxRevenue > 0 ? Math.round((cat.totalRevenue / maxRevenue) * 100) : 0;
+            html += "<div style=\"display:flex;flex-direction:column;gap:3px;\">" +
+              "<div style=\"display:flex;justify-content:space-between;align-items:center;\">" +
+              "<span style=\"font-size:13px;font-weight:500;\">" + escapeHtml(cat.label) + "</span>" +
+              "<span style=\"font-size:13px;font-weight:600;color:" + color + ";\">D" + cat.totalRevenue.toLocaleString() + " <span style=\"font-weight:400;color:var(--muted);font-size:12px;\">(" + pct + "%)</span></span>" +
+              "</div>" +
+              "<div style=\"height:8px;background:var(--border);border-radius:6px;overflow:hidden;\">" +
+              "<div style=\"height:100%;width:" + barWidthPct + "%;background:" + color + ";border-radius:6px;transition:width .6s ease;\"></div></div>" +
               "</div>";
           });
           html += "</div></div>";
