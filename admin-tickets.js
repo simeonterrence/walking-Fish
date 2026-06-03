@@ -1274,8 +1274,10 @@ function addTicketType() {
     document.getElementById("new-ticket-price").value = "0";
     document.getElementById("new-ticket-capacity").value = "100";
     document.getElementById("new-ticket-sort").value = "0";
-    document.getElementById("new-ticket-fee-type").value = "fixed";
-    document.getElementById("new-ticket-fee-value").value = "0";
+    var ftEl = document.getElementById("new-ticket-fee-type");
+    var fvEl = document.getElementById("new-ticket-fee-value");
+    if (ftEl) ftEl.value = "fixed";
+    if (fvEl) fvEl.value = "0";
   }
 
   // Try RPC first (works with ticketing_role JWT), fall back to service key
@@ -1289,8 +1291,8 @@ function addTicketType() {
       p_price: price,
       p_capacity: capacity,
       p_sort_order: sortOrder,
-      p_superadmin_fee_type: document.getElementById("new-ticket-fee-type").value === "none" ? "fixed" : document.getElementById("new-ticket-fee-type").value,
-      p_superadmin_fee_value: document.getElementById("new-ticket-fee-type").value === "none" ? 0 : (parseInt(document.getElementById("new-ticket-fee-value").value) || 0),
+      p_superadmin_fee_type: (document.getElementById("new-ticket-fee-type") || {}).value === "none" ? "fixed" : (document.getElementById("new-ticket-fee-type") || {}).value || "fixed",
+      p_superadmin_fee_value: (document.getElementById("new-ticket-fee-type") || {}).value === "none" ? 0 : parseInt((document.getElementById("new-ticket-fee-value") || {}).value) || 0,
     }),
   })
     .then(function (res) {
@@ -1335,8 +1337,8 @@ function addTicketType() {
           sold: 0,
           is_active: true,
           sort_order: sortOrder,
-          superadmin_fee_type: document.getElementById("new-ticket-fee-type").value === "none" ? "fixed" : document.getElementById("new-ticket-fee-type").value,
-          superadmin_fee_value: document.getElementById("new-ticket-fee-type").value === "none" ? 0 : (parseInt(document.getElementById("new-ticket-fee-value").value) || 0),
+          superadmin_fee_type: (document.getElementById("new-ticket-fee-type") || {}).value === "none" ? "fixed" : (document.getElementById("new-ticket-fee-type") || {}).value || "fixed",
+          superadmin_fee_value: (document.getElementById("new-ticket-fee-type") || {}).value === "none" ? 0 : parseInt((document.getElementById("new-ticket-fee-value") || {}).value) || 0,
         }),
       })
         .then(function (r) {
@@ -2252,6 +2254,7 @@ document.addEventListener("click", function (e) {
     var typeId = saveBtn.getAttribute("data-type-id");
     if (!typeId) return;
 
+    var feeTypeEl = document.getElementById("edit-type-fee-type");
     var data = {
       name: document.getElementById("edit-type-name").value.trim(),
       slug: document
@@ -2263,8 +2266,8 @@ document.addEventListener("click", function (e) {
       price: document.getElementById("edit-type-price").value,
       capacity: document.getElementById("edit-type-capacity").value,
       sort: document.getElementById("edit-type-sort").value,
-      feeType: document.getElementById("edit-type-fee-type").value,
-      feeValue: document.getElementById("edit-type-fee-value").value,
+      feeType: feeTypeEl ? document.getElementById("edit-type-fee-type").value : "fixed",
+      feeValue: feeTypeEl ? document.getElementById("edit-type-fee-value").value : "0",
     };
 
     if (!data.name || !data.slug) {
