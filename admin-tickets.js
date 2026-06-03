@@ -1853,7 +1853,23 @@ function loadScannerCodes() {
       if (!codes || codes.length === 0) {
         container.innerHTML =
           '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No scanner codes issued yet.</p>' +
-          '<div style="text-align:center;margin-top:12px;"><button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue New Code</button></div>';
+          '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-top:16px;">' +
+          '<div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;">' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">' +
+          '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Staff Label/Name</label><input type="text" id="new-scanner-label" placeholder="e.g. Gate Alpha" style="width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
+          '<button id="issue-scanner-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue Code</button>' +
+          "</div>" +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px solid var(--border);">' +
+          '<label style="font-size:13px;font-weight:600;color:var(--muted);margin-right:8px;">Permissions:</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="gate" checked> Gate</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="debit"> Debit</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="topup"> Top-Up</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bill"> Bill</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="perm-checkbox" value="bulk"> Bulk</label>' +
+          '<label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;border-left:1px solid var(--border);padding-left:12px;"><input type="checkbox" id="perm-universal" value="*"> <strong>Universal</strong> (all modes)</label>' +
+          "</div>" +
+          "</div>" +
+          "</div>";
         return;
       }
 
