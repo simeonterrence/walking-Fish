@@ -190,7 +190,9 @@
                 margin-bottom: 12px;
             }
             /* Photo management styles loaded from admin-photos.html via iframe */
-        </style>
+        
+            .preset-date-btn:hover { background: var(--accent-dim) !important; }
+            .preset-date-btn:active { opacity: 0.7; }</style>
         <script defer src="nav.js?v=3"></script>
     </head>
     <body>
@@ -837,10 +839,10 @@
                                     <input type="date" id="report-end-date" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">
                                 </div>
                                 <button id="apply-report-filter" class="action-btn" style="background:var(--accent);color:#fff;border:none;min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Apply Filter</button>
-                                <span style="font-size:12px;color:var(--muted);font-weight:500;margin-left:4px;">Quick:</span>
-                                <button class="preset-date-btn" data-range="today" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;">Today</button>
-                                <button class="preset-date-btn" data-range="this-week" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;">This Week</button>
-                                <button class="preset-date-btn" data-range="this-month" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;">This Month</button>
+                                <span style="font-size:12px;color:var(--muted);font-weight:500;">Quick:</span>
+                                <button class="preset-date-btn" data-range="today" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">Today</button>
+                                <button class="preset-date-btn" data-range="this-week" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">This Week</button>
+                                <button class="preset-date-btn" data-range="this-month" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">This Month</button>
                                 <button id="clear-report-filter-btn" class="action-btn" style="background:transparent;border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Clear</button>
                             </div>
                             <div id="superadmin-report-container">
