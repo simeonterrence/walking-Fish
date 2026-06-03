@@ -2182,12 +2182,6 @@ function loadSuperadminReport(startDate, endDate) {
         return;
       }
 
-      // Build a lookup map for ticket types (id -> type)
-      var typeMap = {};
-      types.forEach(function (t) {
-        typeMap[t.id] = t;
-      });
-
       // If date filter is active, query tickets in the date range
       var ticketPromise;
       if (hasDateFilter) {
@@ -2669,6 +2663,7 @@ document.addEventListener("click", function (e) {
 
   // Clear date filter (also handles inline clear link)
   if (e.target.id === "clear-report-filter-btn" || e.target.id === "clear-report-filter") {
+    if (e.target.id === "clear-report-filter") e.preventDefault();
     var s2 = document.getElementById("report-start-date");
     var e2 = document.getElementById("report-end-date");
     if (s2) s2.value = "";

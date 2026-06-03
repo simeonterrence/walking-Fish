@@ -1813,8 +1813,7 @@ async function handleWebhook(req) {
               processed_at: new Date().toISOString(),
             })
 
-            .then(function () {})
-            .catch(function () {});
+            .then(function () {});
         }
 
         // Send top-up confirmation email with QR + balance
@@ -2037,8 +2036,7 @@ async function handleWebhook(req) {
             processed_at: new Date().toISOString(),
           })
 
-          .then(function () {})
-          .catch(function () {});
+          .then(function () {});
       }
 
       // ─── Send confirmation emails with QR images ──────────────────────
