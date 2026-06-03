@@ -2241,7 +2241,7 @@ function exportSuperadminReportCSV() {
   }
 
   // CSV header
-  var csv = "Ticket Type,Price,Sold,Fee Type,Fee Value,Fee per Ticket (D),Est. Earnings (D)\n";
+  var csv = "\uFEFFTicket Type,Price,Sold,Fee Type,Fee Value,Fee per Ticket (D),Est. Earnings (D)\n";
 
   _superadminReportCache.forEach(function (row) {
     // Escape fields that might contain commas or quotes
@@ -2265,7 +2265,7 @@ function exportSuperadminReportCSV() {
   var totals = _superadminReportCache.reduce(function (acc, r) {
     return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings };
   }, { sold: 0, earnings: 0 });
-  csv += "TOTAL,,,," + totals.sold + "," + totals.earnings + "\n";
+  csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "\n";
 
   // Trigger download
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

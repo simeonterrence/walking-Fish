@@ -5633,6 +5633,730 @@ async function handleStaffActivity(req) {
   }
 }
 
+// ─── Transfer handlers ─────────────────────────────────────────────────────────
+
+// Handler: /initiate-transfer
+
+async function handleInitiateTransfer(req) {
+  try {
+    const { ticket_id, to_email, message } = await req.json();
+
+    if (!ticket_id || !to_email) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required fields: ticket_id, to_email",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Check authorization
+
+    const authorized = await isTicketingRequestAuthorized(req);
+
+    if (!authorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Fetch the ticket
+
+    const { data: ticket, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("id, code, customer_email, customer_name, status, ticket_type_id")
+      .eq("id", ticket_id)
+      .single();
+
+    if (ticketErr || !ticket) {
+      return new Response(JSON.stringify({ error: "Ticket not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check ticket is active
+
+    if (ticket.status !== "active") {
+      return new Response(
+        JSON.stringify({
+          error: "Ticket is not active and cannot be transferred",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Generate unique transfer code
+
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    let transferCode = "XF-";
+
+    for (let ci = 0; ci < 6; ci++) {
+      transferCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const recipientEmail = to_email.trim().toLowerCase();
+
+    // Create transfer record
+
+    const { data: transfer, error: transferErr } = await supabase
+      .from("ticket_transfers")
+      .insert({
+        ticket_id: ticket.id,
+
+        from_email: ticket.customer_email,
+
+        to_email: recipientEmail,
+
+        transfer_code: transferCode,
+
+        message: message || null,
+
+        status: "pending",
+
+        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      })
+      .select()
+      .single();
+
+    if (transferErr) {
+      console.error("[initiate-transfer] DB error:", transferErr);
+
+      return new Response(
+        JSON.stringify({ error: "Failed to create transfer" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const claimLink = `https://www.walkingfish.gm/claim-ticket?code=${transferCode}`;
+
+    const siteUrl = "https://www.walkingfish.gm";
+
+    // Send email to recipient
+
+    await sendEmail({
+      to: recipientEmail,
+
+      subject: "You received a ticket! — Walking-Fish",
+
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">You received a ticket!</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px;">
+          Someone transferred a Piroake Fest 2026 ticket to you.
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;">
+          Click the button below to claim your ticket. You have <strong>48 hours</strong> to claim it.
+        </p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="${claimLink}" style="display:inline-block;background:#e85d3a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Claim Your Ticket</a>
+        </p>
+        <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
+          Or paste this link in your browser:<br>
+          <a href="${claimLink}" style="color:#e85d3a;">${claimLink}</a>
+        </p>
+      `),
+    });
+
+    // Send email to original owner
+
+    await sendEmail({
+      to: ticket.customer_email,
+
+      subject: "Ticket transfer initiated — Walking-Fish",
+
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">Transfer Initiated</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px;">
+          You transferred ${ticket.code} to ${recipientEmail}.
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;">
+          They have <strong>48 hours</strong> to claim it. If they don't claim it in time, the transfer will expire and the ticket will remain yours.
+        </p>
+        <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
+          <a href="${siteUrl}/view-tickets" style="color:#e85d3a;">View your tickets</a>
+        </p>
+      `),
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+
+        transfer_id: transfer.id,
+
+        transfer_code: transferCode,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  } catch (err) {
+    console.error("[initiate-transfer] Error:", err.message, err.stack || "");
+
+    return new Response(
+      JSON.stringify({ error: "Failed to initiate transfer" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
+// Handler: /claim-transfer
+
+async function handleClaimTransfer(req) {
+  try {
+    const { transfer_code, email } = await req.json();
+
+    if (!transfer_code || !email) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required fields: transfer_code, email",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Find transfer by code
+
+    const { data: transfer, error: transferErr } = await supabase
+      .from("ticket_transfers")
+      .select("*")
+      .eq("transfer_code", transfer_code)
+      .single();
+
+    if (transferErr || !transfer) {
+      return new Response(JSON.stringify({ error: "Transfer not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate transfer status
+
+    if (transfer.status !== "pending") {
+      return new Response(
+        JSON.stringify({
+          error: `Transfer is ${transfer.status}, not pending`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Check expiration
+
+    const now = new Date();
+
+    const expiresAt = new Date(transfer.expires_at);
+
+    if (now > expiresAt) {
+      // Mark as expired
+
+      await supabase
+        .from("ticket_transfers")
+        .update({ status: "expired" })
+        .eq("id", transfer.id);
+
+      return new Response(JSON.stringify({ error: "Transfer has expired" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check email matches
+
+    const claimEmail = email.trim().toLowerCase();
+
+    if (claimEmail !== transfer.to_email.toLowerCase()) {
+      return new Response(
+        JSON.stringify({
+          error: "This transfer was not sent to this email address",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Fetch the ticket with its type info
+
+    const { data: ticket, error: ticketErr } = await supabase
+      .from("tickets")
+      .select(
+        "id, code, customer_email, customer_name, status, ticket_type_id, qr_url, metadata, balance, uses_remaining",
+      )
+      .eq("id", transfer.ticket_id)
+      .single();
+
+    if (ticketErr || !ticket) {
+      return new Response(JSON.stringify({ error: "Ticket not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (ticket.status !== "active") {
+      return new Response(
+        JSON.stringify({ error: "Ticket is no longer active" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Fetch ticket type
+
+    const { data: ticketType } = await supabase
+      .from("ticket_types")
+      .select("name, slug, type, price")
+      .eq("id", ticket.ticket_type_id)
+      .single();
+
+    // Generate new access code and QR
+
+    const newAccessCode = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+
+    const newQrContent = `https://www.walkingfish.gm/t?t=${ticket.code}`;
+
+    const newQrDataUri = await generateQRDataUri(newQrContent);
+
+    // Upload new QR image to storage
+
+    let newQrImageUrl = null;
+
+    try {
+      const base64Data = newQrDataUri.split(",")[1];
+
+      const binaryStr = atob(base64Data);
+
+      const bytes = new Uint8Array(binaryStr.length);
+
+      for (let bi = 0; bi < binaryStr.length; bi++) {
+        bytes[bi] = binaryStr.charCodeAt(bi);
+      }
+
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      const filePath = "tickets/" + ticket.code + ".png";
+
+      const { error: uploadErr } = await supabase.storage
+        .from("ticket-qrs")
+        .upload(filePath, blob, { contentType: "image/png", upsert: true });
+
+      if (uploadErr) {
+        console.warn(
+          "[claim-transfer] QR upload failed for",
+          ticket.code,
+          "-",
+          uploadErr.message,
+        );
+      } else {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("ticket-qrs").getPublicUrl(filePath);
+
+        newQrImageUrl = publicUrl;
+      }
+    } catch (qrUploadErr) {
+      console.warn(
+        "[claim-transfer] QR upload error for",
+        ticket.code,
+        "-",
+        qrUploadErr.message,
+      );
+    }
+
+    // Build updated metadata
+
+    const existingMeta = ticket.metadata || {};
+
+    const updatedMeta = {
+      ...existingMeta,
+
+      qr_data_uri: newQrDataUri,
+
+      access_code: newAccessCode,
+
+      previous_owner_email: ticket.customer_email,
+
+      transferred_at: new Date().toISOString(),
+    };
+
+    if (newQrImageUrl) {
+      updatedMeta.qr_image_url = newQrImageUrl;
+    }
+
+    // Update the ticket
+
+    const { error: updateErr } = await supabase
+      .from("tickets")
+      .update({
+        customer_email: claimEmail,
+
+        customer_name: null,
+
+        qr_url: newQrContent,
+
+        metadata: updatedMeta,
+      })
+      .eq("id", ticket.id);
+
+    if (updateErr) {
+      console.error("[claim-transfer] Update ticket error:", updateErr);
+
+      return new Response(
+        JSON.stringify({ error: "Failed to update ticket" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Mark transfer as completed
+
+    await supabase
+      .from("ticket_transfers")
+      .update({
+        status: "completed",
+
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", transfer.id);
+
+    // Send confirmation email to recipient
+
+    const typeName = ticketType ? ticketType.name : "Ticket";
+
+    await sendTicketsEmail({
+      to: claimEmail,
+
+      subject: "Your ticket has arrived! — Walking-Fish",
+
+      tickets: [
+        {
+          code: ticket.code,
+
+          qrDataUri: newQrDataUri,
+
+          qrImageUrl: newQrImageUrl,
+
+          ticketTypeName: ticketType ? ticketType.slug : "general",
+
+          accessCode: newAccessCode,
+        },
+      ],
+
+      title: "Ticket Transferred Successfully",
+
+      subtitle: `${typeName} — ${ticket.code}`,
+    });
+
+    // Send notification to original owner
+
+    await sendEmail({
+      to: transfer.from_email,
+
+      subject: "Ticket transfer completed — Walking-Fish",
+
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">Transfer Completed</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px;">
+          Your ticket ${ticket.code} has been claimed by ${claimEmail}.
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;">
+          The transfer is now complete. You no longer have access to this ticket.
+        </p>
+        <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0;">
+          If you didn't initiate this transfer, please contact us at
+          <a href="mailto:theevents.guy@walkingfish.gm" style="color:#e85d3a;">theevents.guy@walkingfish.gm</a>.
+        </p>
+      `),
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+
+        ticket: {
+          code: ticket.code,
+
+          type: typeName,
+        },
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  } catch (err) {
+    console.error("[claim-transfer] Error:", err.message, err.stack || "");
+
+    return new Response(JSON.stringify({ error: "Failed to claim transfer" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}
+
+// Handler: /cancel-transfer
+
+async function handleCancelTransfer(req) {
+  try {
+    const { transfer_code } = await req.json();
+
+    if (!transfer_code) {
+      return new Response(
+        JSON.stringify({ error: "Missing required field: transfer_code" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Check authorization
+
+    const authResult = await isTicketingRequestAuthorized(req);
+
+    if (!authResult.authorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Find transfer by code
+
+    const { data: transfer, error: transferErr } = await supabase
+      .from("ticket_transfers")
+      .select("*")
+      .eq("transfer_code", transfer_code)
+      .single();
+
+    if (transferErr || !transfer) {
+      return new Response(JSON.stringify({ error: "Transfer not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate status
+
+    if (transfer.status !== "pending") {
+      return new Response(
+        JSON.stringify({
+          error: `Transfer is ${transfer.status}, cannot cancel`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Check that the request user is the sender
+
+    const jwtEmail = authResult.email ? authResult.email.toLowerCase() : null;
+
+    if (
+      jwtEmail &&
+      transfer.from_email &&
+      jwtEmail !== transfer.from_email.toLowerCase()
+    ) {
+      return new Response(
+        JSON.stringify({ error: "You can only cancel your own transfers" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Update transfer status
+
+    const { error: updateErr } = await supabase
+      .from("ticket_transfers")
+      .update({
+        status: "cancelled",
+
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", transfer.id);
+
+    if (updateErr) {
+      console.error("[cancel-transfer] Update error:", updateErr);
+
+      return new Response(
+        JSON.stringify({ error: "Failed to cancel transfer" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Notify recipient that transfer was cancelled
+
+    await sendEmail({
+      to: transfer.to_email,
+
+      subject: "Ticket transfer cancelled — Walking-Fish",
+
+      html: emailShell(`
+        <h2 style="margin:0 0 8px;">Transfer Cancelled</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px;">
+          The ticket transfer that was sent to you has been cancelled by the sender.
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;">
+          You will no longer be able to claim this ticket. If you believe this was a mistake, please contact the sender.
+        </p>
+      `),
+    });
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("[cancel-transfer] Error:", err.message, err.stack || "");
+
+    return new Response(
+      JSON.stringify({ error: "Failed to cancel transfer" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
+// Handler: /check-transfer
+
+async function handleCheckTransfer(req) {
+  try {
+    const { transfer_code } = await req.json();
+
+    if (!transfer_code) {
+      return new Response(
+        JSON.stringify({ error: "Missing required field: transfer_code" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Find transfer by code, join with tickets and ticket_types
+
+    const { data: transfer, error: transferErr } = await supabase
+      .from("ticket_transfers")
+      .select(
+        `
+        id,
+        status,
+        expires_at,
+        to_email,
+        ticket_id,
+        tickets!inner(
+          code,
+          ticket_type_id,
+          ticket_types!inner(
+            name,
+            slug
+          )
+        )
+      `,
+      )
+      .eq("transfer_code", transfer_code)
+      .single();
+
+    if (transferErr || !transfer) {
+      return new Response(JSON.stringify({ error: "Transfer not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Mask to_email (first 3 chars + ***)
+
+    const maskedEmail =
+      transfer.to_email.length > 3
+        ? transfer.to_email.substring(0, 3) + "***"
+        : transfer.to_email.substring(0, 1) + "***";
+
+    // Mask ticket code (first 6 chars + ***)
+
+    const ticketCode = transfer.tickets?.code || "";
+
+    const maskedCode =
+      ticketCode.length > 6 ? ticketCode.substring(0, 6) + "***" : ticketCode;
+
+    const typeName = transfer.tickets?.ticket_types?.name || "Ticket";
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+
+        transfer: {
+          id: transfer.id,
+
+          status: transfer.status,
+
+          expires_at: transfer.expires_at,
+
+          to_email: maskedEmail,
+
+          ticket: {
+            type_name: typeName,
+
+            code: maskedCode,
+          },
+        },
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  } catch (err) {
+    console.error("[check-transfer] Error:", err.message, err.stack || "");
+
+    return new Response(JSON.stringify({ error: "Failed to check transfer" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
