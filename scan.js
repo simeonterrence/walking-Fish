@@ -359,6 +359,245 @@
     show("scanner-modes");
   }
 
+  // ─── Sales Overview (Permission-Filtered) ─────────────────────────────────
+
+  function showSalesOverview() {
+    hide("scanner-modes");
+    show("sales-overview-view");
+    loadSalesOverview();
+  }
+
+  function hideSalesOverview() {
+    hide("sales-overview-view");
+    show("scanner-modes");
+  }
+
+  function loadSalesOverview() {
+    var content = document.getElementById("sales-overview-content");
+    if (!content) return;
+    content.innerHTML = "Loading sales data...";
+
+    // Map permissions to ticket type categories
+    var perms = state.permissions || [];
+    var isUniversal =
+      perms.indexOf("*") !== -1 || perms.indexOf("all") !== -1;
+
+    var allowedCategories = [];
+    if (isUniversal || perms.indexOf("gate") !== -1 || perms.indexOf("bulk") !== -1) {
+      allowedCategories.push("entry", "parking", "kids_zone");
+    }
+    if (isUniversal || perms.indexOf("debit") !== -1) {
+      if (allowedCategories.indexOf("activity_credit") === -1)
+        allowedCategories.push("activity_credit");
+    }
+    if (isUniversal || perms.indexOf("topup") !== -1) {
+      if (allowedCategories.indexOf("activity_credit") === -1)
+        allowedCategories.push("activity_credit");
+    }
+    if (isUniversal || perms.indexOf("bill") !== -1) {
+      allowedCategories.push("food", "drinks");
+    }
+    // If nothing matched but universal, show everything
+    if (allowedCategories.length === 0) {
+      allowedCategories = ["entry", "activity_credit", "food", "drinks", "kids_zone", "parking"];
+    }
+
+    var categoryLabels = {
+      entry: "Entry Passes",
+      activity_credit: "Activity Credits (Games)",
+      food: "Food Vouchers",
+      drinks: "Drinks",
+      kids_zone: "Kids Zone",
+      parking: "Parking",
+    };
+
+    supabaseGet(
+      "/rest/v1/ticket_types?order=sort_order.asc&select=*",
+    )
+      .then(function (types) {
+        if (!types || types.length === 0) {
+          content.innerHTML =
+            '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types configured.</p>';
+          return;
+        }
+
+        // Filter types by allowed categories
+        var filteredTypes = types.filter(function (t) {
+          return allowedCategories.indexOf(t.type) !== -1;
+        });
+
+        if (filteredTypes.length === 0) {
+          content.innerHTML =
+            '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No ticket types available for your permissions.</p>' +
+            '<p style="font-size:12px;color:var(--muted);text-align:center;">Staff code permissions: ' +
+            escapeHtml(perms.join(", ")) +
+            "</p>";
+          return;
+        }
+
+        // Compute totals
+        var totalCap = 0,
+          totalSold = 0;
+        filteredTypes.forEach(function (t) {
+          totalCap += t.capacity;
+          totalSold += t.sold;
+        });
+
+        var html = "";
+
+        // Permission badge
+        if (!isUniversal) {
+          html +=
+            '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;">Showing data for: <strong>' +
+            escapeHtml(perms.join(", ").toUpperCase()) +
+            '</strong> zones</p>';
+        }
+
+        // Overall stats
+        html +=
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:20px;">' +
+          '<div class="stat-card" style="padding:14px;"><div class="num" style="font-size:22px;">' +
+          totalSold +
+          '</div><div class="lbl">Sold</div></div>' +
+          '<div class="stat-card" style="padding:14px;"><div class="num" style="font-size:22px;">' +
+          totalCap +
+          '</div><div class="lbl">Capacity</div></div>' +
+          '<div class="stat-card" style="padding:14px;"><div class="num" style="font-size:22px;color:' +
+          (totalCap - totalSold <= 50 ? "#991B1B" : "#065F46") +
+          ';">' +
+          (totalCap - totalSold) +
+          '</div><div class="lbl">Remaining</div></div>' +
+          '<div class="stat-card" style="padding:14px;"><div class="num" style="font-size:22px;">' +
+          (totalCap > 0 ? Math.round((totalSold / totalCap) * 100) : 0) +
+          '%</div><div class="lbl">Fill Rate</div></div>' +
+          "</div>";
+
+        // Group by category
+        var categories = {};
+        var typeOrder = ["entry", "activity_credit", "food", "drinks", "kids_zone", "parking"];
+        filteredTypes.forEach(function (t) {
+          var cat = t.type || "other";
+          if (!categories[cat]) {
+            categories[cat] = {
+              label: categoryLabels[cat] || cat.replace("_", " "),
+              types: [],
+              totalSold: 0,
+              totalCap: 0,
+              totalRevenue: 0,
+            };
+          }
+          categories[cat].types.push(t);
+          categories[cat].totalSold += t.sold;
+          categories[cat].totalCap += t.capacity;
+          categories[cat].totalRevenue += t.price * t.sold;
+        });
+
+        var shownCategories = typeOrder.filter(function (c) {
+          return categories[c] && categories[c].types.length > 0;
+        });
+
+        if (shownCategories.length > 0) {
+          // Category summary cards
+          html +=
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px;">';
+          shownCategories.forEach(function (catKey) {
+            var cat = categories[catKey];
+            var fillPct = cat.totalCap > 0 ? Math.round((cat.totalSold / cat.totalCap) * 100) : 0;
+            var fillColor = fillPct >= 90 ? "#991B1B" : fillPct >= 70 ? "#92400E" : "#065F46";
+            html +=
+              '<div class="stat-card" style="padding:10px;">' +
+              '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);margin-bottom:2px;">' +
+              escapeHtml(cat.label) +
+              '</div>' +
+              '<div class="num" style="font-size:20px;">' +
+              cat.totalSold +
+              '</div>' +
+              '<div class="lbl" style="font-size:10px;">/' +
+              cat.totalCap +
+              " cap</div>" +
+              '<div style="margin-top:4px;height:3px;background:var(--border);border-radius:3px;overflow:hidden;">' +
+              '<div style="height:100%;width:' +
+              fillPct +
+              "%;background:" +
+              fillColor +
+              ";border-radius:3px;transition:width .5s;"></div></div>" +
+              "</div>";
+          });
+          html += "</div>";
+
+          // Per-category breakdown table
+          html +=
+            '<div style="overflow-x:auto;margin-bottom:8px;"><table class="app-table" style="font-size:12px;width:100%;">' +
+            "<thead><tr>" +
+            "<th>Type</th><th>Sold</th><th>Cap</th><th>Fill</th><th>Price</th>" +
+            "</tr></thead><tbody>";
+
+          shownCategories.forEach(function (catKey) {
+            var cat = categories[catKey];
+            html +=
+              '<tr style="background:var(--accent-dim);">' +
+              '<td><strong style="font-size:11px;text-transform:uppercase;">' +
+              escapeHtml(cat.label) +
+              '</strong></td>' +
+              '<td><strong>' +
+              cat.totalSold +
+              '</strong></td>' +
+              "<td>" +
+              cat.totalCap +
+              "</td>" +
+              "<td>" +
+              (cat.totalCap > 0
+                ? Math.round((cat.totalSold / cat.totalCap) * 100) + "%"
+                : "-") +
+              "</td><td>&mdash;</td></tr>";
+
+            cat.types.forEach(function (t) {
+              var fillPct = t.capacity > 0 ? Math.round((t.sold / t.capacity) * 100) : 0;
+              var fillColor = fillPct >= 90 ? "#991B1B" : fillPct >= 70 ? "#92400E" : "#065F46";
+              html +=
+                "<tr>" +
+                '<td style="padding-left:20px;">' +
+                escapeHtml(t.name) +
+                "</td>" +
+                "<td>" +
+                t.sold +
+                "</td><td>" +
+                t.capacity +
+                '</td><td style="font-weight:600;color:' +
+                fillColor +
+                ';">' +
+                fillPct +
+                "%</td><td>D" +
+                t.price +
+                "</td></tr>";
+            });
+          });
+
+          html += "</tbody></table></div>";
+
+          // Estimated revenue
+          var grandRev = filteredTypes.reduce(function (sum, t) {
+            return sum + t.price * t.sold;
+          }, 0);
+          if (grandRev > 0) {
+            html +=
+              '<p style="font-size:13px;text-align:center;color:var(--muted);margin-top:8px;">' +
+              'Estimated revenue from your zones: <strong style="color:var(--fg);">D' +
+              grandRev.toLocaleString() +
+              "</strong></p>";
+          }
+        }
+
+        content.innerHTML = html;
+      })
+      .catch(function (err) {
+        content.innerHTML =
+          '<p style="color:#DC2626;font-size:14px;text-align:center;padding:20px;">Failed to load sales data: ' +
+          escapeHtml(err.message) +
+          "</p>";
+      });
+  }
+
   function lockScanner() {
     state.authenticated = false;
     state.scannerCode = null;
@@ -374,6 +613,7 @@
 
     hide("scanner-modes");
     hide("scanner-view");
+    hide("sales-overview-view");
     hide("bulk-section");
     hide("booth-topup-form");
     hide("debit-form");
@@ -2653,6 +2893,18 @@
       // Activity back button
       if (target.closest("#activity-back-btn")) {
         hideStaffActivity();
+        return;
+      }
+
+      // Sales Overview
+      if (target.closest("#view-sales-btn")) {
+        showSalesOverview();
+        return;
+      }
+
+      // Sales Overview back button
+      if (target.closest("#sales-back-btn")) {
+        hideSalesOverview();
         return;
       }
 

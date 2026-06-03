@@ -1024,6 +1024,12 @@
                                     '<span style="font-size:13px;color:var(--muted);margin-left:8px;">Rejected</span>';
                             }
 
+                            // Add delete button for all statuses
+                            actionsHtml +=
+                                '<button class="action-btn app-delete-btn" data-app="' +
+                                app.id +
+                                '" style="background:#991b1b;color:white;margin-left:6px;" title="Permanently delete this application">Delete</button>';
+
                             // Use supabase_select SVG for check icon
                             tr.innerHTML =
                                 "<td><strong>" +
@@ -1070,6 +1076,23 @@
                         var target = e.target;
                         var appId = target.getAttribute("data-app");
                         if (!appId) return;
+
+                        // Delete application
+                        if (target.classList.contains("app-delete-btn")) {
+                            if (!confirm("Delete this application? This will remove the record permanently and cannot be undone.")) return;
+                            if (!confirm("Are you sure? This cannot be undone.")) return;
+                            target.disabled = true;
+                            target.textContent = "Deleting...";
+                            deleteApplication(appId)
+                                .then(function () {
+                                    renderDashboard();
+                                })
+                                .catch(function (err) {
+                                    alert(err.message || "Failed to delete application.");
+                                    renderDashboard();
+                                });
+                            return;
+                        }
 
                         if (target.classList.contains("action-view")) {
                             if (window.cachedApps) {
@@ -1691,6 +1714,9 @@
                                   c.id +
                                   '" style="min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;margin-left:4px;" title="Mark as closed">Close</button>'
                                 : "") +
+                            '<button class="action-btn complaint-delete-btn" data-complaint="' +
+                              c.id +
+                              '" style="background:#991b1b;color:white;margin-left:6px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;" title="Permanently delete this complaint">Delete</button>' +
                             "</td>" +
                             "</tr>";
                     });
@@ -1846,6 +1872,76 @@
                 // Trigger the CSS transition to make the overlay visible
                 requestAnimationFrame(function () {
                     overlay.classList.add("open");
+                });
+            }
+
+            function deleteApplication(appId) {
+                return fetchWithAuth(
+                    SUPABASE_URL +
+                        "/rest/v1/vendor_applications?id=eq." +
+                        encodeURIComponent(appId),
+                    {
+                        method: "DELETE",
+                        headers: { Prefer: "return=minimal" },
+                    },
+                ).then(function (r) {
+                    if (r.ok || r.status === 204) return true;
+                    if (r.status === 401 || r.status === 403) {
+                        var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+                        if (!svcKey && typeof getServiceKey === "function") {
+                            svcKey = getServiceKey(true);
+                        }
+                        if (!svcKey) throw new Error("Permission denied. Service key required.");
+                        return fetch(
+                            SUPABASE_URL + "/rest/v1/vendor_applications?id=eq." + encodeURIComponent(appId),
+                            {
+                                method: "DELETE",
+                                headers: {
+                                    Authorization: "Bearer " + svcKey,
+                                    Prefer: "return=minimal",
+                                },
+                            },
+                        ).then(function (r2) {
+                            if (r2.ok || r2.status === 204) return true;
+                            throw new Error("Failed to delete application.");
+                        });
+                    }
+                    throw new Error("Failed to delete application.");
+                });
+            }
+
+            function deleteComplaint(complaintId) {
+                return fetchWithAuth(
+                    SUPABASE_URL +
+                        "/rest/v1/complaints?id=eq." +
+                        encodeURIComponent(complaintId),
+                    {
+                        method: "DELETE",
+                        headers: { Prefer: "return=minimal" },
+                    },
+                ).then(function (r) {
+                    if (r.ok || r.status === 204) return true;
+                    if (r.status === 401 || r.status === 403) {
+                        var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+                        if (!svcKey && typeof getServiceKey === "function") {
+                            svcKey = getServiceKey(true);
+                        }
+                        if (!svcKey) throw new Error("Permission denied. Service key required.");
+                        return fetch(
+                            SUPABASE_URL + "/rest/v1/complaints?id=eq." + encodeURIComponent(complaintId),
+                            {
+                                method: "DELETE",
+                                headers: {
+                                    Authorization: "Bearer " + svcKey,
+                                    Prefer: "return=minimal",
+                                },
+                            },
+                        ).then(function (r2) {
+                            if (r2.ok || r2.status === 204) return true;
+                            throw new Error("Failed to delete complaint.");
+                        });
+                    }
+                    throw new Error("Failed to delete complaint.");
                 });
             }
 
@@ -2010,6 +2106,23 @@
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
+                        });
+                }
+
+                // Delete complaint from table view
+                if (e.target.classList.contains("complaint-delete-btn")) {
+                    var complaintId = e.target.getAttribute("data-complaint");
+                    if (!confirm("Delete this complaint permanently? This cannot be undone.")) return;
+                    if (!confirm("Are you sure? All records will be permanently removed.")) return;
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    deleteComplaint(complaintId)
+                        .then(function () {
+                            loadComplaints();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                            loadComplaints();
                         });
                 }
 

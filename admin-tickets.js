@@ -96,6 +96,174 @@ function loadInventory() {
           "</tr>";
       });
       html += "</tbody></table></div>";
+
+      // ═══════════════════════════════════════════════════════════════════
+      // CATEGORY BREAKDOWN — group by ticket type category
+      // ═══════════════════════════════════════════════════════════════════
+
+      // Group types by their 'type' field
+      var categories = {};
+      var categoryLabels = {
+        entry: "Entry Passes",
+        activity_credit: "Activity Credits (Games)",
+        food: "Food Vouchers",
+        drinks: "Drinks",
+        kids_zone: "Kids Zone",
+        parking: "Parking",
+      };
+      var typeOrder = ["entry", "activity_credit", "food", "drinks", "kids_zone", "parking"];
+
+      types.forEach(function (t) {
+        var cat = t.type || "other";
+        if (!categories[cat]) {
+          categories[cat] = {
+            label: categoryLabels[cat] || cat.replace("_", " "),
+            types: [],
+            totalSold: 0,
+            totalCap: 0,
+            totalRevenue: 0,
+          };
+        }
+        categories[cat].types.push(t);
+        categories[cat].totalSold += t.sold;
+        categories[cat].totalCap += t.capacity;
+        categories[cat].totalRevenue += t.price * t.sold;
+      });
+
+      // Determine which categories to show
+      var shownCategories = typeOrder.filter(function (c) {
+        return categories[c] && categories[c].types.length > 0;
+      });
+
+      if (shownCategories.length > 0) {
+        html += "<hr style=\"margin:32px 0;border:none;border-top:2px solid var(--accent);\">";
+        html += "<h3 style=\"font-size:17px;margin-bottom:16px;\">Detailed Sales Breakdown by Category</h3>";
+
+        // ─── Category summary cards with progress bars ───
+        html += "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px;\">";
+        var grandSold = 0, grandCap = 0, grandRev = 0;
+        shownCategories.forEach(function (catKey) {
+          var cat = categories[catKey];
+          grandSold += cat.totalSold;
+          grandCap += cat.totalCap;
+          grandRev += cat.totalRevenue;
+          var fillPct = cat.totalCap > 0 ? Math.round((cat.totalSold / cat.totalCap) * 100) : 0;
+          var fillColor = fillPct >= 90 ? "#991B1B" : fillPct >= 70 ? "#92400E" : "#065F46";
+          html += "<div class=\"stat-card\" style=\"padding:14px;\">" +
+            "<div style=\"font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:4px;\">" +
+            escapeHtml(cat.label) +
+            "</div>" +
+            "<div class=\"num\" style=\"font-size:24px;\">" + cat.totalSold + "</div>" +
+            "<div class=\"lbl\" style=\"font-size:11px;\">Sold / " + cat.totalCap + " cap</div>" +
+            "<div style=\"margin-top:6px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;\">" +
+            "<div style=\"height:100%;width:" + fillPct + "%;background:" + fillColor + ";border-radius:4px;transition:width .5s;\"></div></div>" +
+            "<div style=\"font-size:12px;font-weight:600;color:" + fillColor + ";margin-top:4px;\">" + fillPct + "% fill</div>" +
+            "</div>";
+        });
+
+        // Grand total card
+        var grandPct = grandCap > 0 ? Math.round((grandSold / grandCap) * 100) : 0;
+        var grandColor = grandPct >= 90 ? "#991B1B" : grandPct >= 70 ? "#92400E" : "#065F46";
+        html += "<div class=\"stat-card\" style=\"padding:14px;border-color:var(--accent);\">" +
+          "<div style=\"font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:4px;font-weight:600;\">All Categories</div>" +
+          "<div class=\"num\" style=\"font-size:24px;\">" + grandSold + "</div>" +
+          "<div class=\"lbl\" style=\"font-size:11px;\">Sold / " + grandCap + " total cap</div>" +
+          "<div style=\"margin-top:6px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;\">" +
+          "<div style=\"height:100%;width:" + grandPct + "%;background:" + grandColor + ";border-radius:4px;transition:width .5s;\"></div></div>" +
+          "<div style=\"font-size:12px;font-weight:600;color:" + grandColor + ";margin-top:4px;\">" + grandPct + "% overall fill</div>" +
+          "</div>";
+        html += "</div>";
+
+        // ─── Detailed per-category table ───
+        html += "<div style=\"overflow-x:auto;margin-bottom:16px;\"><table class=\"app-table\" style=\"font-size:13px;\"><thead><tr>" +
+          "<th>Category</th>" +
+          "<th>Ticket Type</th>" +
+          "<th>Sold</th>" +
+          "<th>Capacity</th>" +
+          "<th>Fill</th>" +
+          "<th>Price</th>" +
+          "<th>Est. Revenue</th>" +
+          "<th>Share</th>" +
+          "</tr></thead><tbody>";
+
+        var grandTotalTypes = 0;
+        shownCategories.forEach(function (catKey) {
+          var cat = categories[catKey];
+          var catFill = cat.totalCap > 0 ? Math.round((cat.totalSold / cat.totalCap) * 100) : 0;
+          var catShare = grandCap > 0 ? Math.round((cat.totalSold / grandCap) * 100) : 0;
+
+          // Category header row
+          html += "<tr style=\"background:var(--accent-dim);\">" +
+            "<td><strong style=\"text-transform:uppercase;font-size:11px;letter-spacing:0.04em;\">" +
+            escapeHtml(cat.label) +
+            "</strong></td>" +
+            "<td><span style=\"font-size:12px;color:var(--muted);\">" + cat.types.length + " type" + (cat.types.length !== 1 ? "s" : "") + "</span></td>" +
+            "<td><strong>" + cat.totalSold + "</strong></td>" +
+            "<td>" + cat.totalCap + "</td>" +
+            "<td><span style=\"font-weight:600;color:" + (catFill >= 90 ? "#991B1B" : catFill >= 70 ? "#92400E" : "#065F46") + ";\">" + catFill + "%</span></td>" +
+            "<td>&mdash;</td>" +
+            "<td><strong>D" + cat.totalRevenue.toLocaleString() + "</strong></td>" +
+            "<td><span style=\"font-size:12px;color:var(--muted);\">" + catShare + "%</span></td>" +
+            "</tr>";
+
+          // Individual type rows
+          cat.types.forEach(function (t) {
+            var fillPct = t.capacity > 0 ? Math.round((t.sold / t.capacity) * 100) : 0;
+            var fillColor = fillPct >= 90 ? "#991B1B" : fillPct >= 70 ? "#92400E" : "#065F46";
+            var revenue = t.price * t.sold;
+            var share = grandSold > 0 ? Math.round((t.sold / grandSold) * 100) : 0;
+            grandTotalTypes++;
+
+            html += "<tr>" +
+              "<td></td>" +
+              "<td><span style=\"font-size:13px;\">" + escapeHtml(t.name) + "</span></td>" +
+              "<td><span style=\"font-weight:600;\">" + t.sold + "</span></td>" +
+              "<td>" + t.capacity + "</td>" +
+              "<td><span style=\"font-weight:600;color:" + fillColor + ";\">" + fillPct + "%</span></td>" +
+              "<td>D" + t.price + "</td>" +
+              "<td>D" + revenue.toLocaleString() + "</td>" +
+              "<td><span style=\"font-size:12px;color:var(--muted);\">" + share + "%</span></td>" +
+              "</tr>";
+          });
+        });
+
+        // Grand total row
+        var grandFill = grandCap > 0 ? Math.round((grandSold / grandCap) * 100) : 0;
+        html += "<tr style=\"border-top:2px solid var(--accent);font-weight:700;\">" +
+          "<td><strong style=\"color:var(--accent);\">GRAND TOTAL</strong></td>" +
+          "<td><span style=\"font-size:12px;color:var(--muted);font-weight:400;\">" + grandTotalTypes + " types</span></td>" +
+          "<td>" + grandSold + "</td>" +
+          "<td>" + grandCap + "</td>" +
+          "<td><span style=\"font-weight:700;color:" + (grandFill >= 90 ? "#991B1B" : grandFill >= 70 ? "#92400E" : "#065F46") + ";\">" + grandFill + "%</span></td>" +
+          "<td></td>" +
+          "<td>D" + grandRev.toLocaleString() + "</td>" +
+          "<td>100%</td>" +
+          "</tr>";
+
+        html += "</tbody></table></div>";
+
+        // ─── Revenue distribution bar ───
+        if (grandRev > 0 && shownCategories.length > 1) {
+          html += "<div style=\"margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;\">" +
+            "<h4 style=\"font-size:14px;margin-bottom:12px;\">Revenue Distribution by Category</h4>" +
+            "<div style=\"display:flex;flex-direction:column;gap:8px;\">";
+          var pieColors = ["#065F46", "#1E40AF", "#92400E", "#991B1B", "#6B7280", "#7C3AED"];
+          shownCategories.forEach(function (catKey, idx) {
+            var cat = categories[catKey];
+            var pct = grandRev > 0 ? Math.round((cat.totalRevenue / grandRev) * 100) : 0;
+            if (pct < 1) return;
+            var color = pieColors[idx % pieColors.length];
+            html += "<div style=\"display:flex;align-items:center;gap:10px;\">" +
+              "<span style=\"width:12px;height:12px;border-radius:3px;background:" + color + ";flex-shrink:0;\"></span>" +
+              "<span style=\"font-size:13px;flex:1;\">" + escapeHtml(cat.label) + "</span>" +
+              "<span style=\"font-size:13px;font-weight:600;\">" + pct + "%</span>" +
+              "<span style=\"font-size:13px;color:var(--muted);\">D" + cat.totalRevenue.toLocaleString() + "</span>" +
+              "</div>";
+          });
+          html += "</div></div>";
+        }
+      }
+
       container.innerHTML = html;
     })
     .catch(function (err) {
@@ -620,19 +788,28 @@ function deleteTicket(ticketId, ticketCode) {
     !confirm(
       "Permanently delete ticket " +
         ticketCode +
-        "? This action cannot be undone. All balance transaction history will also be deleted.",
+        "? This action cannot be undone. All balance transaction history will also be deleted.\n\nAn audit record of this deletion will be retained.",
     )
   )
     return;
 
+  // Get the admin email from the session for the audit trail
+  var session = getStoredSession();
+  var adminEmail = (session && session.user && session.user.email) || "admin";
+
+  // Use the RPC which atomically archives the ticket then deletes it
   return fetchWithAuth(
-    SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+    SUPABASE_URL + "/rest/v1/rpc/delete_ticket_with_audit",
     {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_ticket_id: ticketId,
+        p_deleted_by: adminEmail,
+      }),
     },
   ).then(function (res) {
-    if (res.ok || res.status === 204) return true;
+    if (res.ok) return true;
     if (res.status === 401 || res.status === 403) {
       var svcKey =
         localStorage.getItem("wf_service_key") ||
@@ -642,20 +819,28 @@ function deleteTicket(ticketId, ticketCode) {
       }
       if (!svcKey) throw new Error("Permission denied. Service key required.");
       return fetch(
-        SUPABASE_URL + "/rest/v1/tickets?id=eq." + encodeURIComponent(ticketId),
+        SUPABASE_URL + "/rest/v1/rpc/delete_ticket_with_audit",
         {
-          method: "DELETE",
+          method: "POST",
           headers: {
             Authorization: "Bearer " + svcKey,
-            Prefer: "return=minimal",
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            p_ticket_id: ticketId,
+            p_deleted_by: adminEmail,
+          }),
         },
       ).then(function (r) {
-        if (r.ok || r.status === 204) return true;
-        throw new Error("Failed to delete ticket.");
+        if (r.ok) return true;
+        return r.json().then(function (errBody) {
+          throw new Error(errBody.message || "Failed to delete ticket via RPC.");
+        });
       });
     }
-    throw new Error("Failed to delete ticket.");
+    return res.json().then(function (errBody) {
+      throw new Error(errBody.message || "Failed to delete ticket.");
+    });
   });
 }
 
@@ -792,6 +977,7 @@ function toggleTicketTypeActive(id, currentlyActive) {
     .then(function (res) {
       if (res.ok) {
         loadTicketTypes();
+        if (typeof loadInventory === "function") loadInventory();
         return;
       }
       // RPC may fail if the DB hasn't been migrated — fall back to service key
@@ -815,6 +1001,7 @@ function toggleTicketTypeActive(id, currentlyActive) {
       }).then(function (r) {
         if (!r.ok) throw new Error("Failed to update.");
         loadTicketTypes();
+        if (typeof loadInventory === "function") loadInventory();
       });
     })
     .catch(function (err) {
@@ -1065,6 +1252,7 @@ function addTicketType() {
       if (res.ok) {
         clearForm();
         loadTicketTypes();
+        if (typeof loadInventory === "function") loadInventory();
         return;
       }
       throw new Error("RPC failed.");
@@ -1108,6 +1296,7 @@ function addTicketType() {
           if (!r.ok) throw new Error("Failed to add ticket type.");
           clearForm();
           loadTicketTypes();
+          if (typeof loadInventory === "function") loadInventory();
         })
         .catch(function (e2) {
           alert("Error: " + e2.message);
@@ -1944,6 +2133,7 @@ document.addEventListener("click", function (e) {
         if (success) {
           if (modal) modal.remove();
           loadTicketTypes();
+          if (typeof loadInventory === "function") loadInventory();
         }
       })
       .catch(function (err) {
@@ -1978,6 +2168,7 @@ document.addEventListener("click", function (e) {
       .then(function (success) {
         if (success === true) {
           loadTicketTypes();
+          if (typeof loadInventory === "function") loadInventory();
         }
       })
       .catch(function (err) {
