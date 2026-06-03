@@ -2696,16 +2696,40 @@
                             });
                             // Add grand total row
                             var totalSold = types.reduce(function (s, t) { return s + t.sold; }, 0);
-                            rows.push({
-                                "Ticket Type": "TOTAL",
-                                "Price (D)": "",
-                                "Sold": totalSold,
-                                "Fee Type": "",
-                                "Fee Value": "",
-                                "Fee per Ticket (D)": "",
-                                "Est. Earnings (D)": grandEarnings,
-                            });
-                            return { label: "Superadmin Earnings Summary", data: rows };
+                                                            rows.push({
+                                    "Ticket Type": "TOTAL",
+                                    "Price (D)": "",
+                                    "Sold": totalSold,
+                                    "Fee Type": "",
+                                    "Fee Value": "",
+                                    "Fee per Ticket (D)": "",
+                                    "Est. Earnings (D)": grandEarnings,
+                                });
+                                // Gross Revenue (with fees)
+                                var grossRevenue = 0;
+                                rows.forEach(function (r) {
+                                    if (typeof r["Price (D)"] === "number" && typeof r["Sold"] === "number") {
+                                        grossRevenue += r["Price (D)"] * r["Sold"];
+                                    }
+                                });
+                                rows.push({
+                                    "Ticket Type": "Gross Revenue (with fees)",
+                                    "Price (D)": "",
+                                    "Sold": "",
+                                    "Fee Type": "",
+                                    "Fee Value": "",
+                                    "Fee per Ticket (D)": "",
+                                    "Est. Earnings (D)": grossRevenue,
+                                });
+                                rows.push({
+                                    "Ticket Type": "Net Revenue (without fees)",
+                                    "Price (D)": "",
+                                    "Sold": "",
+                                    "Fee Type": "",
+                                    "Fee Value": "",
+                                    "Fee per Ticket (D)": "",
+                                    "Est. Earnings (D)": grossRevenue - grandEarnings,
+                                });return { label: "Superadmin Earnings Summary", data: rows };
                         })
                         .catch(function () {
                             return { label: "Superadmin Earnings Summary", data: [] };

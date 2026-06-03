@@ -2456,11 +2456,15 @@ function exportSuperadminReportCSV() {
   });
 
   // Add total row
-  var totals = _superadminReportCache.reduce(function (acc, r) {
-    return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings };
-  }, { sold: 0, earnings: 0 });
-  csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "\n";
-
+    var totals = _superadminReportCache.reduce(function (acc, r) {
+    return { sold: acc.sold + r.sold, earnings: acc.earnings + r.earnings, revenue: acc.revenue + (r.price * r.sold) };
+  }, { sold: 0, earnings: 0, revenue: 0 });
+  csv += "TOTAL,," + totals.sold + ",,," + totals.earnings + "
+";
+  csv += "Gross Revenue (with fees),,," + totals.revenue + ",,," + "
+";
+  csv += "Net Revenue (without fees),,," + (totals.revenue - totals.earnings) + ",,," + "
+";
   // —— Order-level detail section
   csv += "\n";
   if (hasFilter && _superadminOrderCache && _superadminOrderCache.length > 0) {
