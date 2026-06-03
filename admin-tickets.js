@@ -2410,7 +2410,54 @@ function loadSuperadminReport(startDate, endDate) {
         });
         pmHtml += "</div>";
         return pmHtml;
+      })(      // ── Earnings breakdown by ticket type (bar chart) ──
+      html += (_superadminReportCache.length > 0 ? (function() {
+        // Sort by earnings descending
+        var sorted = _superadminReportCache.slice().sort(function (a, b) { return b.earnings - a.earnings; });
+        var maxEarnings = sorted.length > 0 ? sorted[0].earnings : 1;
+        var showMax = 8;
+        var showTypes = sorted.slice(0, showMax);
+        var restSum = 0;
+        var grandEb = 0;
+        sorted.forEach(function (r) { grandEb += r.earnings; });
+        if (sorted.length > showMax) {
+          for (var ri = showMax; ri < sorted.length; ri++) {
+            restSum += sorted[ri].earnings;
+          }
+        }
+        var ebColors = ["#065F46", "#1E40AF", "#7C3AED", "#B45309", "#059669", "#DB2777", "#92400E", "#6B7280"];
+        var ebHtml = '<div style="margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+          '<h4 style="font-size:14px;margin-bottom:14px;color:var(--fg);">Earnings by Ticket Type</h4>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;">';
+        showTypes.forEach(function (r, idx) {
+          var pct = grandEb > 0 ? Math.round((r.earnings / grandEb) * 100) : 0;
+          var color = ebColors[idx % ebColors.length];
+          var barPct = maxEarnings > 0 ? Math.round((r.earnings / maxEarnings) * 100) : 0;
+          ebHtml += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:13px;font-weight:500;">' + escapeHtml(r.name) + '</span>' +
+            '<span style="font-size:13px;font-weight:600;color:' + color + ';">D' + r.earnings.toLocaleString() + ' <span style="font-weight:400;color:var(--muted);font-size:12px;">(' + pct + '%)</span></span>' +
+            '</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:6px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + barPct + '%;background:' + color + ';border-radius:6px;transition:width .6s ease;"></div></div>' +
+            '</div>';
+        });
+        if (restSum > 0) {
+          var restPct = Math.round((restSum / grandEb) * 100);
+          ebHtml += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:13px;font-weight:500;color:var(--muted);">' + (sorted.length - showMax) + ' other type' + (sorted.length - showMax !== 1 ? 's' : '') + '</span>' +
+            '<span style="font-size:13px;font-weight:600;color:var(--muted);">D' + restSum.toLocaleString() + ' <span style="font-weight:400;font-size:12px;">(' + restPct + '%)</span></span>' +
+            '</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:6px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + (maxEarnings > 0 ? Math.round((restSum / maxEarnings) * 100) : 0) + '%;background:var(--muted);border-radius:6px;transition:width .6s ease;"></div></div>' +
+            '</div>';
+        }
+        ebHtml += '</div></div>';
+        return ebHtml;
       })() : '');
+
+) : '');
 
       // ── Order-level detail table (only when date filter active) ──
       html += (hasDateFilter && _superadminOrderCache.length > 0 ? (function() {
