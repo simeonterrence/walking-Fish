@@ -217,7 +217,7 @@
                         <details class="nav-more">
                             <summary>More</summary>
                             <div class="nav-dropdown">
-                                <a href="/top-up">Top Up</a>
+                                <a href="https://temistec.com/top-up">Top Up</a>
                                 <a href="/about">About</a>
                                 <a href="/gallery">Gallery</a>
                                 <a href="/blog">Blog</a>
@@ -651,7 +651,7 @@
                             "
                             >—
                             <a
-                                href="/admin-tickets"
+                                href="https://temistec.com/admin-tickets"
                                 style="
                                     color: var(--accent);
                                     text-decoration: underline;
@@ -1133,7 +1133,7 @@
         </div>
         <script src="supabase-config.js?v=2"></script>
         <script src="vendor-auth.js?v=7"></script>
-        <script src="admin-tickets.js?v=5"></script>
+        
         <script>
             (function () {
                 var session = getSession();
@@ -1406,21 +1406,11 @@
                 // Photo management loaded via iframe (admin-photos.html)
                 loadVendors();
                 // Ticketing dashboard
-                loadInventory();
-                loadRedemptionStats();
-                loadOrders();
-                loadTicketTypes();
-                loadTopUpBundles();
-                loadBalanceCap();
-                loadScannerCodes();
-                loadStaffActivity();
-                loadComplaints();
 
                 // Show superadmin report and init if super-admin
                 var sessionType = getSession().type;
                 if (sessionType === "super-admin") {
                     document.getElementById("superadmin-report-section").style.display = "";
-                    loadSuperadminReport();
                 }
                 initAdminManagement();
 
@@ -2417,7 +2407,6 @@
                         .then(function () {
                             // Close modal if it's open
                             if (modal) modal.remove();
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
@@ -2435,7 +2424,6 @@
                     e.target.textContent = "...";
                     updateComplaintStatus(complaintId, "closed", null)
                         .then(function () {
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
@@ -2449,7 +2437,6 @@
                     e.target.textContent = "...";
                     updateComplaintStatus(complaintId, "in_progress", null)
                         .then(function () {
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
@@ -2468,7 +2455,6 @@
                         notes || null,
                     )
                         .then(function () {
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
@@ -2483,7 +2469,6 @@
                     e.target.textContent = "...";
                     updateComplaintStatus(complaintId, "closed", null)
                         .then(function () {
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
@@ -2499,11 +2484,9 @@
                     e.target.textContent = "...";
                     deleteComplaint(complaintId)
                         .then(function () {
-                            loadComplaints();
                         })
                         .catch(function (err) {
                             alert("Error: " + err.message);
-                            loadComplaints();
                         });
                 }
 
