@@ -446,27 +446,6 @@ footer .tagline { font-family: var(--font-display); font-size: 20px; letter-spac
   animation: confetti-fall 1.4s cubic-bezier(.25,.46,.45,.94) forwards;
 }
 
-/* Ticket ceremony */
-.gift-ticket {
-  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent) 70%, var(--fg)));
-  border-radius: 16px; padding: 32px 28px; margin: 16px 0;
-  color: var(--surface); text-align: center;
-  transform: rotateY(90deg);
-  transition: transform .6s cubic-bezier(.34,1.56,.64,1);
-}
-.gift-ticket.flipped { transform: rotateY(0deg); }
-.gift-ticket .event-name { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
-.gift-ticket h3 { font-size: 24px; color: var(--surface); margin: 4px 0; }
-.gift-ticket .ticket-code {
-  font-family: var(--font-mono); font-size: 28px; font-weight: 700;
-  letter-spacing: 0.08em; margin: 12px 0;
-  background: oklch(0% 0 0 / 0.15); padding: 8px 16px; border-radius: 8px;
-  display: inline-block;
-}
-.gift-ticket .ticket-waitlist {
-  font-size: 13px; opacity: 0.8;
-}
-
 /* Paper plane ceremony */
 .gift-plane {
   display: inline-block; font-size: 56px; line-height: 1; margin-bottom: 12px;
@@ -651,7 +630,7 @@ nav .nav-links a { min-height: 44px; display: inline-flex; align-items: center; 
   .gift-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .gift-overlay.open .gift-box { transform: none; }
   nav::before { backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .gift-item, .gift-ticket, .gift-plane { opacity: 1; transform: none; animation: none; }
+  .gift-item, .gift-plane { opacity: 1; transform: none; animation: none; }
   .gift-confetti { display: none; }
 }
 
@@ -792,10 +771,7 @@ a.accent-link, .accent-text { color: var(--accent-text); }
 [data-page="partners"] nav a[href="partners.html"],
 [data-page="contact"] nav a[href="contact.html"],
 [data-page="report-issue"] nav a[href="report-issue.html"],
-[data-page="top-up"] nav a[href="top-up.html"],
-[data-page="t"] nav a[href="t.html"],
-[data-page="tickets"] nav a[href="tickets.html"],
-[data-page="scan"] nav a[href="scan.html"] {
+/* [scan] page removed — moved to temistec.com */
   background: var(--accent-dim);
   color: var(--accent);
 }

@@ -69,14 +69,5 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/admin-photos", "destination": "/admin-photos.html" }
   ],
-  "redirects": [
-    { "source": "/tickets", "destination": "https://temistec.com/tickets", "permanent": true },
-    { "source": "/tickets/order-status", "destination": "https://temistec.com/tickets", "permanent": true },
-    { "source": "/top-up", "destination": "https://temistec.com/top-up", "permanent": true },
-    { "source": "/t", "destination": "https://temistec.com/t", "permanent": true },
-    { "source": "/scan", "destination": "https://temistec.com/scan", "permanent": true },
-    { "source": "/admin-tickets", "destination": "https://temistec.com/admin-tickets", "permanent": true },
-    { "source": "/view-tickets", "destination": "https://temistec.com/view-tickets", "permanent": true },
-    { "source": "/claim-ticket", "destination": "https://temistec.com/claim-ticket", "permanent": true }
-  ]
 }
+

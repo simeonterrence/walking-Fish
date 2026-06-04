@@ -153,46 +153,8 @@
                     display: none;
                 }
             }
-            /* Ticketing */
-            .order-filter-bar {
-                display: flex;
-                gap: 6px;
-                margin-bottom: 16px;
-                flex-wrap: wrap;
-            }
-            .order-filter-btn {
-                padding: 6px 14px;
-                font-size: 13px;
-                border-radius: 6px;
-                border: 1px solid var(--border);
-                cursor: pointer;
-                font-family: var(--font-body);
-                font-weight: 500;
-                background: var(--surface);
-                color: var(--fg);
-                transition: all 0.15s;
-                min-width: auto;
-                min-height: auto;
-            }
-            .order-filter-btn:hover {
-                background: var(--accent-dim);
-            }
-            .order-filter-active {
-                background: var(--accent);
-                color: #fff;
-                border-color: var(--accent);
-            }
-            .ticket-section {
-                margin-bottom: 24px;
-            }
-            .ticket-section h3 {
-                font-size: 16px;
-                margin-bottom: 12px;
-            }
             /* Photo management styles loaded from admin-photos.html via iframe */
-        
-            .preset-date-btn:hover { background: var(--accent-dim) !important; }
-            .preset-date-btn:active { opacity: 0.7; }</style>
+        </style>
         <script defer src="nav.js?v=3"></script>
     </head>
     <body>
@@ -624,233 +586,31 @@
                 </details>
 
                 <!-- ════════════════════════════════════════════════════════════════ -->
-                <!-- TICKETING MANAGEMENT -->
+                <!-- TICKETING — Moved to temistec.com -->
                 <!-- ════════════════════════════════════════════════════════════════ -->
 
                 <details
-                    style="
-                        margin: 32px 0;
-                        border-top: 1px solid var(--border);
-                        padding-top: 24px;
-                    "
+                    style="margin: 32px 0; border-top: 1px solid var(--border); padding-top: 24px;"
                 >
                     <summary
-                        style="
-                            cursor: pointer;
-                            font-size: 14px;
-                            font-weight: 500;
-                            color: var(--muted);
-                        "
+                        style="cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted);"
                     >
-                        Ticketing Dashboard
+                        Ticketing System
                         <span
-                            style="
-                                font-size: 12px;
-                                color: var(--accent);
-                                font-weight: 400;
-                            "
-                            >—
+                            style="font-size: 12px; color: var(--accent); font-weight: 400;"
+                            >— moved to
                             <a
                                 href="https://temistec.com/admin-tickets"
-                                style="
-                                    color: var(--accent);
-                                    text-decoration: underline;
-                                "
-                                >Open Standalone Dashboard</a
+                                style="color: var(--accent); text-decoration: underline;"
+                                >temistec.com</a
                             ></span
                         >
                     </summary>
-                    <div style="margin-top: 16px">
-                        <!-- 1. Inventory Overview -->
-                        <div class="ticket-section">
-                            <h3>Inventory Overview</h3>
-                            <div id="inventory-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading inventory...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 1b. Redemption Stats -->
-                        <div class="ticket-section">
-                            <h3>Redemption Stats (Scan / Bill)</h3>
-                            <div id="redemption-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading redemption stats…
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 2. Order Management -->
-                        <div class="ticket-section">
-                            <h3>Orders</h3>
-                            <div class="order-filter-bar">
-                                <button
-                                    class="order-filter-btn order-filter-active"
-                                    data-status="all"
-                                >
-                                    All
-                                </button>
-                                <button
-                                    class="order-filter-btn"
-                                    data-status="unpaid"
-                                >
-                                    Unpaid
-                                </button>
-                                <button
-                                    class="order-filter-btn"
-                                    data-status="paid"
-                                >
-                                    Paid
-                                </button>
-                                <button
-                                    class="order-filter-btn"
-                                    data-status="pending_verification"
-                                >
-                                    Pending Verification
-                                </button>
-                                <button
-                                    class="order-filter-btn"
-                                    data-status="cancelled"
-                                >
-                                    Cancelled
-                                </button>
-                            </div>
-                            <div id="orders-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading orders...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 3. Ticket Types -->
-                        <div
-                            class="ticket-section"
-                            style="
-                                border-top: 1px solid var(--border);
-                                padding-top: 20px;
-                            "
-                        >
-                            <h3>Ticket Types</h3>
-                            <div id="ticket-types-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading ticket types...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 4. Top-Up Bundles -->
-                        <div
-                            class="ticket-section"
-                            style="
-                                border-top: 1px solid var(--border);
-                                padding-top: 20px;
-                            "
-                        >
-                            <h3>Top-Up Bundles</h3>
-                            <div id="bundles-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading top-up bundles...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 5. Balance Cap -->
-                        <div
-                            class="ticket-section"
-                            style="
-                                border-top: 1px solid var(--border);
-                                padding-top: 20px;
-                            "
-                        >
-                            <h3>Balance Cap</h3>
-                            <div id="balance-cap-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading setting...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 6. Scanner Codes -->
-                        <div
-                            class="ticket-section"
-                            style="
-                                border-top: 1px solid var(--border);
-                                padding-top: 20px;
-                            "
-                        >
-                            <h3>Staff Scanner Codes</h3>
-                            <div id="scanner-codes-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading scanner codes...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Staff Activity Report -->
-                        <div class="ticket-section">
-                            <h3 style="margin-top: 24px">
-                                Staff Activity Report
-                            </h3>
-                            <p
-                                style="
-                                    font-size: 13px;
-                                    color: var(--muted);
-                                    margin-bottom: 8px;
-                                "
-                            >
-                                Per-staff transaction totals from the scan page
-                                (debits &amp; top-ups). Only transactions
-                                processed after adding staff_code tracking are
-                                included.
-                            </p>
-                            <div id="staff-activity-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading staff activity...
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Superadmin Revenue Report -->
-                        <div class="ticket-section" id="superadmin-report-section" style="display:none;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
-                                <h3 style="margin:0;">Superadmin Revenue Report</h3>
-                                <button id="export-superadmin-csv-btn" class="action-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Export CSV</button>
-                            </div>
-                            <p
-                                style="
-                                    font-size: 13px;
-                                    color: var(--muted);
-                                    margin-bottom: 8px;
-                                "
-                            >
-                                Estimated earnings from superadmin fees configured on each
-                                ticket type. Fixed fees are calculated per ticket sold;
-                                percentage fees are based on the ticket price.
-                            </p>
-                            <!-- Date range filter -->
-                            <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px;">
-                                <div>
-                                    <label style="font-size:12px;font-weight:500;display:block;margin-bottom:3px;color:var(--muted);">From</label>
-                                    <input type="date" id="report-start-date" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">
-                                </div>
-                                <div>
-                                    <label style="font-size:12px;font-weight:500;display:block;margin-bottom:3px;color:var(--muted);">To</label>
-                                    <input type="date" id="report-end-date" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">
-                                </div>
-                                <button id="apply-report-filter" class="action-btn" style="background:var(--accent);color:#fff;border:none;min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Apply Filter</button>
-                                <span style="font-size:12px;color:var(--muted);font-weight:500;">Quick:</span>
-                                <button class="preset-date-btn" data-range="today" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">Today</button>
-                                <button class="preset-date-btn" data-range="this-week" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">This Week</button>
-                                <button class="preset-date-btn" data-range="this-month" style="padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--fg);min-width:auto;min-height:auto;transition:all 0.15s;">This Month</button>
-                                <button id="clear-report-filter-btn" class="action-btn" style="background:transparent;border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Clear</button>
-                            </div>
-                            <div id="superadmin-report-container">
-                                <p style="color: var(--muted); font-size: 14px">
-                                    Loading report...
-                                </p>
-                            </div>
-                        </div>
+                    <div style="margin-top: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;">
+                        <p style="font-size: 14px; color: var(--muted); margin: 0;">
+                            The ticketing system has been moved to its own site.
+                            <a href="https://temistec.com/admin-tickets" style="color: var(--accent); text-decoration: underline;">Open Ticketing Dashboard →</a>
+                        </p>
                     </div>
                 </details>
                 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1407,11 +1167,7 @@
                 loadVendors();
                 // Ticketing dashboard
 
-                // Show superadmin report and init if super-admin
-                var sessionType = getSession().type;
-                if (sessionType === "super-admin") {
-                    document.getElementById("superadmin-report-section").style.display = "";
-                }
+                initAdminManagement()
                 initAdminManagement();
 
                 document
