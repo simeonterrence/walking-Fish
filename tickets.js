@@ -50,6 +50,7 @@
   let orderTotal = 0;
   let userEmail = null; // set after login hash is parsed
   let ticketAssignments = {}; // { [ticketTypeId]: [{ email: string, name: string }, ...] }
+  let validatedReferral = null; // { code, discount_type, discount_value } | null
 
   const $ = function (id) {
     return document.getElementById(id);
@@ -60,6 +61,7 @@
     loadTicketTypes();
     setupTabs();
     setupCheckout();
+    setupReferralValidation();
     setupDashboard();
     checkLoginHash();
     checkPaymentReturn();
@@ -206,6 +208,98 @@
     renderCart();
   }
 
+  /* ─── Referral Discount ──────────────────────────────────────────── */
+
+  function setupReferralValidation() {
+    var input = $("checkout-referral");
+    var timer = null;
+
+    input.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        validateReferralCode(input.value.trim().toUpperCase());
+      }, 500);
+    });
+
+    // Also validate on blur (user tabs away)
+    input.addEventListener("blur", function () {
+      var val = input.value.trim().toUpperCase();
+      if (val) validateReferralCode(val);
+    });
+  }
+
+  async function validateReferralCode(code) {
+    var infoEl = $("checkout-referral-info");
+
+    if (!code) {
+      validatedReferral = null;
+      infoEl.innerHTML = "";
+      renderCart();
+      return;
+    }
+
+    try {
+      var res = await fetch(
+        SUPABASE_URL +
+          '/rest/v1/referral_codes?code=eq.' +
+          encodeURIComponent(code) +
+          '&select=code,discount_type,discount_value,discount_active,max_uses,current_uses,expires_at',
+        {
+          headers: { apikey: SUPABASE_ANON_KEY },
+        },
+      );
+      var rows = res.ok ? await res.json() : [];
+
+      if (!rows || rows.length === 0) {
+        validatedReferral = null;
+        infoEl.innerHTML =
+          '<span style="color:#c53030;">\u2716 Invalid or expired referral code</span>';
+        renderCart();
+        return;
+      }
+
+      var row = rows[0];
+
+      // Check max uses client-side (server also checks)
+      if (row.max_uses !== null && row.current_uses >= row.max_uses) {
+        validatedReferral = null;
+        infoEl.innerHTML =
+          '<span style="color:#c53030;">\u2716 This referral code has reached its maximum uses</span>';
+        renderCart();
+        return;
+      }
+
+      // Check if discount is active
+      if (row.discount_active && row.discount_value > 0) {
+        validatedReferral = {
+          code: row.code,
+          discount_type: row.discount_type,
+          discount_value: row.discount_value,
+        };
+        var label =
+          row.discount_type === "percentage"
+            ? row.discount_value + "% off"
+            : "D" + row.discount_value + " off";
+        infoEl.innerHTML =
+          '<span style="color:#2f855a;font-weight:500;">\u2705 Referral code accepted — discount: <strong>' +
+          label +
+          "</strong></span>";
+      } else {
+        validatedReferral = { code: row.code, discount_type: null, discount_value: 0 };
+        infoEl.innerHTML =
+          '<span style="color:var(--muted);font-size:12px;">\u2714\uFE0F Code accepted (no discount active)</span>';
+      }
+
+      renderCart();
+    } catch (err) {
+      validatedReferral = null;
+      infoEl.innerHTML =
+        '<span style="color:#c53030;">\u2716 Could not verify code. Please try again.</span>';
+      console.error("[tickets] validateReferralCode:", err);
+      renderCart();
+    }
+  }
+
   function renderCart() {
     /* update quantity badges on ticket cards */
     ticketTypes.forEach(function (t) {
@@ -252,9 +346,37 @@
         "</div>";
     });
 
-    orderTotal = total;
+    // Compute discount for display (server applies actual discount)
+    var displayTotal = total;
+    var discountAmount = 0;
+    var discountLabel = "";
+    if (validatedReferral && validatedReferral.discount_value > 0) {
+      if (validatedReferral.discount_type === "percentage") {
+        discountAmount = Math.round(total * validatedReferral.discount_value / 100);
+        discountLabel = validatedReferral.discount_value + "% off";
+      } else {
+        discountAmount = Math.min(validatedReferral.discount_value, total);
+        discountLabel = "D" + validatedReferral.discount_value + " off";
+      }
+      displayTotal = total - discountAmount;
+    }
+
+    orderTotal = displayTotal;
+
     contents.innerHTML = html;
-    totalAmt.textContent = "D" + total.toLocaleString();
+    if (discountAmount > 0) {
+      totalAmt.innerHTML =
+        '<span style="text-decoration:line-through;color:var(--muted);font-size:14px;margin-right:8px;font-weight:400;">D' +
+        total.toLocaleString() +
+        "</span>" +
+        "D" +
+        displayTotal.toLocaleString() +
+        '<span style="display:block;font-size:12px;color:#2f855a;font-weight:400;margin-top:2px;">' +
+        discountLabel +
+        ' referral discount applied</span>';
+    } else {
+      totalAmt.textContent = "D" + total.toLocaleString();
+    }
     totalWrap.style.display = "block";
 
     var section = $("checkout-section");
@@ -427,6 +549,9 @@
     $("checkout-section").classList.add("active");
     cart = {};
     orderId = null;
+    validatedReferral = null;
+    $("checkout-referral").value = "";
+    $("checkout-referral-info").innerHTML = "";
     renderCart();
   }
 
@@ -1076,6 +1201,16 @@
                 (amount || data.total).toLocaleString() +
                 "</strong> was successful." +
                 "</p>" +
+                (data.metadata && data.metadata.referral_discount_amount > 0 ?
+                  '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;">' +
+                  '<p style="margin:0;color:#166534;text-align:center;">' +
+                  '<strong>Referral Discount Applied</strong> — You saved <strong>D' +
+                  Number(data.metadata.referral_discount_amount).toLocaleString() +
+                  '</strong>!' +
+                  (data.metadata.referral_discount_type === 'percentage'
+                    ? ' (' + data.metadata.referral_discount_value + '% off)'
+                    : ' (D' + Number(data.metadata.referral_discount_value).toLocaleString() + ' off)') +
+                  '</p></div>' : '') +
                 '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin:16px 0;font-size:14px;">' +
                 '<strong style="display:block;margin-bottom:4px;">\u26A0\uFE0F Tickets Being Generated</strong>' +
                 '<p style="margin:0;color:#5d4037;">We received your payment but are still creating your tickets. This usually takes a moment. Check your email shortly — your tickets and QR codes will arrive there. If you don\u2019t see them within 15 minutes, contact us or visit the info desk at the venue.</p>' +
@@ -1097,6 +1232,16 @@
               (amount || data.total).toLocaleString() +
               "</strong> was successful." +
               "</p>" +
+              (data.metadata && data.metadata.referral_discount_amount > 0 ?
+                '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;">' +
+                '<p style="margin:0;color:#166534;text-align:center;">' +
+                '<strong>Referral Discount Applied</strong> — You saved <strong>D' +
+                Number(data.metadata.referral_discount_amount).toLocaleString() +
+                '</strong>!' +
+                (data.metadata.referral_discount_type === 'percentage'
+                  ? ' (' + data.metadata.referral_discount_value + '% off)'
+                  : ' (D' + Number(data.metadata.referral_discount_value).toLocaleString() + ' off)') +
+                '</p></div>' : '') +
               '<p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:20px;">' +
               "Check your email for " +
               ticketWord +

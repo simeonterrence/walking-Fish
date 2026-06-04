@@ -435,7 +435,7 @@ function loadRedemptionStats() {
           .forEach(function (src) {
             var g = sourceGroups[src];
             html +=
-              "<tr>" +
+              '<tr data-discount-type="' + (c.discount_type || '') + '" data-total-discount="' + totalDiscountGiven + '">' +
               '<td><span style="text-transform:capitalize;">' +
               escapeHtml(src.replace(/_/g, " ")) +
               "</span></td>" +
@@ -505,7 +505,7 @@ function loadOrders() {
       var html = "";
           html +=
             '<div style="overflow-x:auto;"><table class="app-table"><thead><tr>' +
-            "<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>" +
+            "<th>Order ID</th><th>Email</th><th>Total</th><th>Payment</th><th>Status</th><th>Discount</th><th>Date</th><th></th>" +
             "</tr></thead><tbody>";
           orders.forEach(function (o) {
             var statusClass =
@@ -527,7 +527,7 @@ function loadOrders() {
             var isUnpaid =
               o.status === "unpaid" || o.status === "pending_verification";
             html +=
-              "<tr>" +
+              '<tr data-discount-type="' + (c.discount_type || '') + '" data-total-discount="' + totalDiscountGiven + '">' +
               '<td><code style="font-size:12px;">#' +
               o.id.slice(0, 8) +
               "</code></td>" +
@@ -540,14 +540,19 @@ function loadOrders() {
               '<td><span style="font-size:13px;color:var(--muted);">' +
               payMethod +
               "</span></td>" +
-              '<td><span class="status-badge ' +
-              statusClass +
-              '">' +
-              o.status.replace("_", " ") +
-              "</span></td>" +
-              '<td><span style="font-size:13px;color:var(--muted);">' +
-              new Date(o.created_at).toLocaleDateString() +
-              "</span></td>" +
+          '<td><span class="status-badge ' +
+          statusClass +
+          '">' +
+          o.status.replace("_", " ") +
+          "</span></td>" +
+          '<td style="font-size:13px;">' +
+          (o.metadata && o.metadata.referral_discount_amount > 0
+            ? '<span style="color:#065F46;font-weight:600;">D' + Number(o.metadata.referral_discount_amount).toLocaleString() + '</span>'
+            : '<span style="color:var(--muted);">—</span>') +
+          "</td>" +
+          '<td><span style="font-size:13px;color:var(--muted);">' +
+          new Date(o.created_at).toLocaleDateString() +
+          "</span></td>" +
               '<td style="vertical-align:middle;">' +
               '<button class="action-btn order-expand-btn" data-order="' +
               o.id +
@@ -574,7 +579,7 @@ function loadOrders() {
             html +=
               '<tr id="order-tickets-' +
               o.id +
-              '" style="display:none;"><td colspan="7" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
+              '" style="display:none;"><td colspan="8" style="padding:0;"><div class="order-tickets-detail">Loading...</div></td></tr>';
           });
           html += "</tbody></table></div>";
           container.innerHTML = html;
@@ -2266,6 +2271,42 @@ function loadReferralCodes(startDate, endDate) {
           }
         });
 
+        // Compute overall discount stats from orders with referral discounts (respecting date filter)
+        var totalDiscountAmount = 0;
+        var totalOrders = 0;
+        var discountOrdersCount = 0;
+        var discountByDay = {};
+        var discountByWeek = {};
+        (orders || []).forEach(function (o) {
+          // Respect the date filter if set (orders may span outside the referral code date range)
+          if (startDate && endDate) {
+            var orderDate = o.created_at ? o.created_at.slice(0, 10) : "";
+            if (orderDate < startDate || orderDate > endDate) return;
+          }
+          totalOrders++;
+          var amt = o.metadata && o.metadata.referral_discount_amount;
+          if (amt > 0) {
+            totalDiscountAmount += amt;
+            discountOrdersCount++;
+            // Group by day
+            var day = o.created_at ? o.created_at.slice(0, 10) : "unknown";
+            if (!discountByDay[day]) discountByDay[day] = 0;
+            discountByDay[day] += amt;
+            // Group by week (ISO week number)
+            if (o.created_at) {
+              var d = new Date(o.created_at);
+              var startOfYear = new Date(d.getFullYear(), 0, 1);
+              var weekNum = Math.ceil((((d - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
+              var weekKey = d.getFullYear() + "-W" + String(weekNum).padStart(2, "0");
+              if (!discountByWeek[weekKey]) discountByWeek[weekKey] = 0;
+              discountByWeek[weekKey] += amt;
+            }
+          }
+        });
+        // Sort day/week keys
+        var sortedDays = Object.keys(discountByDay).sort();
+        var sortedWeeks = Object.keys(discountByWeek).sort();
+
         // Build date filter UI (needed before empty-state check so filter controls are always visible)
         var filterHtml =
           '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;">' +
@@ -2296,9 +2337,92 @@ function loadReferralCodes(startDate, endDate) {
           '<div class="stat-card"><div class="num" style="color:#991B1B;">' + inactiveCount + '</div><div class="lbl">Inactive</div></div>' +
           '<div class="stat-card"><div class="num" style="color:#92400E;">' + expiredCount + '</div><div class="lbl">Expired</div></div>' +
           '<div class="stat-card"><div class="num">' + (activeCount + inactiveCount + expiredCount) + '</div><div class="lbl">Total Codes</div></div>' +
-          "</div>";
+          "</div>" +
 
-        var html = filterHtml + summaryHtml +
+        // Discount summary report
+        (totalDiscountAmount > 0 ?
+          '<div style="margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<h4 style="font-size:14px;margin:0;">Discount Summary</h4>' +
+          '<button id="export-discount-csv-btn" class="action-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:5px 14px;font-size:12px;">Export CSV</button>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px;">' +
+          '<div class="stat-card"><div class="num" style="color:#065F46;">D' + totalDiscountAmount.toLocaleString() + '</div><div class="lbl">Total Discount Given</div></div>' +
+          '<div class="stat-card"><div class="num">' + discountOrdersCount + '</div><div class="lbl">Orders with Discount</div></div>' +
+          (discountOrdersCount > 0 ? '<div class="stat-card"><div class="num" style="color:#92400E;">D' + Math.round(totalDiscountAmount / discountOrdersCount).toLocaleString() + '</div><div class="lbl">Avg Discount per Order</div></div>' : '') +
+          '</div>' +
+          (totalOrders > 0 ?
+            '<div style="margin-top:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+            '<span style="font-size:13px;font-weight:500;">Orders Comparison</span>' +
+            '<span style="font-size:12px;color:var(--muted);">' + totalOrders + ' total orders' +
+            (discountOrdersCount > 0 ? ', ' + discountOrdersCount + ' with discount' : '') +
+            '</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<div style="flex:1;height:10px;background:var(--border);border-radius:6px;overflow:hidden;display:flex;">' +
+            '<div style="height:100%;width:' + Math.round((discountOrdersCount / totalOrders) * 100) + '%;background:#065F46;border-radius:6px;transition:width .5s ease;"></div>' +
+            '<div style="height:100%;flex:1;background:var(--border);border-radius:6px;"></div>' +
+            '</div>' +
+            '<span style="font-size:12px;font-weight:600;color:#065F46;white-space:nowrap;">' + Math.round((discountOrdersCount / totalOrders) * 100) + '% discounted</span>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;margin-top:6px;">' +
+            '<span style="font-size:11px;color:#065F46;"><strong>' + discountOrdersCount + '</strong> discounted</span>' +
+            '<span style="font-size:11px;color:var(--muted);"><strong>' + (totalOrders - discountOrdersCount) + '</strong> full price</span>' +
+            '</div>' +
+            '</div>' : '') +
+          (sortedDays.length > 1 ?
+            (function() {
+              var dayItems = sortedDays.slice(-14);
+              var maxDayVal = Math.max.apply(null, dayItems.map(function(d) { return discountByDay[d]; }));
+              if (maxDayVal < 1) maxDayVal = 1;
+              var chartH = 160, barW = 30, gap = 8, padL = 10, padR = 10, padT = 24, padB = 28;
+              var totalW = dayItems.length * (barW + gap) + padL + padR;
+              var daySvg = '<div style="margin-top:8px;overflow-x:auto;">' +
+                '<p style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;">By Day</p>' +
+                '<svg width="' + totalW + '" height="' + chartH + '" style="display:block;min-width:' + totalW + 'px;" xmlns="http://www.w3.org/2000/svg">';
+              dayItems.forEach(function(d, i) {
+                var val = discountByDay[d];
+                var barH = Math.round((val / maxDayVal) * (chartH - padT - padB));
+                var x = padL + i * (barW + gap);
+                var y = chartH - padB - barH;
+                daySvg += '<g>';
+                daySvg += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + barH + '" rx="3" ry="3" fill="#065F46" opacity="0.85"/>';
+                daySvg += '<text x="' + (x + barW / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#1F2937">D' + val.toLocaleString() + '</text>';
+                daySvg += '<text x="' + (x + barW / 2) + '" y="' + (chartH - 8) + '" text-anchor="middle" font-size="10" fill="#6B7280">' + d.slice(5) + '</text>';
+                daySvg += '</g>';
+              });
+              daySvg += '</svg></div>';
+              return daySvg;
+            })() : '') +
+          (sortedWeeks.length > 1 ?
+            (function() {
+              var weekItems = sortedWeeks.slice(-8);
+              var maxWeekVal = Math.max.apply(null, weekItems.map(function(w) { return discountByWeek[w]; }));
+              if (maxWeekVal < 1) maxWeekVal = 1;
+              var chartH = 160, barW = 48, gap = 10, padL = 10, padR = 10, padT = 24, padB = 34;
+              var totalW = weekItems.length * (barW + gap) + padL + padR;
+              var weekSvg = '<div style="margin-top:10px;overflow-x:auto;">' +
+                '<p style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;">By Week</p>' +
+                '<svg width="' + totalW + '" height="' + chartH + '" style="display:block;min-width:' + totalW + 'px;" xmlns="http://www.w3.org/2000/svg">';
+              weekItems.forEach(function(w, i) {
+                var val = discountByWeek[w];
+                var barH = Math.round((val / maxWeekVal) * (chartH - padT - padB));
+                var pct = Math.round((val / totalDiscountAmount) * 100);
+                var x = padL + i * (barW + gap);
+                var y = chartH - padB - barH;
+                weekSvg += '<g>';
+                weekSvg += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + barH + '" rx="4" ry="4" fill="#1E40AF" opacity="0.85"/>';
+                weekSvg += '<text x="' + (x + barW / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#1F2937">D' + val.toLocaleString() + '</text>';
+                weekSvg += '<text x="' + (x + barW / 2) + '" y="' + (chartH - 14) + '" text-anchor="middle" font-size="10" fill="#6B7280">' + pct + '%</text>';
+                weekSvg += '<text x="' + (x + barW / 2) + '" y="' + (chartH - 4) + '" text-anchor="middle" font-size="10" fill="#6B7280">' + w.slice(-5) + '</text>';
+                weekSvg += '</g>';
+              });
+              weekSvg += '</svg></div>';
+              return weekSvg;
+            })() : '') +
+          '</div>' : '') +
+
           '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
           "<th>Code</th><th>Description</th><th>Created By</th><th>Discount</th><th>Uses</th><th>Max Uses</th><th>Status</th><th>Orders</th><th>Created</th><th>Actions</th>" +
           "</tr></thead><tbody>";
@@ -2318,8 +2442,10 @@ function loadReferralCodes(startDate, endDate) {
           var codeOrders = ordersByCode[c.code] || [];
           var orderCount = codeOrders.length;
           var totalRevenue = 0;
+          var totalDiscountGiven = 0;
           codeOrders.forEach(function (o) {
             totalRevenue += o.total || 0;
+            totalDiscountGiven += (o.metadata && o.metadata.referral_discount_amount) || 0;
           });
 
           // Track status counts
@@ -2379,6 +2505,17 @@ function loadReferralCodes(startDate, endDate) {
               : '<button class="action-btn action-approve activate-ref-code-btn" data-id="' +
                 c.id +
                 '" style="font-size:12px;min-width:auto;min-height:auto;padding:4px 10px;">Activate</button>') +
+              '<button class="action-btn edit-ref-discount-btn" data-code="' +
+              escapeHtml(c.code) +
+              '" data-id="' +
+              c.id +
+              '" data-discount-type="' +
+              (c.discount_type || '') +
+              '" data-discount-value="' +
+              (c.discount_value || 0) +
+              '" data-discount-active="' +
+              (c.discount_active || false) +
+              '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-left:4px;min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">Edit Discount</button>' +
             "</td>" +
             "</tr>";
 
@@ -2594,6 +2731,104 @@ function issueReferralCode() {
     });
 }
 
+
+
+
+function exportDiscountSummaryCSV() {
+  var csv = "\uFEFF";
+  csv += "Discount Summary Report\n";
+  csv += "Generated," + new Date().toLocaleString() + "\n";
+  csv += "\n";
+
+  var startInput = document.getElementById("ref-filter-start");
+  var endInput = document.getElementById("ref-filter-end");
+  var filterLabel = "";
+  if (startInput && endInput && startInput.value && endInput.value) {
+    filterLabel = " (" + new Date(startInput.value).toLocaleDateString() + " to " + new Date(endInput.value).toLocaleDateString() + ")";
+  }
+
+  csv += "Metric,Value" + filterLabel + "\n";
+  csv += "\n";
+
+  var container = document.getElementById("referral-codes-container");
+  if (!container) {
+    csv += "Error,Discount summary not loaded\n";
+  } else {
+    // Find the Discount Summary section by locating the h4
+    var discountSection = null;
+    var allDivs = container.querySelectorAll('div');
+    for (var si = 0; si < allDivs.length; si++) {
+      var d = allDivs[si];
+      if (d.querySelector && d.querySelector('h4') && d.querySelector('h4').textContent.trim() === "Discount Summary") {
+        discountSection = d;
+        break;
+      }
+    }
+
+    if (discountSection) {
+      var nums = discountSection.querySelectorAll('.stat-card .num');
+      var vals = [];
+      nums.forEach(function(n) { vals.push(n.textContent.trim()); });
+      if (vals.length >= 1) csv += "Total Discount Given," + vals[0].replace(/^D/, "") + "\n";
+      if (vals.length >= 2) csv += "Orders with Discount," + vals[1] + "\n";
+      if (vals.length >= 3) csv += "Avg Discount per Order," + vals[2].replace(/^D/, "") + "\n";
+    }
+
+    // Read orders comparison from span text
+    var spans = container.querySelectorAll('span');
+    var totalOrdersVal = null, discountedVal = null;
+    spans.forEach(function(s) {
+      var t = s.textContent.trim();
+      var m = t.match(/(\d+)\s*total orders/);
+      if (m) totalOrdersVal = m[1];
+      var d = t.match(/(\d+)\s*with discount/);
+      if (d) discountedVal = d[1];
+    });
+    if (totalOrdersVal) csv += "Total Orders (Referral)," + totalOrdersVal + "\n";
+    if (discountedVal) csv += "Discounted Orders," + discountedVal + "\n";
+    if (totalOrdersVal && discountedVal) {
+      csv += "Full-Price Orders," + (parseInt(totalOrdersVal) - parseInt(discountedVal)) + "\n";
+    }
+
+    // Daily breakdown — find SVG inside div with margin-top:8px (daily chart)
+    var dailyChart = container.querySelector('[style*="margin-top:8px;overflow"] svg');
+    csv += "\nDaily Breakdown\nDate,Discount Amount\n";
+    if (dailyChart) {
+      var texts1 = dailyChart.querySelectorAll('text');
+      for (var di = 0; di + 1 < texts1.length; di += 2) {
+        var val = texts1[di].textContent.trim().replace(/^D/, "").replace(/,/g, "");
+        var dt = texts1[di + 1].textContent.trim();
+        if (val && dt && !isNaN(parseFloat(val))) csv += dt + "," + val + "\n";
+      }
+    }
+
+    // Weekly breakdown — find SVG inside div with margin-top:10px (weekly chart)
+    var weeklyChart = container.querySelector('[style*="margin-top:10px;overflow"] svg');
+    csv += "\nWeekly Breakdown\nWeek,Discount Amount,Percentage\n";
+    if (weeklyChart) {
+      var texts2 = weeklyChart.querySelectorAll('text');
+      for (var wi = 0; wi + 2 < texts2.length; wi += 3) {
+        var wVal = texts2[wi].textContent.trim().replace(/^D/, "").replace(/,/g, "");
+        var wPct = texts2[wi + 1].textContent.trim().replace(/%$/, "");
+        var wDt = texts2[wi + 2].textContent.trim();
+        if (wVal && wDt && !isNaN(parseFloat(wVal))) csv += wDt + "," + wVal + "," + wPct + "\n";
+      }
+    }
+  }
+
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  link.href = url;
+  link.download = "discount-summary-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+
+
 function exportReferralCodesCSV() {
   var container = document.getElementById("referral-codes-container");
   var table = container && container.querySelector("table");
@@ -2603,7 +2838,7 @@ function exportReferralCodesCSV() {
   }
 
   var csv = "\uFEFF"; // BOM for Excel
-  csv += "Code,Description,Created By,Current Uses,Max Uses,Status,Orders Count,Total Revenue (D),Created At\r\n";
+  csv += "Code,Description,Created By,Discount Type,Discount Value,Uses,Max Uses,Status,Orders Count,Total Revenue (D),Total Discount Given (D),Created At\r\n";
   var grandOrderCount = 0;
   var grandRevenue = 0;
   var activeCount = 0, inactiveCount = 0, expiredCount = 0;
@@ -2619,11 +2854,14 @@ function exportReferralCodesCSV() {
     var code = cells[0].textContent.trim();
     var desc = cells[1].textContent.trim();
     var createdBy = cells[2].textContent.trim();
-    var uses = cells[3].textContent.trim();
-    var maxUses = cells[4].textContent.trim();
-    var status = cells[5].textContent.trim();
-    var orders = cells[6].textContent.trim();
-    var createdAt = cells[7].textContent.trim();
+    var discountType = row.getAttribute("data-discount-type") || "";
+    var discountValue = row.getAttribute("data-discount-value") || "0";
+    var uses = cells[4].textContent.trim();
+    var maxUses = cells[5].textContent.trim();
+    var status = cells[6].textContent.trim();
+    var orders = cells[7].textContent.trim();
+    var createdAt = cells[8].textContent.trim();
+    var totalDiscountAmount = row.getAttribute("data-total-discount") || "0";
 
     // Count active/inactive/expired
     var statusLower = status.toLowerCase();
@@ -2651,7 +2889,7 @@ function exportReferralCodesCSV() {
       grandRevenue += rowRevenue;
     }
 
-    csv += esc(code) + "," + esc(desc) + "," + esc(createdBy) + "," + esc(uses) + "," + esc(maxUses) + "," + esc(status) + "," + esc(rowOrderCount > 0 ? String(rowOrderCount) : "0") + "," + esc(rowRevenue > 0 ? String(rowRevenue) : "0") + "," + esc(createdAt) + "\r\n";
+    csv += esc(code) + "," + esc(desc) + "," + esc(createdBy) + "," + esc(discountType) + "," + esc(discountValue) + "," + esc(uses) + "," + esc(maxUses) + "," + esc(status) + "," + esc(rowOrderCount > 0 ? String(rowOrderCount) : "0") + "," + esc(rowRevenue > 0 ? String(rowRevenue) : "0") + "," + esc(totalDiscountAmount) + "," + esc(createdAt) + "\r\n";
   });
 
   // Summary stats row
@@ -2738,6 +2976,72 @@ function toggleReferralDiscount(id, newActive, discountType, discountValue) {
           }
         });
     });
+}
+
+function showReferralEditModal(refData) {
+  var existing = document.getElementById("ref-discount-edit-modal");
+  if (existing) existing.remove();
+  var overlay = document.createElement("div");
+  overlay.id = "ref-discount-edit-modal";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;";
+  var discType = refData.discountType || "";
+  var discVal = refData.discountValue || 0;
+  var discActive = refData.discountActive === "true" || refData.discountActive === true;
+  overlay.innerHTML =
+    '<div style="text-align:left;max-width:460px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;">' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">Edit Discount \u2014 <code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">' + escapeHtml(refData.code) + '</code></div>' +
+    '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Change the discount type, value, and active status for this referral code.</p>' +
+    '<form id="ref-discount-edit-form">' +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Discount Type</label>' +
+    '<select id="edit-ref-discount-type" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    '<option value=""' + (!discType ? ' selected' : '') + '>No discount</option>' +
+    '<option value="percentage"' + (discType === "percentage" ? ' selected' : '') + '>Percentage (%)</option>' +
+    '<option value="fixed"' + (discType === "fixed" ? ' selected' : '') + '>Fixed (D)</option>' +
+    '</select></div>' +
+    '<div style="margin-bottom:12px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Discount Value</label>' +
+    '<input type="number" id="edit-ref-discount-value" value="' + discVal + '" min="0" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);">' +
+    '</div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Active</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">' +
+    '<input type="checkbox" id="edit-ref-discount-active"' + (discActive ? ' checked' : '') + ' style="width:18px;height:18px;accent-color:var(--accent);"> ' +
+    'Discount is currently active and being applied at checkout' +
+    '</label></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button type="button" id="ref-discount-edit-cancel-btn" class="action-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:8px 20px;">Cancel</button>' +
+    '<button type="button" id="ref-discount-edit-save-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;" data-ref-id="' + refData.id + '">Save Changes</button>' +
+    '</div></form></div>';
+  document.body.appendChild(overlay);
+  setTimeout(function () { document.getElementById("edit-ref-discount-type").focus(); }, 100);
+}
+
+function saveReferralDiscountFromModal(refId) {
+  var discountType = document.getElementById("edit-ref-discount-type").value || null;
+  var discountValue = parseInt(document.getElementById("edit-ref-discount-value").value) || 0;
+  var discountActive = document.getElementById("edit-ref-discount-active").checked;
+  var btn = document.getElementById("ref-discount-edit-save-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/toggle_referral_code_discount", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ p_id: refId, p_discount_active: discountActive, p_discount_type: discountType, p_discount_value: discountValue }),
+  }).then(function (res) {
+    if (res.ok) { var m = document.getElementById("ref-discount-edit-modal"); if (m) m.remove(); loadReferralCodes(); return; }
+    throw new Error("RPC failed.");
+  }).catch(function (err) {
+    var svcKey = localStorage.getItem("wf_service_key") || sessionStorage.getItem("wf_service_key");
+    if (!svcKey && typeof getServiceKey === "function") svcKey = getServiceKey(true);
+    if (!svcKey) { alert("Permission denied. Contact admin."); if (btn) { btn.disabled = false; btn.textContent = "Save Changes"; } return; }
+    return fetch(SUPABASE_URL + "/rest/v1/referral_codes?id=eq." + refId, {
+      method: "PATCH", headers: { Authorization: "Bearer " + svcKey, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ discount_type: discountType, discount_value: discountValue, discount_active: discountActive }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Failed to update discount.");
+      var m = document.getElementById("ref-discount-edit-modal"); if (m) m.remove();
+      loadReferralCodes();
+    }).catch(function (e2) { alert("Error: " + e2.message); if (btn) { btn.disabled = false; btn.textContent = "Save Changes"; } });
+  });
 }
 
 function toggleReferralCodeActive(id, currentlyActive) {
@@ -3500,6 +3804,31 @@ document.addEventListener("click", function (e) {
   // Export referral codes CSV
   if (e.target.id === "export-referral-csv-btn") {
     exportReferralCodesCSV();
+  }
+  if (e.target.id === "export-discount-csv-btn") {
+    exportDiscountSummaryCSV();
+  }
+
+  // Edit referral discount modal
+  if (e.target.classList.contains("edit-ref-discount-btn")) {
+    showReferralEditModal({
+      id: e.target.getAttribute("data-id"),
+      code: e.target.getAttribute("data-code"),
+      discountType: e.target.getAttribute("data-discount-type"),
+      discountValue: e.target.getAttribute("data-discount-value"),
+      discountActive: e.target.getAttribute("data-discount-active"),
+    });
+  }
+
+  // Save referral discount from modal
+  if (e.target.id === "ref-discount-edit-save-btn") {
+    saveReferralDiscountFromModal(e.target.getAttribute("data-ref-id"));
+  }
+
+  // Cancel referral discount edit modal
+  if (e.target.id === "ref-discount-edit-cancel-btn") {
+    var m = document.getElementById("ref-discount-edit-modal");
+    if (m) m.remove();
   }
 
   // Apply date filter to superadmin report

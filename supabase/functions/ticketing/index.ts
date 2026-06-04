@@ -183,7 +183,7 @@ async function sendEmail(payload) {
 
 // the access code; top-up, debit, and other notification emails do not.
 
-function renderTicketEmailHtml(tickets, title, subtitle) {
+function renderTicketEmailHtml(tickets, title, subtitle, orderMeta) {
   const siteUrl = "https://www.walkingfish.gm";
 
   const viewTicketsLink = `${siteUrl}/view-tickets`;
@@ -265,6 +265,37 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
     </p>`;
 
+  // Build discount info section from order metadata if present
+  let discountHtml = "";
+  if (orderMeta && orderMeta.referral_discount_type && orderMeta.referral_discount_amount > 0) {
+    const discountLabel = orderMeta.referral_discount_type === "percentage"
+      ? `${orderMeta.referral_discount_value}% off`
+      : `D${Number(orderMeta.referral_discount_value).toLocaleString()} off`;
+    const originalTotal = orderMeta.original_total ? `D${Number(orderMeta.original_total).toLocaleString()}` : "";
+    const discountAmount = `D${Number(orderMeta.referral_discount_amount).toLocaleString()}`;
+    discountHtml = `
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin-bottom:20px;">
+
+      <p style="margin:0 0 4px;font-size:13px;color:#166534;text-align:center;">
+
+        <strong>Referral Discount Applied</strong>
+
+      </p>
+
+      <p style="margin:0;font-size:14px;color:#166534;text-align:center;">
+
+        ${discountLabel}${originalTotal ? ` — was ${originalTotal}` : ""}
+
+        <br>
+
+        <strong style="font-size:16px;">You saved ${discountAmount}!</strong>
+
+      </p>
+
+    </div>`;
+  }
+
   return `
 
     <h2 style="margin:0 0 8px;">${title}</h2>
@@ -273,13 +304,15 @@ function renderTicketEmailHtml(tickets, title, subtitle) {
 
     ${accessCodeBanner}
 
+    ${discountHtml}
+
     ${ticketCards}
 
     ${viewTicketsCta}`;
 }
 
 async function sendTicketsEmail(options) {
-  const { to, subject, tickets, title, subtitle } = options;
+  const { to, subject, tickets, title, subtitle, orderMeta } = options;
 
   try {
     await sendEmail({
@@ -287,7 +320,7 @@ async function sendTicketsEmail(options) {
 
       subject,
 
-      html: emailShell(renderTicketEmailHtml(tickets, title, subtitle)),
+      html: emailShell(renderTicketEmailHtml(tickets, title, subtitle, orderMeta)),
     });
   } catch (e) {
     console.error("[TicketEmail] Sending failed:", e.message);
@@ -1384,18 +1417,20 @@ async function handleWebhook(req) {
               };
             });
 
-            await sendTicketsEmail({
-              to: recipientEmail,
+          await sendTicketsEmail({
+            to: recipientEmail,
 
-              subject: "Your tickets are ready! — Walking-Fish",
+            subject: "Your tickets are ready! — Walking-Fish",
 
-              tickets: emailTickets,
+            tickets: emailTickets,
 
-              title: "Ticket Created at Venue",
+            title: "Ticket Created at Venue",
 
-              subtitle:
-                "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
-            });
+            subtitle:
+              "Your ticket was created at the Piroake Fest booth. Payment collected on-site.",
+
+            orderMeta: order.metadata,
+          });
           }
         }
 
@@ -1858,6 +1893,8 @@ async function handleWebhook(req) {
             },
           ],
 
+          orderMeta: order.metadata,
+
           title: "Top-Up Successful",
 
           subtitle: `Added D${topupAmount}. New balance: D${topupFinalBalance.toLocaleString()}`,
@@ -2078,6 +2115,8 @@ async function handleWebhook(req) {
             title: "Payment Confirmed",
 
             subtitle: `Order #${order.id.slice(0, 8)} — your tickets and QR codes are ready.`,
+
+            orderMeta: order.metadata,
           });
         }
       }
@@ -3284,6 +3323,8 @@ async function handleConfirmPayment(req) {
               balance: newBalance,
             },
           ],
+
+          orderMeta: order.metadata,
 
           title: "Top-Up Successful",
 
@@ -4852,6 +4893,7 @@ async function handleRegenerateTickets(req) {
         title: "Tickets Re-Generated",
 
         subtitle: `Order #${order.id.slice(0, 8)} — your tickets have been re-issued.`,
+        orderMeta: order.metadata,
       });
     }
 
