@@ -454,9 +454,9 @@
     }
 
     // Collect assignments from UI
-    var assignments = collectAssignments();
+    var assignments = collectAssignments();      var referralCode = ($("checkout-referral").value || "").trim().toUpperCase();
 
-    var items = Object.keys(cart)
+      var items = Object.keys(cart)
       .filter(function (id) {
         return cart[id] > 0;
       })
@@ -471,15 +471,19 @@
 
     try {
       /* 1. Create order via Edge Function */
+      var orderPayload = {
+        email: email,
+        customer_name: name,
+        items: items,
+        assignments: assignments,
+      };
+      if (referralCode) {
+        orderPayload.referral_code = referralCode;
+      }
       var orderRes = await fetch(TICKET_FN + "/create-order", {
         method: "POST",
         headers: ANON_H,
-        body: JSON.stringify({
-          email: email,
-          customer_name: name,
-          items: items,
-          assignments: assignments,
-        }),
+        body: JSON.stringify(orderPayload),
       });
       var orderData = await orderRes.json();
       if (!orderRes.ok || !orderData.success) {

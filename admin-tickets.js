@@ -2228,6 +2228,563 @@ function loadStaffActivity() {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
+   7b. REFERRAL CODES MANAGEMENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function loadReferralCodes(startDate, endDate) {
+  var container = document.getElementById("referral-codes-container");
+  container.innerHTML =
+    '<p style="color:var(--muted);font-size:14px;">Loading referral codes...</p>';
+
+  // Build filter query
+  var refUrl = "/rest/v1/referral_codes?order=created_at.desc&select=*";
+  if (startDate && endDate) {
+    refUrl += "&created_at=gte." + startDate + "&created_at=lte." + endDate + "T23:59:59Z";
+  }
+
+  adminQuery(refUrl)
+    .then(function (codes) {
+      if (!codes) throw new Error("Failed to load referral codes.");
+
+      // Also fetch orders that have referral codes in metadata
+      var orderPromise = adminQuery(
+        "/rest/v1/orders?select=id,email,total,created_at,metadata&order=created_at.desc&not.metadata->>referral_code.is.null&limit=2000"
+      );
+
+      return Promise.all([codes, orderPromise]).then(function (results) {
+        var codes = results[0];
+        var orders = results[1] || [];
+
+        // Group orders by referral code
+        var ordersByCode = {};
+        (orders || []).forEach(function (o) {
+          var refCode = o.metadata && o.metadata.referral_code;
+          if (refCode) {
+            if (!ordersByCode[refCode]) ordersByCode[refCode] = [];
+            ordersByCode[refCode].push(o);
+          }
+        });
+
+        // Build date filter UI (needed before empty-state check so filter controls are always visible)
+        var filterHtml =
+          '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;">' +
+          '<div><label style="font-size:12px;font-weight:500;display:block;margin-bottom:4px;color:var(--muted);">From</label>' +
+          '<input type="date" id="ref-filter-start" value="' + (startDate || "") + '" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);"></div>' +
+          '<div><label style="font-size:12px;font-weight:500;display:block;margin-bottom:4px;color:var(--muted);">To</label>' +
+          '<input type="date" id="ref-filter-end" value="' + (endDate || "") + '" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);"></div>' +
+          '<button id="apply-ref-filter-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;">Apply Filter</button>' +
+          (startDate && endDate ? '<button id="clear-ref-filter-btn" class="action-btn" style="background:transparent;border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;">Clear</button>' : '') +
+          (startDate ? '<span style="font-size:12px;color:var(--muted);">Filtered: ' + new Date(startDate).toLocaleDateString() + " – " + new Date(endDate).toLocaleDateString() + '</span>' : '') +
+          "</div>";
+
+        if (!codes || codes.length === 0) {
+          container.innerHTML = filterHtml +
+            '<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px;">No referral codes found' +
+            (startDate ? ' for the selected date range' : ' issued yet') +
+            '.</p>' +
+            renderIssueForm();
+          return;
+        }
+
+
+
+        // Summary stats cards
+        var summaryHtml =
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">' +
+          '<div class="stat-card"><div class="num" style="color:#065F46;">' + activeCount + '</div><div class="lbl">Active</div></div>' +
+          '<div class="stat-card"><div class="num" style="color:#991B1B;">' + inactiveCount + '</div><div class="lbl">Inactive</div></div>' +
+          '<div class="stat-card"><div class="num" style="color:#92400E;">' + expiredCount + '</div><div class="lbl">Expired</div></div>' +
+          '<div class="stat-card"><div class="num">' + (activeCount + inactiveCount + expiredCount) + '</div><div class="lbl">Total Codes</div></div>' +
+          "</div>";
+
+        var html = filterHtml + summaryHtml +
+          '<div style="overflow-x:auto;margin-bottom:16px;"><table class="app-table"><thead><tr>' +
+          "<th>Code</th><th>Description</th><th>Created By</th><th>Discount</th><th>Uses</th><th>Max Uses</th><th>Status</th><th>Orders</th><th>Created</th><th>Actions</th>" +
+          "</tr></thead><tbody>";
+
+        var grandTotalOrders = 0;
+        var activeCount = 0, inactiveCount = 0, expiredCount = 0;
+        codes.forEach(function (c) {
+          var statusClass = c.is_active ? "status-approved" : "status-rejected";
+          var statusText = c.is_active ? "Active" : "Inactive";
+          var isExpired =
+            c.expires_at && new Date(c.expires_at) < new Date();
+          if (isExpired && statusText === "Active") {
+            statusText = "Expired";
+            statusClass = "status-pending";
+          }
+
+          var codeOrders = ordersByCode[c.code] || [];
+          var orderCount = codeOrders.length;
+          var totalRevenue = 0;
+          codeOrders.forEach(function (o) {
+            totalRevenue += o.total || 0;
+          });
+
+          // Track status counts
+          if (isExpired) {
+            expiredCount++;
+          } else if (c.is_active) {
+            activeCount++;
+          } else {
+            inactiveCount++;
+          }
+
+          grandTotalOrders += orderCount;
+
+          html +=
+            "<tr>" +
+            '<td><code style="font-size:13px;background:var(--accent-dim);padding:2px 10px;border-radius:4px;font-weight:600;">' +
+            escapeHtml(c.code) +
+            "</code></td>" +
+            "<td>" +
+            escapeHtml(c.description || "-") +
+            "</td>" +
+            '<td><span style="font-size:12px;color:var(--muted);">' +
+            escapeHtml(c.created_by_email || "-") +
+            "</span></td>" +
+            "<td><strong>" +
+            (c.current_uses || 0) +
+            "</strong></td>" +
+            "<td>" +
+            (c.max_uses ? c.max_uses : "Unlimited") +
+            "</td>" +
+            '<td><span class="status-badge ' +
+            statusClass +
+            '">' +
+            statusText +
+            "</span></td>" +
+            '<td>' +
+            (orderCount > 0
+              ? '<button class="action-btn view-referral-orders-btn" data-code="' +
+                escapeHtml(c.code) +
+                '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;" title="Total revenue: D' +
+                totalRevenue.toLocaleString() +
+                '">' +
+                orderCount +
+                ' orders (D' +
+                totalRevenue.toLocaleString() +
+                ")</button>"
+              : '<span style="font-size:13px;color:var(--muted);">0</span>') +
+            "</td>" +
+            '<td><span style="font-size:12px;color:var(--muted);">' +
+            new Date(c.created_at).toLocaleDateString() +
+            "</span></td>" +
+            "<td>" +
+            (c.is_active && !isExpired
+              ? '<button class="action-btn action-reject revoke-ref-code-btn" data-id="' +
+                c.id +
+                '" style="font-size:12px;min-width:auto;min-height:auto;padding:4px 10px;">Deactivate</button>'
+              : '<button class="action-btn action-approve activate-ref-code-btn" data-id="' +
+                c.id +
+                '" style="font-size:12px;min-width:auto;min-height:auto;padding:4px 10px;">Activate</button>') +
+            "</td>" +
+            "</tr>";
+
+          // Hidden orders detail row
+          if (codeOrders.length > 0) {
+            html +=
+              '<tr id="ref-orders-' +
+              escapeHtml(c.code) +
+              '" style="display:none;"><td colspan="9" style="padding:0;"><div class="order-tickets-detail">';
+            html +=
+              '<div style="padding:12px 16px;background:var(--accent-dim);border-radius:8px;margin:8px;">';
+            html +=
+              '<table style="width:100%;font-size:13px;border-collapse:collapse;"><thead><tr>' +
+              '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Order ID</th>' +
+              '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Email</th>' +
+              '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Total</th>' +
+              '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;">Date</th>' +
+              "</tr></thead><tbody>";
+            codeOrders.forEach(function (o) {
+              html +=
+                "<tr>" +
+                '<td><code style="font-size:11px;">#' +
+                o.id.slice(0, 8) +
+                "</code></td>" +
+                "<td>" +
+                escapeHtml(o.email) +
+                "</td>" +
+                "<td><strong>D" +
+                (o.total || 0).toLocaleString() +
+                "</strong></td>" +
+                "<td>" +
+                new Date(o.created_at).toLocaleDateString() +
+                "</td>" +
+                "</tr>";
+            });
+            html += "</tbody></table></div></div></td></tr>";
+          }
+        });
+
+        // Grand total row
+        html +=
+          '<tr style="border-top:2px solid var(--accent);font-weight:700;">' +
+          "<td><strong style=\"color:var(--accent);\">TOTAL</strong></td>" +
+          "<td></td>" +
+          "<td></td>" +
+          "<td>" +
+          codes.reduce(function (s, c) { return s + (c.current_uses || 0); }, 0) +
+          "</td>" +
+          "<td></td>" +
+          "<td></td>" +
+          "<td>" +
+          grandTotalOrders +
+          " orders</td>" +
+          "<td></td>" +
+          "<td></td>" +
+          "</tr>";
+
+        html += "</tbody></table></div>";
+
+        // Export CSV button
+        html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">' +
+          '<button id="export-referral-csv-btn" class="action-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:6px 14px;font-size:13px;cursor:pointer;border-radius:6px;">Export CSV</button>' +
+          "</div>";
+
+        html += renderIssueForm();
+
+        container.innerHTML = html;
+      });
+    })
+    .catch(function (err) {
+      container.innerHTML =
+        '<p style="color:#DC2626;font-size:14px;">Failed to load referral codes: ' +
+        escapeHtml(err.message) +
+        "</p>";
+    });
+}
+
+function renderDiscountBadge(c) {
+  if (!c.discount_active || !c.discount_value || c.discount_value <= 0) {
+    return '<span style="font-size:12px;color:var(--muted);">—</span>';
+  }
+  var label = c.discount_type === "percentage" ? c.discount_value + "%" : "D" + c.discount_value;
+  var cls = c.discount_active ? "status-approved" : "status-rejected";
+  return '<span class="status-badge ' + cls + '" style="font-size:11px;">' + label + '</span>';
+}
+
+function renderIssueForm() {
+  return (
+    '<h4 style="font-size:15px;margin-bottom:12px;margin-top:20px;">Issue New Referral Code</h4>' +
+    '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">' +
+    '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Code (leave blank for random)</label>' +
+    '<input type="text" id="new-ref-code" placeholder="e.g. FRIEND20" style="width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);text-transform:uppercase;"></div>' +
+    '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Description</label>' +
+    '<input type="text" id="new-ref-desc" placeholder="e.g. Social media campaign" style="width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
+    '<div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Max Uses (optional)</label>' +
+    '<input type="number" id="new-ref-max-uses" placeholder="Unlimited" min="1" style="width:100px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font-body);"></div>' +
+    '<button id="issue-ref-code-btn" class="action-btn action-approve" style="min-width:auto;min-height:auto;padding:8px 20px;">Issue Code</button>' +
+    "</div>" +
+    // Discount fields
+    '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:12px 16px;background:var(--accent-dim);border:1px solid var(--border);border-radius:12px;margin-top:8px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;margin-right:8px;">Discount (optional)</div>' +
+    '<div><label style="font-size:12px;font-weight:500;display:block;margin-bottom:4px;color:var(--muted);">Type</label>' +
+    '<select id="new-ref-discount-type" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">' +
+    '<option value="">No discount</option>' +
+    '<option value="percentage">Percentage (%)</option>' +
+    '<option value="fixed">Fixed (D)</option>' +
+    '</select></div>' +
+    '<div><label style="font-size:12px;font-weight:500;display:block;margin-bottom:4px;color:var(--muted);">Value</label>' +
+    '<input type="number" id="new-ref-discount-value" value="0" min="0" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font-body);background:var(--surface);color:var(--fg);">' +
+    "</div>" +
+    "</div>"
+  );
+}
+
+function issueReferralCode() {
+  var code = (document.getElementById("new-ref-code").value || "").trim().toUpperCase() || null;
+  var desc = (document.getElementById("new-ref-desc").value || "").trim();
+  var maxUsesInput = document.getElementById("new-ref-max-uses").value;
+  var maxUses = maxUsesInput ? parseInt(maxUsesInput) : null;
+  var discountType = document.getElementById("new-ref-discount-type").value;
+  var discountValue = parseInt(document.getElementById("new-ref-discount-value").value) || 0;
+
+  var btn = document.getElementById("issue-ref-code-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Issuing...";
+  }
+
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/issue_referral_code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_code: code,
+      p_description: desc,
+      p_max_uses: maxUses,
+      p_discount_type: discountType || null,
+      p_discount_value: discountType ? discountValue : 0,
+    }),
+  })
+    .then(function (res) {
+      if (!res.ok) throw new Error("RPC failed.");
+      return res.json();
+    })
+    .then(function (data) {
+      if (data.success) {
+        document.getElementById("new-ref-code").value = "";
+        document.getElementById("new-ref-desc").value = "";
+        document.getElementById("new-ref-max-uses").value = "";
+        alert("Referral code issued: " + data.code);
+        loadReferralCodes();
+      } else {
+        throw new Error(data.error || "Failed to issue code.");
+      }
+    })
+    .catch(function (err) {
+      // Fall back to direct insert with service key
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Issue Code";
+        }
+        return;
+      }
+
+      var actualCode = code || (function() {
+        // Generate random 8-char code
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var c = "";
+        for (var i = 0; i < 8; i++) {
+          c += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return c;
+      })();
+
+      return fetch(SUPABASE_URL + "/rest/v1/referral_codes", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          code: actualCode,
+          description: desc,
+          max_uses: maxUses,
+          is_active: true,
+          current_uses: 0,
+          created_by_email: (getStoredSession() && getStoredSession().user && getStoredSession().user.email) || "admin",
+        }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to issue code.");
+          document.getElementById("new-ref-code").value = "";
+          document.getElementById("new-ref-desc").value = "";
+          document.getElementById("new-ref-max-uses").value = "";
+          alert("Referral code issued: " + actualCode);
+          loadReferralCodes();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Issue Code";
+          }
+        });
+    });
+}
+
+function exportReferralCodesCSV() {
+  var container = document.getElementById("referral-codes-container");
+  var table = container && container.querySelector("table");
+  if (!table) {
+    alert("No referral code data to export. Load the referral codes section first.");
+    return;
+  }
+
+  var csv = "\uFEFF"; // BOM for Excel
+  csv += "Code,Description,Created By,Current Uses,Max Uses,Status,Orders Count,Total Revenue (D),Created At\r\n";
+  var grandOrderCount = 0;
+  var grandRevenue = 0;
+  var activeCount = 0, inactiveCount = 0, expiredCount = 0;
+
+  var rows = table.querySelectorAll("tbody tr");
+  rows.forEach(function (row) {
+    // Skip hidden order detail rows
+    if (row.style.display === "none") return;
+
+    var cells = row.querySelectorAll("td");
+    if (cells.length < 8) return;
+
+    var code = cells[0].textContent.trim();
+    var desc = cells[1].textContent.trim();
+    var createdBy = cells[2].textContent.trim();
+    var uses = cells[3].textContent.trim();
+    var maxUses = cells[4].textContent.trim();
+    var status = cells[5].textContent.trim();
+    var orders = cells[6].textContent.trim();
+    var createdAt = cells[7].textContent.trim();
+
+    // Count active/inactive/expired
+    var statusLower = status.toLowerCase();
+    if (statusLower === "expired") {
+      expiredCount++;
+    } else if (statusLower === "active") {
+      activeCount++;
+    } else {
+      inactiveCount++;
+    }
+
+    // Escape fields
+    function esc(v) {
+      return '"' + String(v).replace(/"/g, '""') + '"';
+    }
+
+    // Parse order count and revenue from the orders button text
+    var rowOrderCount = 0;
+    var rowRevenue = 0;
+    var ordersMatch = orders.match(/(\d+)\s+orders.*?D([\d,]+)/i);
+    if (ordersMatch) {
+      rowOrderCount = parseInt(ordersMatch[1], 10);
+      rowRevenue = parseInt(ordersMatch[2].replace(/,/g, ""), 10);
+      grandOrderCount += rowOrderCount;
+      grandRevenue += rowRevenue;
+    }
+
+    csv += esc(code) + "," + esc(desc) + "," + esc(createdBy) + "," + esc(uses) + "," + esc(maxUses) + "," + esc(status) + "," + esc(rowOrderCount > 0 ? String(rowOrderCount) : "0") + "," + esc(rowRevenue > 0 ? String(rowRevenue) : "0") + "," + esc(createdAt) + "\r\n";
+  });
+
+  // Summary stats row
+  var totalCodes = activeCount + inactiveCount + expiredCount;
+  csv += esc("Active: " + activeCount + ", Inactive: " + inactiveCount + ", Expired: " + expiredCount + ", Total: " + totalCodes) + ",,,,,,\r\n";
+
+  // Grand total row — put "GRAND TOTAL" in Code column, totals in Orders column
+  csv += esc("GRAND TOTAL") + ",,,,,,," + esc(String(grandOrderCount)) + "," + esc(String(grandRevenue)) + ",,\r\n";
+
+  var filename = "referral-codes-" + new Date().toISOString().slice(0, 10) + ".csv";
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+function toggleReferralDiscount(id, newActive, discountType, discountValue) {
+  var btn = document.querySelector('.toggle-ref-discount-btn[data-id="' + id + '"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "...";
+  }
+
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/rpc/toggle_referral_code_discount", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_id: id,
+      p_discount_active: newActive,
+      p_discount_type: discountType || null,
+      p_discount_value: discountValue || 0,
+    }),
+  })
+    .then(function (res) {
+      if (res.ok) {
+        loadReferralCodes();
+        return;
+      }
+      throw new Error("RPC failed.");
+    })
+    .catch(function (err) {
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) {
+        alert("Permission denied. Contact admin.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Discount";
+        }
+        return;
+      }
+
+      // Fall back to direct PATCH with service key
+      var patchBody = { discount_active: newActive };
+      if (discountType) patchBody.discount_type = discountType;
+      if (discountValue) patchBody.discount_value = discountValue;
+
+      return fetch(SUPABASE_URL + "/rest/v1/referral_codes?id=eq." + id, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(patchBody),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("Failed to update discount.");
+          loadReferralCodes();
+        })
+        .catch(function (e2) {
+          alert("Error: " + e2.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Discount";
+          }
+        });
+    });
+}
+
+function toggleReferralCodeActive(id, currentlyActive) {
+  var action = currentlyActive ? "deactivate" : "activate";
+
+  fetchWithAuth(SUPABASE_URL + "/rest/v1/referral_codes?id=eq." + id, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ is_active: !currentlyActive }),
+  })
+    .then(function (res) {
+      if (res.ok || res.status === 204) {
+        loadReferralCodes();
+        return;
+      }
+      // Fall back to service key
+      var svcKey =
+        localStorage.getItem("wf_service_key") ||
+        sessionStorage.getItem("wf_service_key");
+      if (!svcKey && typeof getServiceKey === "function") {
+        svcKey = getServiceKey(true);
+      }
+      if (!svcKey) throw new Error("Permission denied.");
+      return fetch(SUPABASE_URL + "/rest/v1/referral_codes?id=eq." + id, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + svcKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ is_active: !currentlyActive }),
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Failed to update.");
+        loadReferralCodes();
+      });
+    })
+    .catch(function (err) {
+      alert("Error: " + err.message);
+    });
+}
+
+function viewReferralOrders(code) {
+  var row = document.getElementById("ref-orders-" + code);
+  if (row) {
+    row.style.display = row.style.display === "none" ? "" : "none";
+  }
+}
    9. SUPERADMIN REVENUE REPORT
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -2918,6 +3475,31 @@ document.addEventListener("click", function (e) {
   // Export superadmin report CSV
   if (e.target.id === "export-superadmin-csv-btn") {
     exportSuperadminReportCSV();
+  }
+
+  // Apply referral codes date filter
+  if (e.target.id === "apply-ref-filter-btn") {
+    var sv = document.getElementById("ref-filter-start").value;
+    var ev = document.getElementById("ref-filter-end").value;
+    if (!sv || !ev) {
+      alert("Please select both a start and end date.");
+      return;
+    }
+    if (sv > ev) {
+      alert("Start date cannot be after end date.");
+      return;
+    }
+    loadReferralCodes(sv, ev);
+  }
+
+  // Clear referral codes date filter
+  if (e.target.id === "clear-ref-filter-btn") {
+    loadReferralCodes();
+  }
+
+  // Export referral codes CSV
+  if (e.target.id === "export-referral-csv-btn") {
+    exportReferralCodesCSV();
   }
 
   // Apply date filter to superadmin report

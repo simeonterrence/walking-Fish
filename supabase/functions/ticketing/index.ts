@@ -2348,6 +2348,8 @@ async function handleCreateOrder(req) {
       topup_amount,
 
       assignments,
+
+      referral_code,
     } = await req.json();
 
     const email = (rawEmail || "").trim().toLowerCase();
@@ -2371,6 +2373,51 @@ async function handleCreateOrder(req) {
     }
 
     const supabase = getSupabaseClient();
+
+    let refDiscount = null; // { type: "percentage"|"fixed", value: number }
+
+    // If a referral code was provided, validate it and increment usage
+    if (referral_code) {
+      const normalizedCode = referral_code.trim().toUpperCase();
+      const { data: refResult, error: refErr } = await supabase.rpc(
+        "increment_referral_code_usage",
+        {
+          p_code: normalizedCode,
+        },
+      );
+
+      if (refErr || !refResult?.success) {
+        console.warn(
+          `[create-order] Invalid referral code "${normalizedCode}": ${refResult?.error || refErr?.message || "unknown error"}`,
+        );
+        return new Response(
+          JSON.stringify({
+            error: `Invalid referral code: "${normalizedCode}". Please check and try again.`,
+          }),
+
+          {
+            status: 400,
+
+            headers: {
+              ...corsHeaders,
+
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+    }
+
+      // Check if the referral code has an active discount
+      if (refResult.discount_value > 0) {
+        refDiscount = {
+          type: refResult.discount_type,
+          value: refResult.discount_value,
+        };
+        console.log(
+          "[create-order] Referral code " + normalizedCode + " has " + refResult.discount_type + " discount of " + refResult.discount_value,
+        );
+      }
 
     let total = 0;
 
@@ -2516,6 +2563,22 @@ async function handleCreateOrder(req) {
       }
     }
 
+    // Apply referral discount to total if active
+    let originalTotal = total;
+    let discountAmount = 0;
+    if (refDiscount) {
+      if (refDiscount.type === "percentage") {
+        discountAmount = Math.round(total * refDiscount.value / 100);
+      } else if (refDiscount.type === "fixed") {
+        discountAmount = Math.min(refDiscount.value, total);
+      }
+      total = total - discountAmount;
+      if (total < 0) total = 0;
+      console.log(
+        "[create-order] Applied " + refDiscount.type + " discount of " + discountAmount + " (" + refDiscount.value + "): " + originalTotal + " -> " + total,
+      );
+    }
+
     // Build metadata with top-up fields if applicable
 
     const metadata = {
@@ -2525,6 +2588,18 @@ async function handleCreateOrder(req) {
 
       assignments: assignments || null,
     };
+
+    // Store referral code if provided
+    if (referral_code) {
+      metadata.referral_code = referral_code.trim().toUpperCase();
+      // Store discount info for audit trail
+      if (refDiscount) {
+        metadata.referral_discount_type = refDiscount.type;
+        metadata.referral_discount_value = refDiscount.value;
+        metadata.referral_discount_amount = discountAmount;
+        metadata.original_total = originalTotal;
+      }
+    }
 
     if (isTopUp) {
       metadata.purpose = "top-up";

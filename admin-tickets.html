@@ -351,7 +351,25 @@
                     </div>
                 </div>
 
-                <!-- 7. Superadmin Revenue Report (super_admin_role only) -->
+                <!-- 7. Referral Codes Management -->
+                <div
+                    class="ticket-section"
+                    style="
+                        border-top: 1px solid var(--border);
+                        padding-top: 20px;
+                    "
+                >
+                    <h3>Referral Codes</h3>
+                    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+                        Issue and manage referral codes. Customers can enter these at checkout.
+                        View usage stats and analytics for each code.
+                    </p>
+                    <div id="referral-codes-container">
+                        <p style="color:var(--muted);font-size:14px;">Loading referral codes...</p>
+                    </div>
+                </div>
+
+                <!-- 8. Superadmin Revenue Report (super_admin_role only) -->
                 <div
                     class="ticket-section"
                     id="superadmin-report-section"
@@ -526,6 +544,7 @@
                 loadTopUpBundles();
                 loadBalanceCap();
                 loadScannerCodes();
+                loadReferralCodes();
 
                 // Show superadmin report if super-admin
                 var sessionType = getSession().type;
@@ -540,6 +559,29 @@
                         clearSession();
                         window.location.href = "/login";
                     });
+
+                // Referral code event delegation
+                document.addEventListener("click", function (e) {
+                    if (e.target.id === "issue-ref-code-btn") {
+                        issueReferralCode();
+                        return;
+                    }
+                    var revokeBtn = e.target.closest(".revoke-ref-code-btn");
+                    if (revokeBtn) {
+                        toggleReferralCodeActive(revokeBtn.getAttribute("data-id"), true);
+                        return;
+                    }
+                    var activateBtn = e.target.closest(".activate-ref-code-btn");
+                    if (activateBtn) {
+                        toggleReferralCodeActive(activateBtn.getAttribute("data-id"), false);
+                        return;
+                    }
+                    var viewOrdersBtn = e.target.closest(".view-referral-orders-btn");
+                    if (viewOrdersBtn) {
+                        viewReferralOrders(viewOrdersBtn.getAttribute("data-code"));
+                        return;
+                    }
+                });
 
                 // Password change
                 document
