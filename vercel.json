@@ -69,5 +69,11 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/admin-photos", "destination": "/admin-photos.html" }
   ],
+  "redirects": [
+    {
+      "source": "/scan(.*)",
+      "destination": "https://www.temistec.com/scan$1",
+      "permanent": false
+    }
+  ]
 }
-
