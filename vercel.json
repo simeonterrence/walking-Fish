@@ -74,6 +74,11 @@
       "source": "/scan(.*)",
       "destination": "https://www.temistec.com/scan$1",
       "permanent": false
+    },
+    {
+      "source": "/tickets(.*)",
+      "destination": "https://www.temistec.com/tickets$1",
+      "permanent": false
     }
   ]
 }
