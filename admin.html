@@ -641,6 +641,158 @@
                 </details>
             </div>
 
+            <!-- ════════════════════════════════════════════════════════════════ -->
+            <!-- EVENT MANAGEMENT -->
+            <!-- ════════════════════════════════════════════════════════════════ -->
+            <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <p class="label" style="color:var(--accent); margin:0 0 4px;">Event Management</p>
+                        <h2 style="font-size:20px; margin:0;">Manage Events</h2>
+                        <p style="font-size:14px; color:var(--muted); margin:6px 0 0;">Create, edit, and manage events. The active flagship event is displayed on /piroake.</p>
+                    </div>
+                    <button id="create-event-btn" class="btn btn-primary" style="padding:8px 18px; font-size:13px; flex-shrink:0;">+ New Event</button>
+                </div>
+
+                <!-- Create / Edit Event Form (hidden by default) -->
+                <div id="event-form-container" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:28px;">
+                    <h3 id="event-form-title" style="font-size:16px; margin-bottom:20px;">New Event</h3>
+                    <form id="event-form" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <input type="hidden" id="ef-id">
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label for="ef-name">Event Name *</label>
+                            <input type="text" id="ef-name" placeholder="e.g. Piroake Fest 2026" required style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="ef-label">Label (small tag above title)</label>
+                            <input type="text" id="ef-label" placeholder="e.g. Flagship Event" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="ef-status">Status</label>
+                            <select id="ef-status" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;background:var(--surface);">
+                                <option value="draft">Draft (hidden from public)</option>
+                                <option value="published">Published (live)</option>
+                                <option value="past">Past</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label for="ef-tagline">Hero Tagline (big h1 text)</label>
+                            <input type="text" id="ef-tagline" placeholder="e.g. The Festival You'll Talk About All Year." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label for="ef-subtitle">Subtitle (below tagline)</label>
+                            <input type="text" id="ef-subtitle" placeholder="e.g. Piroake Fest 2026: Picnic. Karaoke. Rave Experience." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="ef-date">Event Date &amp; Time</label>
+                            <input type="datetime-local" id="ef-date" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
+                        </div>
+                        <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:24px;">
+                            <input type="checkbox" id="ef-flagship" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
+                            <label for="ef-flagship" style="font-size:14px;cursor:pointer;">Set as Flagship (shown on /piroake)</label>
+                        </div>
+                        <p id="event-form-error" style="color:#dc2626;font-size:13px;display:none;grid-column:1/-1;"></p>
+                        <p id="event-form-success" style="color:#065f46;font-size:13px;display:none;grid-column:1/-1;"></p>
+                        <div style="grid-column:1/-1; display:flex; gap:10px;">
+                            <button type="submit" id="event-form-submit" class="btn btn-primary" style="padding:8px 20px;font-size:13px;">Save Event</button>
+                            <button type="button" id="event-form-cancel" class="btn btn-secondary" style="padding:8px 16px;font-size:13px;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Events List -->
+                <div id="events-list-container">
+                    <p style="color:var(--muted);font-size:14px;">Loading events…</p>
+                </div>
+
+                <!-- Ticket Tiers Panel (shown when event is expanded) -->
+                <div id="tiers-panel" style="display:none; margin-top:28px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="font-size:16px; margin:0;">Ticket Tiers — <span id="tiers-panel-event-name" style="color:var(--accent);"></span></h3>
+                        <button id="add-tier-btn" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">+ Add Tier</button>
+                    </div>
+                    <!-- Add/Edit Tier Form -->
+                    <div id="tier-form-container" style="display:none; background:var(--surface); border:1px dashed var(--border); border-radius:8px; padding:16px; margin-bottom:16px;">
+                        <h4 id="tier-form-title" style="font-size:14px; margin-bottom:14px;">New Tier</h4>
+                        <form id="tier-form" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <input type="hidden" id="tf-id">
+                            <input type="hidden" id="tf-event-id">
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label for="tf-name">Tier Name *</label>
+                                <input type="text" id="tf-name" placeholder="e.g. VIP" required style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="tf-price">Presale Price *</label>
+                                <input type="text" id="tf-price" placeholder="e.g. D800" required style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="tf-gate">Gate Price</label>
+                                <input type="text" id="tf-gate" placeholder="e.g. D1,000" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label for="tf-desc">Description</label>
+                                <textarea id="tf-desc" rows="2" placeholder="What's included..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;resize:vertical;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="tf-order">Sort Order</label>
+                                <input type="number" id="tf-order" value="0" min="0" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
+                                <input type="checkbox" id="tf-featured" style="width:16px;height:16px;accent-color:var(--accent);">
+                                <label for="tf-featured" style="font-size:13px;cursor:pointer;">Featured tier ("BEST EXPERIENCE" badge)</label>
+                            </div>
+                            <p id="tier-form-error" style="color:#dc2626;font-size:12px;display:none;grid-column:1/-1;"></p>
+                            <div style="grid-column:1/-1;display:flex;gap:8px;">
+                                <button type="submit" class="btn btn-primary" style="padding:6px 16px;font-size:13px;">Save Tier</button>
+                                <button type="button" id="tier-form-cancel" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div id="tiers-list"><p style="color:var(--muted);font-size:14px;">No tiers yet.</p></div>
+                </div>
+
+                <!-- Add-ons Panel -->
+                <div id="addons-panel" style="display:none; margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="font-size:16px; margin:0;">Add-ons</h3>
+                        <button id="add-addon-btn" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">+ Add Add-on</button>
+                    </div>
+                    <div id="addon-form-container" style="display:none; background:var(--surface); border:1px dashed var(--border); border-radius:8px; padding:16px; margin-bottom:16px;">
+                        <h4 id="addon-form-title" style="font-size:14px; margin-bottom:14px;">New Add-on</h4>
+                        <form id="addon-form" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <input type="hidden" id="af-id">
+                            <input type="hidden" id="af-event-id">
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label for="af-name">Add-on Name *</label>
+                                <input type="text" id="af-name" placeholder="e.g. Kids Center / Playground" required style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label for="af-desc">Description</label>
+                                <textarea id="af-desc" rows="2" placeholder="Describe this add-on..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;resize:vertical;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="af-price">Price *</label>
+                                <input type="text" id="af-price" placeholder="e.g. D500" required style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="af-label">Price Label</label>
+                                <input type="text" id="af-label" placeholder="e.g. per child" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="af-order">Sort Order</label>
+                                <input type="number" id="af-order" value="0" min="0" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:13px;">
+                            </div>
+                            <p id="addon-form-error" style="color:#dc2626;font-size:12px;display:none;grid-column:1/-1;"></p>
+                            <div style="grid-column:1/-1;display:flex;gap:8px;">
+                                <button type="submit" class="btn btn-primary" style="padding:6px 16px;font-size:13px;">Save Add-on</button>
+                                <button type="button" id="addon-form-cancel" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div id="addons-list"><p style="color:var(--muted);font-size:14px;">No add-ons yet.</p></div>
+                </div>
+            </div>
+
             <!-- Photo Management (standalone page via iframe) -->
             <div
                 class="w"
@@ -1588,11 +1740,14 @@
                     return;
                 }
 
-                fetch(SUPABASE_URL + "/rest/v1/admin_list", {
+                fetch(SUPABASE_URL + "/rest/v1/rpc/get_admin_list", {
+                    method: "POST",
                     headers: {
                         Authorization: "Bearer " + svcKey,
                         apikey: SUPABASE_ANON_KEY,
+                        "Content-Type": "application/json",
                     },
+                    body: "{}",
                 })
                     .then(function (r) {
                         if (!r.ok) throw new Error("Failed to load admin list.");
@@ -2592,6 +2747,380 @@
                         if (h !== "#" && h === p) a.classList.add("active");
                     });
             })();
+        </script>
+        <script>
+// ════════════════════════════════════════════════════════════════
+// ADMIN: Event Management
+// Uses Supabase REST API with admin JWT from session
+// ════════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+
+  // ── Auth headers ──
+  function adminHeaders() {
+    var session = (typeof getSession === 'function') ? getSession() : null;
+    var jwt = session && session.token ? session.token : SUPABASE_ANON_KEY;
+    return {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + jwt,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+  }
+
+  // ── REST helpers ──
+  async function apiGet(path) {
+    var r = await fetch(SUPABASE_URL + path, { headers: adminHeaders() });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+  async function apiPost(path, body) {
+    var r = await fetch(SUPABASE_URL + path, { method:'POST', headers: adminHeaders(), body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+  async function apiPatch(path, body) {
+    var r = await fetch(SUPABASE_URL + path, { method:'PATCH', headers: adminHeaders(), body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+  async function apiDelete(path) {
+    var r = await fetch(SUPABASE_URL + path, { method:'DELETE', headers: adminHeaders() });
+    if (!r.ok) throw new Error(await r.text());
+  }
+
+  function escHtml(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function statusBadge(s){
+    var colors = {draft:'background:#f3f4f6;color:#6b7280;', published:'background:#d1fae5;color:#065f46;', past:'background:#dbeafe;color:#1e40af;'};
+    return '<span class="status-badge" style="' + (colors[s]||'') + '">' + escHtml(s) + '</span>';
+  }
+
+  // ── State ──
+  var currentEventId = null;
+
+  // ──────────────────────────────────────────────────────────────────
+  // EVENTS LIST
+  // ──────────────────────────────────────────────────────────────────
+  async function loadEvents() {
+    var container = document.getElementById('events-list-container');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--muted);font-size:14px;">Loading…</p>';
+    try {
+      var events = await apiGet('/rest/v1/events?order=created_at.desc&select=*');
+      if (!events.length) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:14px;">No events yet. Click "+ New Event" to create one.</p>';
+        return;
+      }
+      container.innerHTML = events.map(function(ev) {
+        var flagBadge = ev.is_flagship ? '<span style="background:var(--accent);color:var(--surface);font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:8px;">FLAGSHIP</span>' : '';
+        return '<div style="border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--surface);">'
+          + '<div>'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+          + '<strong style="font-size:15px;">' + escHtml(ev.name) + '</strong>' + flagBadge + statusBadge(ev.status)
+          + '</div>'
+          + '<p style="font-size:13px;color:var(--muted);margin:4px 0 0;">' + (ev.event_date ? new Date(ev.event_date).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}) : 'No date set') + '</p>'
+          + '</div>'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+          + (!ev.is_flagship ? '<button class="action-btn" style="background:#7c3aed;color:#fff;" onclick="adminSetFlagship(\'' + ev.id + '\')" data-ev-flag="' + ev.id + '">Set Flagship</button>' : '')
+          + '<button class="action-btn action-approve" onclick="adminEditEvent(\'' + ev.id + '\')" data-ev-edit="' + ev.id + '">Edit</button>'
+          + '<button class="action-btn" style="background:#0891b2;color:#fff;" onclick="adminOpenTiers(\'' + ev.id + '\', \'' + escHtml(ev.name) + '\')" data-ev-tiers="' + ev.id + '">Tiers</button>'
+          + '<button class="action-btn" style="background:#059669;color:#fff;" onclick="adminOpenAddons(\'' + ev.id + '\', \'' + escHtml(ev.name) + '\')" data-ev-addons="' + ev.id + '">Add-ons</button>'
+          + '<button class="action-btn action-reject" onclick="adminDeleteEvent(\'' + ev.id + '\')" data-ev-del="' + ev.id + '">Delete</button>'
+          + '</div></div>';
+      }).join('');
+    } catch(e) {
+      container.innerHTML = '<p style="color:#dc2626;font-size:14px;">Error loading events: ' + escHtml(e.message) + '</p>';
+    }
+  }
+
+  // ── Create / Edit form ──
+  function showEventForm(ev) {
+    var fc = document.getElementById('event-form-container');
+    document.getElementById('event-form-title').textContent = ev ? 'Edit Event' : 'New Event';
+    document.getElementById('ef-id').value = ev ? ev.id : '';
+    document.getElementById('ef-name').value = ev ? ev.name : '';
+    document.getElementById('ef-label').value = ev ? ev.label : 'Flagship Event';
+    document.getElementById('ef-status').value = ev ? ev.status : 'draft';
+    document.getElementById('ef-tagline').value = ev ? ev.tagline : '';
+    document.getElementById('ef-subtitle').value = ev ? ev.subtitle : '';
+    document.getElementById('ef-flagship').checked = ev ? ev.is_flagship : false;
+    if (ev && ev.event_date) {
+      var d = new Date(ev.event_date);
+      document.getElementById('ef-date').value = d.toISOString().slice(0,16);
+    } else {
+      document.getElementById('ef-date').value = '';
+    }
+    document.getElementById('event-form-error').style.display = 'none';
+    document.getElementById('event-form-success').style.display = 'none';
+    fc.style.display = 'block';
+    fc.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  window.adminEditEvent = async function(id) {
+    try {
+      var events = await apiGet('/rest/v1/events?id=eq.' + id + '&select=*');
+      if (events.length) showEventForm(events[0]);
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  window.adminSetFlagship = async function(id) {
+    if (!confirm('Set this event as the flagship shown on /piroake?')) return;
+    try {
+      await apiPatch('/rest/v1/events?id=eq.' + id, { is_flagship: true, status: 'published' });
+      await loadEvents();
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  window.adminDeleteEvent = async function(id) {
+    if (!confirm('Delete this event and ALL its ticket tiers and add-ons? This cannot be undone.')) return;
+    try {
+      await apiDelete('/rest/v1/events?id=eq.' + id);
+      if (currentEventId === id) {
+        currentEventId = null;
+        document.getElementById('tiers-panel').style.display = 'none';
+        document.getElementById('addons-panel').style.display = 'none';
+      }
+      await loadEvents();
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  document.getElementById('create-event-btn').addEventListener('click', function(){
+    showEventForm(null);
+  });
+  document.getElementById('event-form-cancel').addEventListener('click', function(){
+    document.getElementById('event-form-container').style.display = 'none';
+  });
+
+  document.getElementById('event-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var errEl = document.getElementById('event-form-error');
+    var okEl = document.getElementById('event-form-success');
+    var btn = document.getElementById('event-form-submit');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var id = document.getElementById('ef-id').value;
+    var dateVal = document.getElementById('ef-date').value;
+    var body = {
+      name: document.getElementById('ef-name').value.trim(),
+      label: document.getElementById('ef-label').value.trim() || 'Flagship Event',
+      status: document.getElementById('ef-status').value,
+      tagline: document.getElementById('ef-tagline').value.trim(),
+      subtitle: document.getElementById('ef-subtitle').value.trim(),
+      is_flagship: document.getElementById('ef-flagship').checked,
+      event_date: dateVal ? new Date(dateVal).toISOString() : null
+    };
+    try {
+      if (id) {
+        await apiPatch('/rest/v1/events?id=eq.' + id, body);
+      } else {
+        await apiPost('/rest/v1/events', body);
+      }
+      okEl.textContent = 'Event saved!';
+      okEl.style.display = 'block';
+      await loadEvents();
+      setTimeout(function(){ document.getElementById('event-form-container').style.display = 'none'; }, 1000);
+    } catch(err) {
+      errEl.textContent = 'Error: ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Event';
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // TICKET TIERS
+  // ──────────────────────────────────────────────────────────────────
+  window.adminOpenTiers = async function(eventId, eventName) {
+    currentEventId = eventId;
+    document.getElementById('tiers-panel-event-name').textContent = eventName;
+    document.getElementById('tf-event-id').value = eventId;
+    document.getElementById('tiers-panel').style.display = 'block';
+    document.getElementById('addons-panel').style.display = 'block';
+    document.getElementById('af-event-id').value = eventId;
+    document.getElementById('tiers-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    await loadTiers(eventId);
+    await loadAdminAddons(eventId);
+  };
+
+  window.adminOpenAddons = async function(eventId, eventName) {
+    currentEventId = eventId;
+    document.getElementById('tiers-panel-event-name').textContent = eventName;
+    document.getElementById('af-event-id').value = eventId;
+    document.getElementById('tf-event-id').value = eventId;
+    document.getElementById('tiers-panel').style.display = 'block';
+    document.getElementById('addons-panel').style.display = 'block';
+    document.getElementById('addons-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    await loadTiers(eventId);
+    await loadAdminAddons(eventId);
+  };
+
+  async function loadTiers(eventId) {
+    var list = document.getElementById('tiers-list');
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
+    try {
+      var tiers = await apiGet('/rest/v1/event_ticket_tiers?event_id=eq.' + eventId + '&order=sort_order.asc&select=*');
+      if (!tiers.length) { list.innerHTML = '<p style="color:var(--muted);font-size:13px;">No tiers yet. Click "+ Add Tier".</p>'; return; }
+      list.innerHTML = '<table class="app-table" style="margin-top:0;"><thead><tr><th>Tier</th><th>Presale</th><th>Gate</th><th>Featured</th><th>Order</th><th>Actions</th></tr></thead><tbody>'
+        + tiers.map(function(t){
+          return '<tr>'
+            + '<td><strong>' + escHtml(t.tier_name) + '</strong><br><small style="color:var(--muted);">' + escHtml(t.description).slice(0,60) + (t.description&&t.description.length>60?'…':'') + '</small></td>'
+            + '<td>' + escHtml(t.price) + '</td>'
+            + '<td>' + (t.gate_price ? escHtml(t.gate_price) : '—') + '</td>'
+            + '<td>' + (t.is_featured ? '✓' : '') + '</td>'
+            + '<td>' + t.sort_order + '</td>'
+            + '<td><button class="action-btn action-approve" onclick="adminEditTier(\'' + t.id + '\')" style="margin-right:4px;">Edit</button><button class="action-btn action-reject" onclick="adminDeleteTier(\'' + t.id + '\', \'' + (eventId) + '\')" >Del</button></td>'
+            + '</tr>';
+        }).join('') + '</tbody></table>';
+    } catch(e) {
+      list.innerHTML = '<p style="color:#dc2626;font-size:13px;">Error: ' + escHtml(e.message) + '</p>';
+    }
+  }
+
+  document.getElementById('add-tier-btn').addEventListener('click', function(){
+    showTierForm(null);
+  });
+  document.getElementById('tier-form-cancel').addEventListener('click', function(){
+    document.getElementById('tier-form-container').style.display = 'none';
+  });
+
+  function showTierForm(tier) {
+    document.getElementById('tier-form-title').textContent = tier ? 'Edit Tier' : 'New Tier';
+    document.getElementById('tf-id').value = tier ? tier.id : '';
+    document.getElementById('tf-name').value = tier ? tier.tier_name : '';
+    document.getElementById('tf-price').value = tier ? tier.price : '';
+    document.getElementById('tf-gate').value = tier ? (tier.gate_price || '') : '';
+    document.getElementById('tf-desc').value = tier ? tier.description : '';
+    document.getElementById('tf-order').value = tier ? tier.sort_order : 0;
+    document.getElementById('tf-featured').checked = tier ? tier.is_featured : false;
+    document.getElementById('tier-form-error').style.display = 'none';
+    var fc = document.getElementById('tier-form-container');
+    fc.style.display = 'block';
+  }
+
+  window.adminEditTier = async function(id) {
+    try {
+      var rows = await apiGet('/rest/v1/event_ticket_tiers?id=eq.' + id + '&select=*');
+      if (rows.length) showTierForm(rows[0]);
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+  window.adminDeleteTier = async function(id, eventId) {
+    if (!confirm('Delete this tier?')) return;
+    try { await apiDelete('/rest/v1/event_ticket_tiers?id=eq.' + id); await loadTiers(eventId); }
+    catch(e) { alert('Error: ' + e.message); }
+  };
+
+  document.getElementById('tier-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var errEl = document.getElementById('tier-form-error');
+    errEl.style.display = 'none';
+    var id = document.getElementById('tf-id').value;
+    var eventId = document.getElementById('tf-event-id').value;
+    var body = {
+      event_id: eventId,
+      tier_name: document.getElementById('tf-name').value.trim(),
+      price: document.getElementById('tf-price').value.trim(),
+      gate_price: document.getElementById('tf-gate').value.trim() || null,
+      description: document.getElementById('tf-desc').value.trim(),
+      sort_order: parseInt(document.getElementById('tf-order').value)||0,
+      is_featured: document.getElementById('tf-featured').checked
+    };
+    try {
+      if (id) { await apiPatch('/rest/v1/event_ticket_tiers?id=eq.' + id, body); }
+      else { await apiPost('/rest/v1/event_ticket_tiers', body); }
+      document.getElementById('tier-form-container').style.display = 'none';
+      await loadTiers(eventId);
+    } catch(err) {
+      errEl.textContent = 'Error: ' + err.message;
+      errEl.style.display = 'block';
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // ADD-ONS
+  // ──────────────────────────────────────────────────────────────────
+  async function loadAdminAddons(eventId) {
+    var list = document.getElementById('addons-list');
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
+    try {
+      var addons = await apiGet('/rest/v1/event_addons?event_id=eq.' + eventId + '&order=sort_order.asc&select=*');
+      if (!addons.length) { list.innerHTML = '<p style="color:var(--muted);font-size:13px;">No add-ons yet. Click "+ Add Add-on".</p>'; return; }
+      list.innerHTML = '<table class="app-table" style="margin-top:0;"><thead><tr><th>Name</th><th>Price</th><th>Label</th><th>Order</th><th>Actions</th></tr></thead><tbody>'
+        + addons.map(function(a){
+          return '<tr>'
+            + '<td><strong>' + escHtml(a.name) + '</strong><br><small style="color:var(--muted);">' + escHtml(a.description).slice(0,60) + '</small></td>'
+            + '<td>' + escHtml(a.price) + '</td>'
+            + '<td>' + escHtml(a.price_label) + '</td>'
+            + '<td>' + a.sort_order + '</td>'
+            + '<td><button class="action-btn action-approve" onclick="adminEditAddon(\'' + a.id + '\')" style="margin-right:4px;">Edit</button><button class="action-btn action-reject" onclick="adminDeleteAddon(\'' + a.id + '\', \'' + eventId + '\')">Del</button></td>'
+            + '</tr>';
+        }).join('') + '</tbody></table>';
+    } catch(e) {
+      list.innerHTML = '<p style="color:#dc2626;font-size:13px;">Error: ' + escHtml(e.message) + '</p>';
+    }
+  }
+
+  document.getElementById('add-addon-btn').addEventListener('click', function(){
+    showAddonForm(null);
+  });
+  document.getElementById('addon-form-cancel').addEventListener('click', function(){
+    document.getElementById('addon-form-container').style.display = 'none';
+  });
+
+  function showAddonForm(addon) {
+    document.getElementById('addon-form-title').textContent = addon ? 'Edit Add-on' : 'New Add-on';
+    document.getElementById('af-id').value = addon ? addon.id : '';
+    document.getElementById('af-name').value = addon ? addon.name : '';
+    document.getElementById('af-desc').value = addon ? addon.description : '';
+    document.getElementById('af-price').value = addon ? addon.price : '';
+    document.getElementById('af-label').value = addon ? addon.price_label : 'per person';
+    document.getElementById('af-order').value = addon ? addon.sort_order : 0;
+    document.getElementById('addon-form-error').style.display = 'none';
+    document.getElementById('addon-form-container').style.display = 'block';
+  }
+
+  window.adminEditAddon = async function(id) {
+    try {
+      var rows = await apiGet('/rest/v1/event_addons?id=eq.' + id + '&select=*');
+      if (rows.length) showAddonForm(rows[0]);
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+  window.adminDeleteAddon = async function(id, eventId) {
+    if (!confirm('Delete this add-on?')) return;
+    try { await apiDelete('/rest/v1/event_addons?id=eq.' + id); await loadAdminAddons(eventId); }
+    catch(e) { alert('Error: ' + e.message); }
+  };
+
+  document.getElementById('addon-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var errEl = document.getElementById('addon-form-error');
+    errEl.style.display = 'none';
+    var id = document.getElementById('af-id').value;
+    var eventId = document.getElementById('af-event-id').value;
+    var body = {
+      event_id: eventId,
+      name: document.getElementById('af-name').value.trim(),
+      description: document.getElementById('af-desc').value.trim(),
+      price: document.getElementById('af-price').value.trim(),
+      price_label: document.getElementById('af-label').value.trim() || 'per person',
+      sort_order: parseInt(document.getElementById('af-order').value)||0
+    };
+    try {
+      if (id) { await apiPatch('/rest/v1/event_addons?id=eq.' + id, body); }
+      else { await apiPost('/rest/v1/event_addons', body); }
+      document.getElementById('addon-form-container').style.display = 'none';
+      await loadAdminAddons(eventId);
+    } catch(err) {
+      errEl.textContent = 'Error: ' + err.message;
+      errEl.style.display = 'block';
+    }
+  });
+
+  // ── Boot ──
+  document.addEventListener('DOMContentLoaded', function(){
+    loadEvents();
+  });
+
+})();
         </script>
     </body>
 </html>

@@ -322,17 +322,17 @@
   <source src="piroake-hero.mp4" type="video/mp4">
 </video>
 <div class="w">
-  <p class="label">Flagship Event</p>
-  <h1>The Festival You&rsquo;ll Talk About All Year.</h1>
-  <p style="margin: 12px auto 0; font-size: 20px; color: var(--muted);">Piroake Fest 2026: Picnic. Karaoke. Rave Experience.</p>
+  <p class="label" id="ev-label">Flagship Event</p>
+  <h1 id="ev-tagline">The Festival You&rsquo;ll Talk About All Year.</h1>
+  <p style="margin: 12px auto 0; font-size: 20px; color: var(--muted);" id="ev-subtitle">Piroake Fest 2026: Picnic. Karaoke. Rave Experience.</p>
   <div class="countdown" id="countdown-container">
     <div class="countdown-item"><div class="num" id="cd-days">—</div><div class="lbl">Days</div></div>
     <div class="countdown-item"><div class="num" id="cd-hours">—</div><div class="lbl">Hours</div></div>
     <div class="countdown-item"><div class="num" id="cd-minutes">—</div><div class="lbl">Minutes</div></div>
     <div class="countdown-item"><div class="num" id="cd-seconds">—</div><div class="lbl">Seconds</div></div>
   </div>
-  <img src="/images/piroake-poster.jpg" alt="Piroake Fest 2026 Poster" loading="lazy" style="width: 100%; max-width: 500px; border-radius: 16px; margin: 24px auto; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-  <p class="date">Coming June 2026 &middot; <span style="color:var(--accent);">Limited tickets available</span></p>
+  <img src="/images/piroake-poster.jpg" alt="Piroake Fest Poster" loading="lazy" style="width: 100%; max-width: 500px; border-radius: 16px; margin: 24px auto; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  <p class="date" id="ev-date-label">Coming soon &middot; <span style="color:var(--accent);">Limited tickets available</span></p>
   <div class="btn-group" style="justify-content:center; margin-top:32px;">
     <a href="#piroake-signup" class="btn btn-primary">Get Early Access <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-left:4px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
   </div>
@@ -367,92 +367,19 @@
 </div>
 </section>
 
-<section class="dark-section">
+<section class="dark-section" id="pricing-section">
 <div class="w">
   <p class="label">Pricing</p>
   <h2 style="margin-bottom: 40px;">Ticket tiers.</h2>
-  <div class="grid-3">
-    <div class="dark-card">
-      <p class="label" style="color: var(--accent);">Regular</p>
-      <div class="card-body">
-        <div class="price-container">
-          <div class="price-main">D300</div>
-          <div class="price-sub">Presale Ticket</div>
-          <div class="price-comparison">
-            <span class="price-gate">D400 at Gate</span>
-            <span class="price-save-badge">Save D100</span>
-          </div>
-        </div>
-        <p>Standard entry to all festival areas, live performances, karaoke stage, and picnic zones.</p>
-      </div>
-    </div>
-    <div class="dark-card featured">
-      <p class="label" style="color: var(--accent);">VIP</p>
-      <div class="card-body">
-        <div class="price-container">
-          <div class="price-main">D800</div>
-          <div class="price-sub">Presale Ticket</div>
-          <div class="price-comparison">
-            <span class="price-gate">D1,000 at Gate</span>
-            <span class="price-save-badge">Save D200</span>
-          </div>
-        </div>
-        <p>Exclusive fast-track entry, VIP lounge access, premium stage views, private bars, and curated experiences.</p>
-      </div>
-    </div>
-    <div class="dark-card">
-      <p class="label" style="color: var(--accent);">Group (5 Pax)</p>
-      <div class="card-body">
-        <div class="price-container">
-          <div class="price-main">D1,300</div>
-          <div class="price-sub">Presale Bundle Only</div>
-          <div class="price-comparison">
-            <span class="price-save-badge" style="background:var(--accent); color:var(--surface);">D260 per person</span>
-          </div>
-        </div>
-        <p>Gather your crew and save big. Standard entry to all zones for a group of 5 checking in together.</p>
-      </div>
-    </div>
+  <!-- Dynamically rendered ticket tiers -->
+  <div id="ticket-tiers-container" class="grid-3">
+    <!-- skeleton placeholder while loading -->
+    <div class="dark-card" style="opacity:0.4;"><p style="color:var(--d-muted);font-size:14px;">Loading tiers…</p></div>
+    <div class="dark-card" style="opacity:0.4;"><p style="color:var(--d-muted);font-size:14px;">Loading tiers…</p></div>
+    <div class="dark-card" style="opacity:0.4;"><p style="color:var(--d-muted);font-size:14px;">Loading tiers…</p></div>
   </div>
-
-  <div class="add-on-card">
-    <div class="add-on-info">
-      <h4><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="2" y="6" width="20" height="12" rx="4"/><circle cx="8.5" cy="12" r="0.75" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="15.5" cy="13.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="0.75" fill="currentColor" stroke="none"/><circle cx="17" cy="12" r="0.75" fill="currentColor" stroke="none"/><line x1="7" y1="12" x2="10" y2="12"/><line x1="8.5" y1="10.5" x2="8.5" y2="13.5"/></svg> Festival Side Games &amp; Activities</h4>
-      <p>Test your skills and jump into interactive festival side games, challenges, and competitive multiplayer tournaments on the field.</p>
-    </div>
-    <div class="add-on-price">
-      <div class="add-on-price-val">D50</div>
-      <div class="add-on-price-lbl">per 5 mins play</div>
-    </div>
-  </div>
-
-  <h3 style="margin: 48px 0 24px; font-size: 22px;">Kids &amp; Family</h3>
-  <div class="grid-3">
-    <div class="dark-card">
-      <p class="label" style="color: var(--accent);">Kids Ticket</p>
-      <div class="card-body">
-        <div class="price-container">
-          <div class="price-main">D100</div>
-          <div class="price-sub">Presale Ticket</div>
-          <div class="price-comparison">
-            <span class="price-save-badge" style="background:var(--accent); color:var(--surface);">Ages 3–10 years</span>
-          </div>
-        </div>
-        <p>Discounted festival entry for children, giving access to all main festival areas, performances, and family-friendly zones.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="add-on-card">
-    <div class="add-on-info">
-      <h4><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2l1.5 5.5L19 9l-5.5 2L12 17l-1.5-6L5 9l5.5-1.5z"/><path d="M11 22l1-4 1 4"/></svg> Kids Center / Playground</h4>
-      <p>Supervised play area with dedicated activities, games, and facilities for children aged 3–10 years. Open from <strong>12:00pm to 7:00pm</strong>.</p>
-    </div>
-    <div class="add-on-price">
-      <div class="add-on-price-val">D500</div>
-      <div class="add-on-price-lbl">per child</div>
-    </div>
-  </div>
+  <!-- Dynamically rendered add-ons -->
+  <div id="addons-container"></div>
 
   <p style="text-align:center; margin-top:40px; font-size:15px; color: var(--d-muted);">Presale ticket numbers are strictly limited. Register your interest to secure your spot first.</p>
   <div style="text-align:center; margin-top:20px;">
@@ -544,36 +471,164 @@
 </div>
 </footer>
 
+<script src="supabase-config.js?v=3"></script>
 <script>
+// ── Piroake: Load flagship event from Supabase ───────────────────────────
 (function(){
-  const target = new Date('2026-06-20T00:00:00');
-  function tick(){
-    const now = new Date();
-    const diff = target - now;
-    if(diff <= 0){
-      document.getElementById('cd-days').textContent = 'LIVE';
-      document.getElementById('cd-hours').textContent = '';
-      document.getElementById('cd-minutes').textContent = '';
-      document.getElementById('cd-seconds').textContent = '';
+  'use strict';
+
+  var countdownTarget = null;
+  var countdownInterval = null;
+
+  // ── Countdown engine ──
+  function startCountdown(dateStr) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    var target = new Date(dateStr);
+    function tick() {
+      var now = new Date();
+      var diff = target - now;
+      if (diff <= 0) {
+        document.getElementById('cd-days').textContent = 'LIVE';
+        ['cd-hours','cd-minutes','cd-seconds'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.parentElement.style.display = 'none';
+        });
+        clearInterval(countdownInterval);
+        return;
+      }
+      var d = Math.floor(diff / 864e5);
+      var h = Math.floor((diff / 36e5) % 24);
+      var m = Math.floor((diff / 6e4) % 60);
+      var s = Math.floor((diff / 1e3) % 60);
+      document.getElementById('cd-days').textContent = d;
+      document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+      document.getElementById('cd-minutes').textContent = String(m).padStart(2,'0');
+      document.getElementById('cd-seconds').textContent = String(s).padStart(2,'0');
+    }
+    tick();
+    countdownInterval = setInterval(tick, 1000);
+  }
+
+  // ── Render ticket tiers ──
+  function renderTiers(tiers) {
+    var container = document.getElementById('ticket-tiers-container');
+    if (!container) return;
+    if (!tiers || tiers.length === 0) {
+      container.innerHTML = '';
       return;
     }
-    const days = Math.floor(diff / (1000*60*60*24));
-    const hours = Math.floor((diff / (1000*60*60)) % 24);
-    const minutes = Math.floor((diff / (1000*60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
-    document.getElementById('cd-days').textContent = days;
-    document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
-    document.getElementById('cd-minutes').textContent = String(minutes).padStart(2,'0');
-    document.getElementById('cd-seconds').textContent = String(seconds).padStart(2,'0');
+    container.innerHTML = tiers.map(function(tier) {
+      var featuredClass = tier.is_featured ? ' featured' : '';
+      var gateHtml = tier.gate_price
+        ? '<div class="price-comparison"><span class="price-gate">' + escHtml(tier.gate_price) + ' at Gate</span></div>'
+        : '';
+      return '<div class="dark-card' + featuredClass + '">'
+        + '<p class="label" style="color:var(--accent);">' + escHtml(tier.tier_name) + '</p>'
+        + '<div class="card-body">'
+        + '<div class="price-container">'
+        + '<div class="price-main">' + escHtml(tier.price) + '</div>'
+        + '<div class="price-sub">Presale Ticket</div>'
+        + gateHtml
+        + '</div>'
+        + '<p>' + escHtml(tier.description) + '</p>'
+        + '</div></div>';
+    }).join('');
   }
-  tick();
-  setInterval(tick, 1000);
-})();
 
-document.addEventListener('DOMContentLoaded', function() {
-  var regBtn = document.getElementById('register-interest-btn');
-  if (regBtn) regBtn.addEventListener('click', giftPiroakeInterest);
-});
+  // ── Render add-ons ──
+  function renderAddons(addons) {
+    var container = document.getElementById('addons-container');
+    if (!container) return;
+    if (!addons || addons.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = addons.map(function(addon) {
+      return '<div class="add-on-card">'
+        + '<div class="add-on-info"><h4>' + escHtml(addon.name) + '</h4>'
+        + '<p>' + escHtml(addon.description) + '</p></div>'
+        + '<div class="add-on-price">'
+        + '<div class="add-on-price-val">' + escHtml(addon.price) + '</div>'
+        + '<div class="add-on-price-lbl">' + escHtml(addon.price_label) + '</div>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  // ── Escape HTML helper ──
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Update hero text ──
+  function applyEventToPage(ev) {
+    var label = document.getElementById('ev-label');
+    var tagline = document.getElementById('ev-tagline');
+    var subtitle = document.getElementById('ev-subtitle');
+    var dateLabel = document.getElementById('ev-date-label');
+
+    if (label && ev.label) label.textContent = ev.label;
+    if (tagline && ev.tagline) tagline.textContent = ev.tagline;
+    if (subtitle && ev.subtitle) subtitle.textContent = ev.subtitle;
+
+    if (ev.event_date) {
+      startCountdown(ev.event_date);
+      var d = new Date(ev.event_date);
+      var month = d.toLocaleString('en-GB', {month: 'long'});
+      var year = d.getFullYear();
+      if (dateLabel) dateLabel.innerHTML = 'Coming ' + month + ' ' + year + ' &middot; <span style="color:var(--accent);">Limited tickets available</span>';
+    }
+
+    // Update page title
+    if (ev.name) document.title = ev.name + ' | Walking-Fish Group';
+  }
+
+  // ── Fetch flagship event ──
+  async function loadFlagshipEvent() {
+    try {
+      if (typeof SUPABASE_URL === 'undefined') throw new Error('no config');
+      var headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+
+      // Fetch event
+      var evRes = await fetch(SUPABASE_URL + '/rest/v1/events?is_flagship=eq.true&status=eq.published&limit=1&select=*', { headers: headers });
+      if (!evRes.ok) throw new Error('event fetch failed');
+      var events = await evRes.json();
+      if (!events || events.length === 0) {
+        // No published flagship — use static fallback countdown
+        startCountdown('2026-06-20T00:00:00');
+        return;
+      }
+      var ev = events[0];
+      applyEventToPage(ev);
+
+      // Fetch tiers
+      var tiersRes = await fetch(SUPABASE_URL + '/rest/v1/event_ticket_tiers?event_id=eq.' + ev.id + '&order=sort_order.asc&select=*', { headers: headers });
+      if (tiersRes.ok) renderTiers(await tiersRes.json());
+
+      // Fetch add-ons
+      var addonsRes = await fetch(SUPABASE_URL + '/rest/v1/event_addons?event_id=eq.' + ev.id + '&order=sort_order.asc&select=*', { headers: headers });
+      if (addonsRes.ok) renderAddons(await addonsRes.json());
+
+    } catch(e) {
+      console.warn('[Piroake] Could not load event from Supabase, using static fallback.', e);
+      // Static fallback countdown
+      startCountdown('2026-06-20T00:00:00');
+      // Restore static tiers
+      var tc = document.getElementById('ticket-tiers-container');
+      if (tc) tc.innerHTML = [
+        '<div class="dark-card"><p class="label" style="color:var(--accent);">Regular</p><div class="card-body"><div class="price-container"><div class="price-main">D300</div><div class="price-sub">Presale Ticket</div><div class="price-comparison"><span class="price-gate">D400 at Gate</span></div></div><p>Standard entry to all festival areas, live performances, karaoke stage, and picnic zones.</p></div></div>',
+        '<div class="dark-card featured"><p class="label" style="color:var(--accent);">VIP</p><div class="card-body"><div class="price-container"><div class="price-main">D800</div><div class="price-sub">Presale Ticket</div><div class="price-comparison"><span class="price-gate">D1,000 at Gate</span></div></div><p>Exclusive fast-track entry, VIP lounge access, premium stage views, private bars, and curated experiences.</p></div></div>',
+        '<div class="dark-card"><p class="label" style="color:var(--accent);">Group (5 Pax)</p><div class="card-body"><div class="price-container"><div class="price-main">D1,300</div><div class="price-sub">Presale Bundle Only</div></div><p>Gather your crew and save big. Standard entry to all zones for a group of 5 checking in together.</p></div></div>'
+      ].join('');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    loadFlagshipEvent();
+    var regBtn = document.getElementById('register-interest-btn');
+    if (regBtn) regBtn.addEventListener('click', function(){ if(typeof giftPiroakeInterest === 'function') giftPiroakeInterest(); });
+  });
+})();
 </script>
 
 
