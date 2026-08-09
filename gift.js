@@ -210,22 +210,8 @@ function giftPiroakeEarly(form) {
 
   doSubmit(turnstileToken).finally(() => {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    // Show the gift modal regardless of API result (UX: never punish the user for network issues)
-    openGiftBox(`
-      <div class="gift-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="5" x2="12" y2="19" stroke-dasharray="2 2"/></svg></div>
-      <div class="gift-badge">Early Access</div>
-      <div class="gift-ticket" id="gt-ticket">
-        <div class="event-name">Piroake Fest 2026</div>
-        <h3>You're on the list.</h3>
-        <div class="ticket-code" id="gt-code">${code}</div>
-        <div class="ticket-waitlist">You're #${position} on the early-access list</div>
-      </div>
-      <p>You'll get early-bird pricing, presale access, and lineup announcements first.</p>
-      <p style="font-size:13px;color:var(--muted);margin-top:12px;">Save your code. It's your spot in line. <button onclick="navigator.clipboard.writeText('${code}');this.textContent='Copied!';" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:var(--font-body);font-size:13px;font-weight:500;padding:0;min-height:auto;">Copy code</button></p>`,
-    box => {
-      setTimeout(() => { const t = box.querySelector('#gt-ticket'); if (t) t.classList.add('flipped'); }, 100);
-      giftConfetti(box);
-    });
+    // Redirect to Temistec tickets after submitting
+    window.location.href = "https://www.temistec.com/tickets";
   });
 }
 
