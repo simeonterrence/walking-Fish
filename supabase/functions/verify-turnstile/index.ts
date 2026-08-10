@@ -201,6 +201,56 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
     }
   }
 
+  if (table === "volunteer_applications") {
+    emails.push({
+      to: "theevents.guy@walkingfish.gm",
+      subject: `New Volunteer Application: ${data.full_name || "Applicant"} — PIROAKE Games Night`,
+      html: emailShell(`
+        <h2 style="margin:0 0 24px;">🎮 New Volunteer Application</h2>
+        <p>A new volunteer has applied for the <strong>PIROAKE Games Night Series</strong> in The Gambia.</p>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Full Name", data.full_name || "-")}
+          ${row("Physical Address", data.address || "-")}
+          ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${data.phone ? row("Contact Info", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
+          ${row("Prior Experience?", data.prior_experience || "-")}
+          ${data.prior_experience_details ? row("Experience Details", data.prior_experience_details) : ""}
+          ${row("Skills & Strengths", data.skills || "-")}
+          ${row("Motivation", data.motivation || "-")}
+          ${data.extra_info ? row("Additional Notes", data.extra_info) : ""}
+          ${data.resume_url ? row("Resume File", `<a href="${data.resume_url}" target="_blank" style="color:#e6734f;font-weight:bold;">View Uploaded Resume (${data.resume_filename || "File"})</a>`) : ""}
+        </table>
+        <p style="margin-top:24px;font-size:13px;color:#999;">Review and contact applicant via WhatsApp or Email.</p>
+      `),
+    });
+
+    emails.push({
+      to: "hello@walkingfish.gm",
+      subject: `[Copy] New Volunteer Application: ${data.full_name || "Applicant"}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 24px;">New Volunteer Application Notification</h2>
+        <p><strong>${data.full_name}</strong> (${data.email}, ${data.phone}) has submitted a volunteer application for PIROAKE Games Night Series.</p>
+      `),
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: "We've received your Volunteer Application — PIROAKE Games Night Series",
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">Thank You for Applying! 🎮</h2>
+          <p>Hi ${data.full_name || "there"},</p>
+          <p>Thank you for expressing your interest in volunteering for the <strong>PIROAKE Games Night Series</strong> with Walking-Fish Group in The Gambia!</p>
+          <p>We've received your application and resume. Our team will review your profile and reach out via WhatsApp or email regarding next steps.</p>
+          <div style="background:#f9f9f9;padding:16px;border-radius:8px;margin:20px 0;font-size:14px;">
+            <p style="margin:0;color:#555;"><strong>Note:</strong> Volunteer positions are based in The Gambia. Thank you for your passion and support in building an exciting community!</p>
+          </div>
+          <p>Warm regards,<br><strong>Walking-Fish Team</strong></p>
+        `),
+      });
+    }
+  }
+
   return emails;
 }
 
@@ -330,7 +380,7 @@ Deno.serve(async (req) => {
       console.warn("TURNSTILE_SECRET_KEY not set — dev mode, skipping CAPTCHA");
     }
 
-    const ALLOWED_TABLES = ["vendor_applications", "contact_messages", "early_access", "complaints"];
+    const ALLOWED_TABLES = ["vendor_applications", "volunteer_applications", "contact_messages", "early_access", "complaints"];
     if (!ALLOWED_TABLES.includes(table)) {
       return new Response(JSON.stringify({ error: "Invalid table specified" }), {
         status: 400,

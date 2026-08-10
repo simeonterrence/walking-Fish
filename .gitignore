@@ -40,3 +40,6 @@ __pycache__/
 binarized_text.txt
 image_analysis.txt
 login-screenshot.png
+.antigravitycli/
+.supabase/
+
