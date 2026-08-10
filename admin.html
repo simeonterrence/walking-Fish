@@ -2830,6 +2830,21 @@
             }
 
             // ─── CSV Export ─────────────────────────────────────────────
+            function adminQuery(path) {
+                var key = sessionStorage.getItem("wf_service_key");
+                if (!key) return Promise.reject(new Error("Service key required."));
+                return fetch(SUPABASE_URL + path, {
+                    headers: {
+                        apikey: key,
+                        Authorization: "Bearer " + key,
+                        "Content-Type": "application/json"
+                    }
+                }).then(function (r) {
+                    if (!r.ok) throw new Error("Query failed: " + r.status);
+                    return r.json();
+                });
+            }
+
             function exportAllDataCSV() {
                 var promises = [];
 
