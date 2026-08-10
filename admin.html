@@ -745,6 +745,15 @@
                             <label for="ef-subtitle">Subtitle (below tagline)</label>
                             <input type="text" id="ef-subtitle" placeholder="e.g. Piroake Fest 2026: Picnic. Karaoke. Rave Experience." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
                         </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label for="ef-poster">Event Poster / Flyer Image</label>
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="ef-poster" placeholder="e.g. /images/piroake-poster.jpg or https://... or upload file" style="flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-body); font-size:14px;">
+                                <input type="file" id="ef-poster-file" accept="image/*" style="display:none;">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('ef-poster-file').click()" style="padding:8px 14px; font-size:13px; white-space:nowrap;">Upload Image</button>
+                            </div>
+                            <small style="color:var(--muted); font-size:12px; margin-top:4px; display:block;">Upload a poster image or enter an image URL to edit the hero flyer image on /piroake.</small>
+                        </div>
                         <div class="form-group">
                             <label for="ef-date">Event Date &amp; Time</label>
                             <input type="datetime-local" id="ef-date" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-body);font-size:14px;">
@@ -3264,6 +3273,8 @@
     document.getElementById('ef-status').value = ev ? ev.status : 'draft';
     document.getElementById('ef-tagline').value = ev ? ev.tagline : '';
     document.getElementById('ef-subtitle').value = ev ? ev.subtitle : '';
+    var posterEl = document.getElementById('ef-poster');
+    if (posterEl) posterEl.value = ev && ev.poster_url ? ev.poster_url : '/images/piroake-poster.jpg';
     document.getElementById('ef-flagship').checked = ev ? ev.is_flagship : false;
     if (ev && ev.event_date) {
       var d = new Date(ev.event_date);
@@ -3321,12 +3332,14 @@
     btn.disabled = true; btn.textContent = 'Saving…';
     var id = document.getElementById('ef-id').value;
     var dateVal = document.getElementById('ef-date').value;
+    var posterVal = document.getElementById('ef-poster') ? document.getElementById('ef-poster').value.trim() : '';
     var body = {
       name: document.getElementById('ef-name').value.trim(),
       label: document.getElementById('ef-label').value.trim() || 'Flagship Event',
       status: document.getElementById('ef-status').value,
       tagline: document.getElementById('ef-tagline').value.trim(),
       subtitle: document.getElementById('ef-subtitle').value.trim(),
+      poster_url: posterVal || '/images/piroake-poster.jpg',
       is_flagship: document.getElementById('ef-flagship').checked,
       event_date: dateVal ? new Date(dateVal).toISOString() : null
     };
@@ -3347,6 +3360,26 @@
       btn.disabled = false; btn.textContent = 'Save Event';
     }
   });
+
+  // Poster image file upload handler
+  var posterFileInput = document.getElementById('ef-poster-file');
+  if (posterFileInput) {
+    posterFileInput.addEventListener('change', function(e){
+      if (e.target.files && e.target.files[0]) {
+        var file = e.target.files[0];
+        if (file.size > 5 * 1024 * 1024) {
+          alert('File size is too large (max 5MB). Please select a smaller image.');
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          var posterTextEl = document.getElementById('ef-poster');
+          if (posterTextEl) posterTextEl.value = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
 
   // ──────────────────────────────────────────────────────────────────
   // TICKET TIERS
