@@ -79,12 +79,63 @@
       });
     }
 
+    // Load events dynamically into dropdown
+    loadEventsForVolunteerForm();
+
     // Form submit
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       handleFormSubmit();
     });
   });
+
+  var eventsMap = {}; // name -> id
+
+  function loadEventsForVolunteerForm() {
+    var eventSelect = document.getElementById('vol-event');
+    if (!eventSelect) return;
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var preselectedEvent = urlParams.get('event') || urlParams.get('e');
+
+    if (typeof SUPABASE_URL === 'undefined') return;
+
+    fetch(SUPABASE_URL + '/rest/v1/events?status=eq.published&select=id,name,is_flagship&order=created_at.desc', {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      }
+    }).then(function (r) {
+      return r.ok ? r.json() : [];
+    }).then(function (events) {
+      if (!events || !events.length) return;
+
+      eventSelect.innerHTML = '';
+      eventsMap = {};
+
+      var matchedIndex = -1;
+
+      events.forEach(function (ev, idx) {
+        eventsMap[ev.name] = ev.id;
+        var opt = document.createElement('option');
+        opt.value = ev.name;
+        opt.textContent = ev.name + (ev.is_flagship ? ' (Flagship Event)' : '');
+        opt.setAttribute('data-id', ev.id);
+
+        if (preselectedEvent && ev.name.toLowerCase().indexOf(preselectedEvent.toLowerCase()) !== -1) {
+          matchedIndex = idx;
+        }
+
+        eventSelect.appendChild(opt);
+      });
+
+      if (matchedIndex !== -1) {
+        eventSelect.selectedIndex = matchedIndex;
+      }
+    }).catch(function (e) {
+      console.warn('[VolunteerForm] Error loading events, using default options.', e);
+    });
+  }
 
   function processResumeFile(file) {
     if (!file) return;
@@ -219,10 +270,15 @@
 
     var v = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
 
+    var selectedEventName = v('vol-event') || 'PIROAKE Games Night Series';
+    var selectedEventId = eventsMap[selectedEventName] || null;
+
     var payload = {
       token: turnstileToken,
       table: 'volunteer_applications',
       data: {
+        event_name: selectedEventName,
+        event_id: selectedEventId,
         full_name: v('vol-fullname'),
         address: v('vol-address'),
         email: v('vol-email'),

@@ -638,14 +638,72 @@
                                 Loading complaints...
                             </p>
                         </div>
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- VOLUNTEER MANAGEMENT (EVENT-BASED) -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+                        <div>
+                            <p class="label" style="color:var(--accent); margin:0 0 4px;">Volunteer Management</p>
+                            <h2 style="font-size:20px; margin:0;">Volunteer Applications</h2>
+                            <p style="font-size:14px; color:var(--muted); margin:4px 0 0;">Review and manage volunteer applications across all events.</p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <label for="vol-admin-event-filter" style="font-size:13px; font-weight:500; color:var(--muted);">Filter by Event:</label>
+                            <select id="vol-admin-event-filter" style="padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--surface); font-family:var(--font-body); font-size:14px; min-width:200px;">
+                                <option value="ALL">All Events</option>
+                            </select>
+                            <button id="vol-export-csv-btn" class="btn btn-secondary" style="padding:7px 14px; font-size:13px;">Export CSV</button>
+                        </div>
                     </div>
-                </details>
-            </div>
 
-            <!-- ════════════════════════════════════════════════════════════════ -->
-            <!-- EVENT MANAGEMENT -->
-            <!-- ════════════════════════════════════════════════════════════════ -->
-            <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
+                    <div class="stats-grid" id="vol-stats-grid" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="num" id="vol-stat-total">0</div>
+                            <div class="lbl">Total Applicants</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="vol-stat-pending">0</div>
+                            <div class="lbl">Pending</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="vol-stat-approved">0</div>
+                            <div class="lbl">Approved</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="vol-stat-rejected">0</div>
+                            <div class="lbl">Rejected</div>
+                        </div>
+                    </div>
+
+                    <div id="vol-applications-container">
+                        <div class="empty-state" id="vol-empty-state">
+                            <p>Loading volunteer applications...</p>
+                        </div>
+                        <div id="vol-table-wrapper" style="display:none; overflow-x:auto;">
+                            <table class="app-table">
+                                <thead>
+                                    <tr>
+                                        <th>Applicant</th>
+                                        <th>Event</th>
+                                        <th>Contact</th>
+                                        <th>Experience</th>
+                                        <th>Skills</th>
+                                        <th>Resume</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vol-apps-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- EVENT MANAGEMENT -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
                     <div>
                         <p class="label" style="color:var(--accent); margin:0 0 4px;">Event Management</p>
@@ -1300,6 +1358,7 @@
 
                 initAdminManagement();
                 loadComplaints();
+                loadVolunteerApplications();
 
                 document
                     .getElementById("logout-btn")
@@ -2410,7 +2469,353 @@
                 if (e.target.id === "complaint-detail-modal") {
                     e.target.remove();
                 }
+
+                // ── Volunteer Applications Delegation ──
+                if (e.target.classList.contains("vol-view-btn")) {
+                    var volId = e.target.getAttribute("data-id");
+                    showVolunteerModal(volId);
+                }
+
+                if (e.target.classList.contains("vol-approve-btn")) {
+                    var volId = e.target.getAttribute("data-id");
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateVolunteerStatus(volId, "approved").catch(function (err) { alert("Error: " + err.message); });
+                }
+
+                if (e.target.classList.contains("vol-reject-btn")) {
+                    var volId = e.target.getAttribute("data-id");
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    updateVolunteerStatus(volId, "rejected").catch(function (err) { alert("Error: " + err.message); });
+                }
+
+                if (e.target.classList.contains("vol-delete-btn")) {
+                    var volId = e.target.getAttribute("data-id");
+                    if (!confirm("Permanently delete this volunteer application? This cannot be undone.")) return;
+                    e.target.disabled = true;
+                    e.target.textContent = "...";
+                    deleteVolunteerApplication(volId).catch(function (err) { alert("Error: " + err.message); });
+                }
+
+                if (e.target.classList.contains("vol-update-modal-btn")) {
+                    var volId = e.target.getAttribute("data-id");
+                    var newStatus = e.target.getAttribute("data-status");
+                    e.target.disabled = true;
+                    e.target.textContent = "Updating...";
+                    updateVolunteerStatus(volId, newStatus)
+                        .then(function () {
+                            var modal = document.getElementById("vol-detail-modal");
+                            if (modal) modal.remove();
+                        })
+                        .catch(function (err) {
+                            alert("Error: " + err.message);
+                            e.target.disabled = false;
+                        });
+                }
+
+                if (e.target.id === "vol-modal-close-btn" || e.target.id === "vol-detail-modal") {
+                    var modal = document.getElementById("vol-detail-modal");
+                    if (modal) modal.remove();
+                }
             });
+
+            // ═════════════════════════════════════════════════════════════╗
+            // VOLUNTEER MANAGEMENT (EVENT-BASED)                          ║
+            // ═════════════════════════════════════════════════════════════╝
+
+            window.cachedVolunteerApps = [];
+
+            function fetchVolunteerApplications() {
+                return fetchWithAuth(
+                    SUPABASE_URL + "/rest/v1/volunteer_applications?order=created_at.desc&select=*",
+                ).then(function (r) {
+                    if (!r.ok) throw new Error("Failed to load volunteer applications.");
+                    return r.json();
+                });
+            }
+
+            function loadVolunteerApplications() {
+                var emptyState = document.getElementById("vol-empty-state");
+                var tableWrapper = document.getElementById("vol-table-wrapper");
+                if (emptyState) emptyState.style.display = "block";
+                if (tableWrapper) tableWrapper.style.display = "none";
+
+                fetchVolunteerApplications()
+                    .then(function (apps) {
+                        window.cachedVolunteerApps = apps || [];
+
+                        // Populate event filter dropdown dynamically
+                        var filterSelect = document.getElementById("vol-admin-event-filter");
+                        if (filterSelect) {
+                            var currentVal = filterSelect.value || "ALL";
+                            var eventsSet = new Set(["PIROAKE Games Night Series", "Piroake Fest 2026", "LAABI JAUNTERS"]);
+
+                            (window.cachedVolunteerApps || []).forEach(function (app) {
+                                if (app.event_name) eventsSet.add(app.event_name);
+                            });
+
+                            var html = '<option value="ALL">All Events</option>';
+                            eventsSet.forEach(function (evName) {
+                                html += '<option value="' + escapeHtml(evName) + '">' + escapeHtml(evName) + '</option>';
+                            });
+                            filterSelect.innerHTML = html;
+                            filterSelect.value = currentVal;
+
+                            if (!filterSelect.hasAttribute("data-bound")) {
+                                filterSelect.setAttribute("data-bound", "true");
+                                filterSelect.addEventListener("change", function () {
+                                    renderVolunteerApplications();
+                                });
+                            }
+                        }
+
+                        var exportBtn = document.getElementById("vol-export-csv-btn");
+                        if (exportBtn && !exportBtn.hasAttribute("data-bound")) {
+                            exportBtn.setAttribute("data-bound", "true");
+                            exportBtn.addEventListener("click", exportVolunteerCSV);
+                        }
+
+                        renderVolunteerApplications();
+                    })
+                    .catch(function (err) {
+                        console.error("[Volunteers Admin]", err);
+                        if (emptyState) {
+                            emptyState.innerHTML = '<p style="color:#DC2626;font-size:14px;">Error loading volunteer applications: ' + escapeHtml(err.message) + '</p>';
+                        }
+                    });
+            }
+
+            function renderVolunteerApplications() {
+                var filterSelect = document.getElementById("vol-admin-event-filter");
+                var filterEvent = filterSelect ? filterSelect.value : "ALL";
+
+                var apps = window.cachedVolunteerApps || [];
+                if (filterEvent !== "ALL") {
+                    apps = apps.filter(function (a) {
+                        return (a.event_name || "").toLowerCase() === filterEvent.toLowerCase();
+                    });
+                }
+
+                // Stats calculation
+                var stats = {
+                    total: apps.length,
+                    pending: apps.filter(function (a) { return (a.status || "pending") === "pending"; }).length,
+                    approved: apps.filter(function (a) { return a.status === "approved"; }).length,
+                    rejected: apps.filter(function (a) { return a.status === "rejected"; }).length
+                };
+
+                var elTotal = document.getElementById("vol-stat-total");
+                var elPending = document.getElementById("vol-stat-pending");
+                var elApproved = document.getElementById("vol-stat-approved");
+                var elRejected = document.getElementById("vol-stat-rejected");
+
+                if (elTotal) elTotal.textContent = stats.total;
+                if (elPending) elPending.textContent = stats.pending;
+                if (elApproved) elApproved.textContent = stats.approved;
+                if (elRejected) elRejected.textContent = stats.rejected;
+
+                var emptyState = document.getElementById("vol-empty-state");
+                var tableWrapper = document.getElementById("vol-table-wrapper");
+                var tbody = document.getElementById("vol-apps-tbody");
+
+                if (!apps.length) {
+                    if (emptyState) {
+                        emptyState.innerHTML = '<p style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">No volunteer applications found ' + (filterEvent !== "ALL" ? 'for "' + escapeHtml(filterEvent) + '"' : '') + '.</p>';
+                        emptyState.style.display = "block";
+                    }
+                    if (tableWrapper) tableWrapper.style.display = "none";
+                    return;
+                }
+
+                if (emptyState) emptyState.style.display = "none";
+                if (tableWrapper) tableWrapper.style.display = "block";
+
+                var html = "";
+                apps.forEach(function (a) {
+                    var statusClass = "status-" + (a.status || "pending");
+                    var statusLabel = (a.status || "pending");
+                    var phoneClean = (a.phone || "").replace(/[^0-9]/g, "");
+
+                    var resumeHtml = '<span style="color:var(--muted);font-size:12px;">No Resume</span>';
+                    if (a.resume_url) {
+                        resumeHtml = '<a href="' + a.resume_url + '" target="_blank" rel="noopener" download="' + escapeHtml(a.resume_filename || 'resume') + '" style="color:var(--accent);font-weight:600;font-size:12px;text-decoration:underline;">📄 Resume</a>';
+                    }
+
+                    var skillsPreview = (a.skills || "").substring(0, 35) + ((a.skills || "").length > 35 ? "..." : "");
+
+                    html += '<tr>' +
+                        '<td><strong>' + escapeHtml(a.full_name || "-") + '</strong><br><span style="font-size:12px;color:var(--muted);">' + escapeHtml(a.address || "-") + '</span></td>' +
+                        '<td><span class="status-badge" style="background:var(--accent-dim);color:var(--accent);font-size:11px;">' + escapeHtml(a.event_name || "PIROAKE Games Night") + '</span></td>' +
+                        '<td><a href="mailto:' + escapeHtml(a.email) + '" style="font-size:13px;color:var(--fg);text-decoration:underline;">' + escapeHtml(a.email) + '</a>' +
+                        (phoneClean ? '<br><a href="https://wa.me/' + phoneClean + '" target="_blank" rel="noopener" style="color:#059669;font-size:12px;font-weight:500;">💬 ' + escapeHtml(a.phone) + '</a>' : '') +
+                        '</td>' +
+                        '<td><span style="font-size:13px;">' + escapeHtml(a.prior_experience || "-") + '</span></td>' +
+                        '<td><span style="font-size:12px;color:var(--muted);" title="' + escapeHtml(a.skills || "") + '">' + escapeHtml(skillsPreview || "-") + '</span></td>' +
+                        '<td>' + resumeHtml + '</td>' +
+                        '<td><span class="status-badge ' + statusClass + '" style="text-transform:capitalize;">' + statusLabel + '</span></td>' +
+                        '<td style="white-space:nowrap;">' +
+                        '<button class="action-btn vol-view-btn" data-id="' + a.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);margin-right:4px;padding:4px 10px;font-size:12px;">View</button>' +
+                        (a.status !== "approved" ? '<button class="action-btn action-approve vol-approve-btn" data-id="' + a.id + '" style="padding:4px 10px;font-size:12px;">Approve</button>' : '') +
+                        (a.status !== "rejected" ? '<button class="action-btn action-reject vol-reject-btn" data-id="' + a.id + '" style="padding:4px 10px;font-size:12px;margin-left:4px;">Reject</button>' : '') +
+                        '<button class="action-btn vol-delete-btn" data-id="' + a.id + '" style="background:transparent;color:#dc2626;border:none;margin-left:4px;padding:4px 8px;font-size:12px;">Delete</button>' +
+                        '</td>' +
+                        '</tr>';
+                });
+
+                if (tbody) tbody.innerHTML = html;
+            }
+
+            function showVolunteerModal(volId) {
+                var app = (window.cachedVolunteerApps || []).find(function (a) {
+                    return String(a.id) === String(volId);
+                });
+                if (!app) {
+                    alert("Volunteer application not found.");
+                    return;
+                }
+
+                var existing = document.getElementById("vol-detail-modal");
+                if (existing) existing.remove();
+
+                var overlay = document.createElement("div");
+                overlay.id = "vol-detail-modal";
+                overlay.className = "gift-overlay open";
+                overlay.style.cssText = "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+
+                var phoneClean = (app.phone || "").replace(/[^0-9]/g, "");
+                var statusClass = "status-" + (app.status || "pending");
+
+                overlay.innerHTML =
+                    '<div class="gift-box" style="text-align:left;max-width:620px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;max-height:88vh;overflow-y:auto;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+                    '<span class="status-badge ' + statusClass + '" style="text-transform:capitalize;font-size:13px;">' + (app.status || "pending") + '</span>' +
+                    '<span class="status-badge" style="background:var(--accent-dim);color:var(--accent);font-size:12px;font-weight:600;">' + escapeHtml(app.event_name || "PIROAKE Games Night Series") + '</span>' +
+                    '</div>' +
+                    '<h2 style="font-size:22px;margin-bottom:4px;">' + escapeHtml(app.full_name || "Volunteer Candidate") + '</h2>' +
+                    '<p style="color:var(--muted);font-size:14px;margin-bottom:16px;">📍 ' + escapeHtml(app.address || "The Gambia") + '</p>' +
+
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--bg);padding:14px;border-radius:8px;margin-bottom:20px;font-size:14px;">' +
+                    '<div><strong style="color:var(--muted);font-size:12px;">Email:</strong><br><a href="mailto:' + escapeHtml(app.email) + '" style="color:var(--fg);text-decoration:underline;">' + escapeHtml(app.email) + '</a></div>' +
+                    '<div><strong style="color:var(--muted);font-size:12px;">WhatsApp / Phone:</strong><br>' + (phoneClean ? '<a href="https://wa.me/' + phoneClean + '" target="_blank" rel="noopener" style="color:#059669;font-weight:600;">💬 ' + escapeHtml(app.phone) + '</a>' : escapeHtml(app.phone)) + '</div>' +
+                    '</div>' +
+
+                    '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Prior Event Experience:</strong><p style="margin-top:2px;font-size:14px;font-weight:500;">' + escapeHtml(app.prior_experience || "No") + '</p>' +
+                    (app.prior_experience_details ? '<p style="font-size:13px;color:var(--fg);background:var(--accent-dim);padding:8px 12px;border-radius:6px;margin-top:4px;">' + escapeHtml(app.prior_experience_details) + '</p>' : '') +
+                    '</div>' +
+
+                    '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Skills & Strengths:</strong><div style="background:var(--bg);padding:12px;border-radius:8px;font-size:14px;white-space:pre-wrap;margin-top:4px;border:1px solid var(--border);">' + escapeHtml(app.skills || "-") + '</div></div>' +
+
+                    '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Motivation (Why Volunteer):</strong><div style="background:var(--bg);padding:12px;border-radius:8px;font-size:14px;white-space:pre-wrap;margin-top:4px;border:1px solid var(--border);">' + escapeHtml(app.motivation || "-") + '</div></div>' +
+
+                    (app.extra_info ? '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Additional Notes:</strong><p style="font-size:14px;margin-top:4px;">' + escapeHtml(app.extra_info) + '</p></div>' : '') +
+
+                    '<div style="margin-bottom:20px;padding:12px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">' +
+                    '<div><strong style="font-size:13px;display:block;">Resume / CV</strong><span style="font-size:12px;color:var(--muted);">' + escapeHtml(app.resume_filename || "resume") + '</span></div>' +
+                    (app.resume_url ? '<a href="' + app.resume_url + '" target="_blank" rel="noopener" download="' + escapeHtml(app.resume_filename || 'resume') + '" class="btn btn-primary" style="padding:6px 14px;font-size:12px;">Download Resume</a>' : '<span style="color:var(--muted);font-size:13px;">No file uploaded</span>') +
+                    '</div>' +
+
+                    '<div style="border-top:1px solid var(--border);padding-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
+                    '<div style="display:flex;gap:8px;">' +
+                    '<button class="action-btn action-approve vol-update-modal-btn" data-id="' + app.id + '" data-status="approved">Approve</button>' +
+                    '<button class="action-btn action-reject vol-update-modal-btn" data-id="' + app.id + '" data-status="rejected">Reject</button>' +
+                    '<button class="action-btn vol-update-modal-btn" data-id="' + app.id + '" data-status="pending" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);">Set Pending</button>' +
+                    '</div>' +
+                    '<button class="action-btn" id="vol-modal-close-btn" style="background:transparent;border:1px solid var(--border);color:var(--fg);">Close</button>' +
+                    '</div>' +
+                    '</div>';
+
+                document.body.appendChild(overlay);
+            }
+
+            function updateVolunteerStatus(volId, newStatus) {
+                return fetchWithAuth(
+                    SUPABASE_URL + "/rest/v1/volunteer_applications?id=eq." + encodeURIComponent(volId),
+                    {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Prefer: "return=minimal"
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    }
+                ).then(function (r) {
+                    if (r.ok || r.status === 204) {
+                        var item = (window.cachedVolunteerApps || []).find(function (a) { return String(a.id) === String(volId); });
+                        if (item) item.status = newStatus;
+                        renderVolunteerApplications();
+                        return true;
+                    }
+                    throw new Error("Failed to update status.");
+                });
+            }
+
+            function deleteVolunteerApplication(volId) {
+                return fetchWithAuth(
+                    SUPABASE_URL + "/rest/v1/volunteer_applications?id=eq." + encodeURIComponent(volId),
+                    {
+                        method: "DELETE",
+                        headers: { Prefer: "return=minimal" }
+                    }
+                ).then(function (r) {
+                    if (r.ok || r.status === 204) {
+                        window.cachedVolunteerApps = (window.cachedVolunteerApps || []).filter(function (a) { return String(a.id) !== String(volId); });
+                        renderVolunteerApplications();
+                        return true;
+                    }
+                    throw new Error("Failed to delete application.");
+                });
+            }
+
+            function exportVolunteerCSV() {
+                var filterSelect = document.getElementById("vol-admin-event-filter");
+                var filterEvent = filterSelect ? filterSelect.value : "ALL";
+
+                var apps = window.cachedVolunteerApps || [];
+                if (filterEvent !== "ALL") {
+                    apps = apps.filter(function (a) {
+                        return (a.event_name || "").toLowerCase() === filterEvent.toLowerCase();
+                    });
+                }
+
+                if (!apps.length) {
+                    alert("No volunteer applications available to export.");
+                    return;
+                }
+
+                var headers = ["ID", "Submitted Date", "Event", "Full Name", "Address", "Email", "Phone", "Prior Experience", "Prior Experience Details", "Skills", "Motivation", "Extra Notes", "Status", "Resume Filename"];
+                
+                var csvRows = [headers.join(",")];
+
+                apps.forEach(function (a) {
+                    var row = [
+                        '"' + (a.id || '').replace(/"/g, '""') + '"',
+                        '"' + (a.created_at ? new Date(a.created_at).toISOString() : '') + '"',
+                        '"' + (a.event_name || '').replace(/"/g, '""') + '"',
+                        '"' + (a.full_name || '').replace(/"/g, '""') + '"',
+                        '"' + (a.address || '').replace(/"/g, '""') + '"',
+                        '"' + (a.email || '').replace(/"/g, '""') + '"',
+                        '"' + (a.phone || '').replace(/"/g, '""') + '"',
+                        '"' + (a.prior_experience || '').replace(/"/g, '""') + '"',
+                        '"' + (a.prior_experience_details || '').replace(/"/g, '""') + '"',
+                        '"' + (a.skills || '').replace(/"/g, '""') + '"',
+                        '"' + (a.motivation || '').replace(/"/g, '""') + '"',
+                        '"' + (a.extra_info || '').replace(/"/g, '""') + '"',
+                        '"' + (a.status || 'pending').replace(/"/g, '""') + '"',
+                        '"' + (a.resume_filename || '').replace(/"/g, '""') + '"'
+                    ];
+                    csvRows.push(row.join(","));
+                });
+
+                var blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+                var link = document.createElement("a");
+                var filename = "volunteer_applications_" + (filterEvent === "ALL" ? "all_events" : filterEvent.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()) + ".csv";
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
 
             // ─── CSV Export ─────────────────────────────────────────────
             function exportAllDataCSV() {
@@ -2607,6 +3012,18 @@
                         .catch(function () {
                             return { label: "Superadmin Earnings Summary", data: [] };
                         }),
+                    );
+                }
+
+                // 9. Volunteer Applications
+                if (window.cachedVolunteerApps && window.cachedVolunteerApps.length > 0) {
+                    promises.push(Promise.resolve({ label: "Volunteer Applications", data: window.cachedVolunteerApps }));
+                } else {
+                    promises.push(
+                        fetchWithAuth(SUPABASE_URL + "/rest/v1/volunteer_applications?order=created_at.desc&select=*")
+                            .then(function (r) { return r.ok ? r.json() : []; })
+                            .then(function (v) { return { label: "Volunteer Applications", data: v || [] }; })
+                            .catch(function () { return { label: "Volunteer Applications", data: [] }; })
                     );
                 }
 

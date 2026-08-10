@@ -1,9 +1,11 @@
 -- Migration: volunteer_applications table
--- Stores applications submitted by potential volunteers for PIROAKE Games Night Series & other Walking-Fish events.
+-- Stores applications submitted by potential volunteers for PIROAKE Games Night Series, Piroake Fest, LAABI JAUNTERS & other Walking-Fish events.
 
 CREATE TABLE IF NOT EXISTS public.volunteer_applications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  event_id UUID REFERENCES public.events(id) ON DELETE SET NULL,
+  event_name TEXT DEFAULT 'PIROAKE Games Night Series' NOT NULL,
   full_name TEXT NOT NULL,
   address TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -40,5 +42,11 @@ CREATE POLICY "Allow authenticated read/manage volunteer_applications"
 CREATE POLICY "Allow authenticated update volunteer_applications"
   ON public.volunteer_applications
   FOR UPDATE
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated delete volunteer_applications"
+  ON public.volunteer_applications
+  FOR DELETE
   TO authenticated
   USING (true);
