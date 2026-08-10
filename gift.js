@@ -293,17 +293,7 @@ function giftContactSent(form) {
 }
 
 function giftPiroakeInterest() {
-  const ref = 'PIR-' + Math.random().toString(36).slice(2, 7).toUpperCase();
-  return openGiftBox(`
-    <div class="gift-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L13.5 7.5 19 9 13.5 10.5 12 16 10.5 10.5 5 9 10.5 7.5z"/></svg></div>
-    <div class="gift-badge">Interest Registered</div>
-    <h2>You're in the know.</h2>
-    <div style="background:var(--accent-dim);border-radius:12px;padding:20px;margin:16px 0;">
-      <p style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.7;">Your reference</p>
-      <p style="font-size:24px;font-weight:600;letter-spacing:0.04em;margin-top:4px;">${ref}</p>
-    </div>
-    <p>We'll notify you the moment tickets go live — before the general public.</p>`,
-  box => { giftConfetti(box); });
+  window.location.href = "https://www.temistec.com/tickets";
 }
 
 // ── Report Issue Form ─ submits to verify-turnstile with contact_messages, subject=Complaint / Report an Issue
