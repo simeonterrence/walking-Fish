@@ -759,6 +759,27 @@ a.accent-link, .accent-text { color: var(--accent-text); }
   font-weight: 500;
 }
 
+/* ---------- Homepage proof panel photo (Admin → Photos → Home Proof) ---------- */
+.proof-visual .proof-photo {
+  position: absolute;
+  inset: 0;
+  display: none;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--border);
+}
+.proof-visual .proof-photo.filled { display: block; }
+.proof-visual .proof-photo .hero-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.proof-visual .proof-photo.filled ~ .proof-icon { display: none; }
+
 /* ---------- Home hero photos (Hero section from Admin → Photos) ---------- */
 .home-hero-photos {
   display: grid;

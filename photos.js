@@ -19,6 +19,7 @@
     })
     .then(function(photos) {
       if (!photos.length) return;
+      container.classList.add('filled');
       var items = container.querySelectorAll('.gallery-item, .partner-logo, .event-item, .media-item, .about-item, .hero-image');
       photos.forEach(function(photo, i) {
         if (i >= items.length) return;
