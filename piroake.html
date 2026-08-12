@@ -675,5 +675,20 @@
 </nav>
 <script>(function(){var p=window.location.pathname.replace(/\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
 
+<script>
+// Hide unfilled Event Highlight placeholders after photos.js has rendered the ones that exist
+(function() {
+  function hideEmpty() {
+    document.querySelectorAll('[data-photos="hero"] .hero-image').forEach(function(el) {
+      // Symmetric: hide unfilled tiles, but restore any filled by a late photo fetch
+      el.style.display = el.querySelector('img') ? '' : 'none';
+    });
+  }
+  window.addEventListener('load', hideEmpty);
+  setTimeout(hideEmpty, 3000);
+  setTimeout(hideEmpty, 6000);
+})();
+</script>
+
 </body>
 </html>

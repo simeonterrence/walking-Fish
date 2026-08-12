@@ -21,7 +21,7 @@
 .photo-upload-form .full { grid-column:1/-1; }
 .photo-upload-form label { font-size:13px; font-weight:500; display:block; margin-bottom:4px; }
 .photo-upload-form input, .photo-upload-form select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-body); font-size:14px; }
-.photo-upload-form .upload-hint { font-size:12px; color:var(--muted); margin-top:4px; }
+.photo-upload-form .upload-hint, .edit-form .upload-hint { font-size:12px; color:var(--muted); margin-top:4px; }
 
 .photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
 
@@ -151,6 +151,39 @@
 .photo-action-toast.success { background:#065F46; color:#fff; }
 .photo-action-toast.error { background:#DC2626; color:#fff; }
 
+/* Bulk move to section */
+.photo-bulk-toolbar {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:14px 16px; margin-bottom:16px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+}
+.photo-bulk-toolbar .btn { padding:8px 16px; font-size:13px; min-height:auto; }
+.photo-bulk-count { font-size:13px; font-weight:500; color:var(--accent); }
+.photo-bulk-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.photo-bulk-actions[hidden] { display:none !important; }
+.photo-bulk-target { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; }
+.photo-bulk-target select {
+  padding:7px 10px; border:1px solid var(--border); border-radius:6px;
+  font-family:var(--font-body); font-size:14px; background:var(--surface); color:var(--fg);
+}
+
+/* Select mode */
+.photo-bulk-active .photo-grid-item { cursor:pointer; }
+.photo-bulk-active .photo-grid-item .photo-drag-handle { display:none; }
+.photo-bulk-active .photo-grid-item:hover { box-shadow:0 0 0 2px var(--accent-dim); }
+.photo-bulk-active .photo-grid-item::before {
+  content:''; position:absolute; top:6px; left:6px; z-index:3;
+  width:20px; height:20px; border-radius:50%;
+  background:rgba(0,0,0,0.45); border:2px solid #fff;
+  pointer-events:none;
+}
+.photo-bulk-active .photo-grid-item.selected { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+.photo-bulk-active .photo-grid-item.selected::before {
+  content:'✓'; background:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:#fff; font-weight:700;
+}
+
 /* Lightbox */
 .photo-lightbox {
   position:fixed; inset:0; z-index:400;
@@ -230,14 +263,16 @@
       </div>
       <div>
         <label for="photo-section">Section</label>
-        <select id="photo-section">
+        <select id="photo-section" onchange="updateSectionHint('photo-section','photo-section-hint')">
           <option value="gallery">Gallery</option>
           <option value="partners">Partners</option>
           <option value="hero">Hero</option>
+          <option value="home">Home Hero</option>
           <option value="events">Events</option>
           <option value="media">Media</option>
           <option value="about">About</option>
         </select>
+        <div class="upload-hint" id="photo-section-hint">Shows on: —</div>
       </div>
       <div>
         <label for="photo-position">Starting Position</label>
@@ -257,6 +292,26 @@
 
   <!-- Manage Panel -->
   <div class="photo-panel" id="photo-panel-manage">
+    <div class="photo-bulk-toolbar" id="photo-bulk-toolbar">
+      <button class="btn btn-secondary" id="photo-select-toggle" onclick="toggleBulkSelect()" aria-pressed="false">Select</button>
+      <span class="photo-bulk-count" id="photo-bulk-count" hidden>0 selected</span>
+      <div class="photo-bulk-actions" id="photo-bulk-actions" hidden>
+        <label class="photo-bulk-target">Move to
+      <select id="bulk-move-section" onchange="updateSectionHint('bulk-move-section','bulk-move-hint')">
+        <option value="gallery">Gallery</option>
+        <option value="partners">Partners</option>
+        <option value="hero">Hero</option>
+        <option value="home">Home Hero</option>
+        <option value="events">Events</option>
+        <option value="media">Media</option>
+        <option value="about">About</option>
+      </select>
+        </label>
+        <div class="upload-hint" id="bulk-move-hint">Shows on: —</div>
+        <button class="btn btn-primary" id="bulk-move-btn" onclick="bulkMoveSelected()" disabled>Move</button>
+        <button class="btn btn-secondary" id="bulk-cancel-btn" onclick="exitBulkSelect()">Cancel</button>
+      </div>
+    </div>
     <div id="photo-list">
       <div class="photo-skeleton"><div></div><div></div><div></div><div></div><div></div><div></div></div>
     </div>
@@ -271,14 +326,16 @@
     <h2>Update Photo Details</h2>
     <div class="edit-form">
       <label for="edit-section">Section</label>
-      <select id="edit-section">
+      <select id="edit-section" onchange="updateSectionHint('edit-section','edit-section-hint')">
         <option value="gallery">Gallery</option>
         <option value="partners">Partners</option>
         <option value="hero">Hero</option>
+        <option value="home">Home Hero</option>
         <option value="events">Events</option>
         <option value="media">Media</option>
         <option value="about">About</option>
       </select>
+      <div class="upload-hint" id="edit-section-hint">Shows on: —</div>
       <label for="edit-position">Position</label>
       <input type="number" id="edit-position" value="0" min="1" step="1">
       <label for="edit-alt">Alt Text</label>
@@ -324,6 +381,149 @@ function switchPhotoTab(name) {
 document.addEventListener('DOMContentLoaded', function() {
   loadPhotos();
 });
+</script>
+
+<script>
+// Section → page mapping shown under the Section dropdowns
+var SECTION_PAGE_HINTS = {
+  gallery: '/gallery',
+  partners: '/partners',
+  hero: '/piroake',
+  home: 'Homepage (/)',
+  events: '/walkie-talkie',
+  media: '/muster-point',
+  about: '/about'
+};
+
+function updateSectionHint(selectId, hintId) {
+  var select = document.getElementById(selectId);
+  var hint = document.getElementById(hintId);
+  if (!select || !hint) return;
+  var page = SECTION_PAGE_HINTS[select.value];
+  hint.textContent = page ? 'Shows on: ' + page : '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  updateSectionHint('photo-section', 'photo-section-hint');
+  updateSectionHint('edit-section', 'edit-section-hint');
+  updateSectionHint('bulk-move-section', 'bulk-move-hint');
+  // Keep the edit-modal hint in sync whenever the modal opens
+  var overlay = document.getElementById('photo-edit-overlay');
+  if (overlay && 'MutationObserver' in window) {
+    new MutationObserver(function() {
+      if (overlay.classList.contains('open')) updateSectionHint('edit-section', 'edit-section-hint');
+    }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  }
+});
+</script>
+
+<script>
+// ── Bulk move to section ──────────────────────────────
+var _bulkSelecting = false;
+var _bulkSelected = new Set(); // photo ids
+
+function toggleBulkSelect() {
+  if (_bulkSelecting) { exitBulkSelect(); return; }
+  _bulkSelecting = true;
+  _bulkSelected.clear();
+  document.body.classList.add('photo-bulk-active');
+  // Disable drag-to-reorder while selecting so taps can't start a drag
+  document.querySelectorAll('.photo-grid-item').forEach(function(el) { el.draggable = false; });
+  var t = document.getElementById('photo-select-toggle');
+  t.textContent = 'Done';
+  t.setAttribute('aria-pressed', 'true');
+  document.getElementById('photo-bulk-count').hidden = false;
+  document.getElementById('photo-bulk-actions').hidden = false;
+  updateBulkCount();
+}
+
+function exitBulkSelect() {
+  _bulkSelecting = false;
+  _bulkSelected.clear();
+  document.body.classList.remove('photo-bulk-active');
+  document.querySelectorAll('.photo-grid-item').forEach(function(el) { el.draggable = true; });
+  var t = document.getElementById('photo-select-toggle');
+  if (t) { t.textContent = 'Select'; t.setAttribute('aria-pressed', 'false'); }
+  var c = document.getElementById('photo-bulk-count');
+  if (c) c.hidden = true;
+  var a = document.getElementById('photo-bulk-actions');
+  if (a) a.hidden = true;
+  updateBulkCount();
+}
+
+function updateBulkCount() {
+  var count = document.getElementById('photo-bulk-count');
+  if (count) count.textContent = _bulkSelected.size + ' selected';
+  var btn = document.getElementById('bulk-move-btn');
+  if (btn) btn.disabled = _bulkSelected.size === 0;
+}
+
+function togglePhotoSelect(id) {
+  if (_bulkSelected.has(id)) { _bulkSelected.delete(id); } else { _bulkSelected.add(id); }
+  var item = document.querySelector('.photo-grid-item[data-photo-id="' + id + '"]');
+  if (item) item.classList.toggle('selected', _bulkSelected.has(id));
+  updateBulkCount();
+}
+
+// Capture-phase: in select mode, clicking a photo toggles selection and
+// blocks the normal lightbox/drag behaviour (bubble-phase handlers).
+document.addEventListener('click', function(e) {
+  if (!_bulkSelecting) return;
+  var item = e.target.closest('.photo-grid-item');
+  if (!item) return;
+  if (e.target.closest('.photo-item-edit') || e.target.closest('.photo-item-del') || e.target.closest('.photo-drag-handle')) return;
+  e.stopPropagation();
+  togglePhotoSelect(item.getAttribute('data-photo-id'));
+}, true);
+
+async function bulkMoveSelected() {
+  var target = document.getElementById('bulk-move-section').value;
+  if (!_bulkSelected.size || !target) return;
+  // Resolve selected records from the cached photo list
+  var photos = _photos.filter(function(p) { return _bulkSelected.has(p.id); });
+  var toMove = photos.filter(function(p) { return p.section !== target; })
+                     .sort(function(a, b) { return a.position - b.position; });
+  if (!toMove.length) {
+    showToast('Selected photos are already in that section', 'error');
+    return;
+  }
+  // Append moved photos at the end of the target section
+  var maxPos = 0;
+  _photos.forEach(function(p) { if (p.section === target && p.position > maxPos) maxPos = p.position; });
+
+  var btn = document.getElementById('bulk-move-btn');
+  btn.disabled = true;
+  btn.textContent = 'Moving…';
+  try {
+    for (var i = 0; i < toMove.length; i++) {
+      await api('/rest/v1/site_images?id=eq.' + toMove[i].id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ section: target, position: maxPos + i + 1 })
+      });
+    }
+    showToast('Moved ' + toMove.length + ' photo' + (toMove.length > 1 ? 's' : '') + ' to ' + target, 'success');
+    exitBulkSelect();
+    loadPhotos();
+  } catch (e) {
+    showToast('Error moving photos: ' + e.message, 'error');
+    loadPhotos(); // resync cache/DOM if some PATCHes already succeeded
+  }
+  btn.disabled = false;
+  btn.textContent = 'Move';
+}
+
+// Re-apply selection visuals if the photo list re-renders while select mode is on
+(function() {
+  var listEl = document.getElementById('photo-list');
+  if (!listEl || !('MutationObserver' in window)) return;
+  new MutationObserver(function() {
+    if (!_bulkSelecting) return;
+    document.querySelectorAll('.photo-grid-item').forEach(function(el) {
+      el.classList.toggle('selected', _bulkSelected.has(el.getAttribute('data-photo-id')));
+    });
+  }).observe(listEl, { childList: true, subtree: true });
+})();
 </script>
 
 </body>

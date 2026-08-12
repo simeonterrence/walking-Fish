@@ -759,6 +759,31 @@ a.accent-link, .accent-text { color: var(--accent-text); }
   font-weight: 500;
 }
 
+/* ---------- Home hero photos (Hero section from Admin → Photos) ---------- */
+.home-hero-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 900px;
+  margin: 32px auto 0;
+}
+.home-hero-photos .hero-image {
+  aspect-ratio: 16/9;
+  background: var(--border);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--muted);
+  transition: background .2s, border-color .2s;
+}
+.home-hero-photos .hero-image:hover {
+  border-color: var(--accent);
+  filter: brightness(0.97);
+}
+@media (max-width: 500px) {
+  .home-hero-photos { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---------- Active nav state ---------- */
 [data-page="home"] nav a[href="index.html"],
 [data-page="about"] nav a[href="about.html"],
