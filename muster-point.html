@@ -258,11 +258,18 @@
     })
     .then(function(r) { if (!r.ok) return null; return r.json(); })
     .then(function(rows) {
-      if (!rows || !rows.length) return;    // request failed or photos exist — leave as-is
       var grid = document.querySelector('[data-photos="media"]');
       var empty = document.getElementById('media-empty');
-      if (grid) grid.style.display = 'none';
-      if (empty) empty.hidden = false;
+      if (!rows || !rows.length) {
+        // No photos uploaded yet — show empty state
+        if (grid) grid.style.display = 'none';
+        if (empty) empty.hidden = false;
+      }
+      // If photos exist, keep the grid visible (default) and hide empty state
+      else {
+        if (grid) grid.style.display = '';
+        if (empty) empty.hidden = true;
+      }
     })
     .catch(function() {});
   }
