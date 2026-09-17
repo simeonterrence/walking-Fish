@@ -642,6 +642,67 @@
                 </details>
 
                 <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- OPEN MIC SIGNUPS (/open-mic → contact_messages) -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+                        <div>
+                            <p class="label" style="color:var(--accent); margin:0 0 4px;">Open Mic · Sat Sep 19</p>
+                            <h2 style="font-size:20px; margin:0;">Open Mic Signups</h2>
+                            <p style="font-size:14px; color:var(--muted); margin:4px 0 0;">Performers signed up through the /open-mic page. Tap WhatsApp to confirm slots.</p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <button id="openmic-export-csv-btn" class="btn btn-secondary" style="padding:7px 14px; font-size:13px;">Export CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid" id="openmic-stats-grid" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="num" id="openmic-stat-total">0</div>
+                            <div class="lbl">Total Signups</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="openmic-stat-music">0</div>
+                            <div class="lbl">Music</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="openmic-stat-comedy">0</div>
+                            <div class="lbl">Comedy</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="openmic-stat-poetry">0</div>
+                            <div class="lbl">Poetry</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="openmic-stat-other">0</div>
+                            <div class="lbl">Other Talent</div>
+                        </div>
+                    </div>
+
+                    <div id="openmic-container">
+                        <div class="empty-state" id="openmic-empty-state">
+                            <p>Loading open mic signups...</p>
+                        </div>
+                        <div id="openmic-table-wrapper" style="display:none; overflow-x:auto;">
+                            <table class="app-table">
+                                <thead>
+                                    <tr>
+                                        <th>Performer</th>
+                                        <th>Talent</th>
+                                        <th>Contact</th>
+                                        <th>Beat</th>
+                                        <th>Screen</th>
+                                        <th>Received</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="openmic-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════════════ -->
                 <!-- VOLUNTEER MANAGEMENT (EVENT-BASED) -->
                 <!-- ════════════════════════════════════════════════════════════════ -->
                 <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
@@ -1551,6 +1612,7 @@
 
                 initAdminManagement();
                 loadComplaints();
+                loadOpenMicSignups();
                 loadVolunteerApplications();
 
                 document
@@ -2709,6 +2771,274 @@
 
                 if (e.target.id === "vol-modal-close-btn" || e.target.id === "vol-detail-modal") {
                     var modal = document.getElementById("vol-detail-modal");
+                    if (modal) modal.remove();
+                }
+            });
+
+            // ═════════════════════════════════════════════════════════════╗
+            // OPEN MIC SIGNUPS (/open-mic → contact_messages)             ║
+            // ═════════════════════════════════════════════════════════════╝
+
+            window.cachedOpenMic = [];
+
+            function parseOpenMicMessage(msg) {
+                var out = { talent: "", stage: "", performance: "", beat: "", projection: "", requests: "" };
+                if (!msg) return out;
+                var lines = String(msg).split("\n");
+                var inRequests = false;
+                var reqLines = [];
+                lines.forEach(function (line) {
+                    if (/^requests for a successful performance/i.test(line)) {
+                        inRequests = true;
+                        return;
+                    }
+                    if (inRequests) {
+                        reqLines.push(line);
+                        return;
+                    }
+                    var m = line.match(/^(talent|stage name|performance|beat \/ track|on-screen projection)\s*:\s*(.*)$/i);
+                    if (m) {
+                        var key = m[1].toLowerCase();
+                        if (key === "talent") out.talent = m[2].trim();
+                        else if (key === "stage name") out.stage = m[2].trim();
+                        else if (key === "performance") out.performance = m[2].trim();
+                        else if (key.indexOf("beat") === 0) out.beat = m[2].trim();
+                        else if (key.indexOf("on-screen") === 0) out.projection = m[2].trim();
+                    }
+                });
+                out.requests = reqLines.join("\n").trim();
+                return out;
+            }
+
+            function openMicTalent(row) {
+                var subj = row.subject || "";
+                var m = subj.match(/open mic signup\s*[—–-]\s*(.+)$/i);
+                if (m) return m[1].trim();
+                return parseOpenMicMessage(row.message).talent || "—";
+            }
+
+            function openMicCategory(talentLabel) {
+                var t = (talentLabel || "").toUpperCase();
+                if (t.indexOf("MUSIC") === 0) return "MUSIC";
+                if (t.indexOf("COMEDY") === 0) return "COMEDY";
+                if (t.indexOf("POETRY") === 0) return "POETRY";
+                return "OTHER";
+            }
+
+            function openMicBeatUrl(row) {
+                var parsed = parseOpenMicMessage(row.message);
+                var text = parsed.beat && parsed.beat !== "— (will send on WhatsApp)" ? parsed.beat : (row.message || "");
+                var m = String(text).match(/https?:\/\/[^\s)]+/);
+                return m ? m[0] : "";
+            }
+
+            function fetchOpenMicSignups() {
+                return fetchWithAuth(
+                    SUPABASE_URL + "/rest/v1/contact_messages?order=created_at.desc&select=*&subject=like.Open%20Mic%20Signup*",
+                ).then(function (r) {
+                    if (!r.ok) throw new Error("Failed to load open mic signups.");
+                    return r.json();
+                });
+            }
+
+            function loadOpenMicSignups() {
+                var emptyState = document.getElementById("openmic-empty-state");
+                var tableWrapper = document.getElementById("openmic-table-wrapper");
+                if (emptyState) emptyState.style.display = "block";
+                if (tableWrapper) tableWrapper.style.display = "none";
+
+                var exportBtn = document.getElementById("openmic-export-csv-btn");
+                if (exportBtn && !exportBtn.hasAttribute("data-bound")) {
+                    exportBtn.setAttribute("data-bound", "true");
+                    exportBtn.addEventListener("click", exportOpenMicCSV);
+                }
+
+                fetchOpenMicSignups()
+                    .then(function (rows) {
+                        window.cachedOpenMic = rows || [];
+                        renderOpenMicSignups();
+                    })
+                    .catch(function (err) {
+                        console.error("[OpenMic Admin]", err);
+                        if (emptyState) {
+                            emptyState.innerHTML = '<p style="color:#DC2626;font-size:14px;">Could not load signups: ' + escapeHtml(err.message) + '</p>';
+                        }
+                    });
+            }
+
+            function renderOpenMicSignups() {
+                var rows = window.cachedOpenMic || [];
+                var set = function (id, v) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = v;
+                };
+                set("openmic-stat-total", rows.length);
+                set("openmic-stat-music", rows.filter(function (r) { return openMicCategory(openMicTalent(r)) === "MUSIC"; }).length);
+                set("openmic-stat-comedy", rows.filter(function (r) { return openMicCategory(openMicTalent(r)) === "COMEDY"; }).length);
+                set("openmic-stat-poetry", rows.filter(function (r) { return openMicCategory(openMicTalent(r)) === "POETRY"; }).length);
+                set("openmic-stat-other", rows.filter(function (r) { return openMicCategory(openMicTalent(r)) === "OTHER"; }).length);
+
+                var emptyState = document.getElementById("openmic-empty-state");
+                var tableWrapper = document.getElementById("openmic-table-wrapper");
+                var tbody = document.getElementById("openmic-tbody");
+
+                if (!rows.length) {
+                    if (emptyState) {
+                        emptyState.innerHTML = '<p style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">No signups yet. Performers who sign up through /open-mic will appear here.</p>';
+                        emptyState.style.display = "block";
+                    }
+                    if (tableWrapper) tableWrapper.style.display = "none";
+                    return;
+                }
+
+                if (emptyState) emptyState.style.display = "none";
+                if (tableWrapper) tableWrapper.style.display = "block";
+
+                var badgeBg = { MUSIC: "var(--accent-dim)", COMEDY: "#dbeafe", POETRY: "#f3e8ff", OTHER: "#f3f4f6" };
+                var badgeFg = { MUSIC: "var(--accent-text)", COMEDY: "#1e40af", POETRY: "#6b21a8", OTHER: "#4b5563" };
+
+                var html = "";
+                rows.forEach(function (r) {
+                    var talent = openMicTalent(r);
+                    var cat = openMicCategory(talent);
+                    var parsed = parseOpenMicMessage(r.message);
+                    var phoneClean = (r.phone || "").replace(/[^0-9]/g, "");
+                    var beatUrl = openMicBeatUrl(r);
+                    var dateStr = "-";
+                    try {
+                        dateStr = new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                    } catch (_) {}
+
+                    html +=
+                        "<tr>" +
+                        "<td><strong>" + escapeHtml(r.name || "-") + "</strong>" +
+                        (parsed.stage && parsed.stage !== "—"
+                            ? '<br><span style="font-size:12px;color:var(--muted);">aka ' + escapeHtml(parsed.stage) + "</span>"
+                            : "") +
+                        (parsed.performance && parsed.performance !== "—"
+                            ? '<br><span style="font-size:12px;color:var(--muted);">' + escapeHtml(parsed.performance) + "</span>"
+                            : "") +
+                        "</td>" +
+                        '<td><span class="status-badge" style="background:' + badgeBg[cat] + ";color:" + badgeFg[cat] + ';">' + escapeHtml(cat) + "</span></td>" +
+                        "<td>" +
+                        (phoneClean
+                            ? '<a href="https://wa.me/' + phoneClean + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;text-decoration:underline;">' + escapeHtml(r.phone) + "</a>"
+                            : '<span style="color:var(--muted);font-size:13px;">-</span>') +
+                        (r.email
+                            ? '<br><a href="mailto:' + escapeHtml(r.email) + '" style="font-size:12px;color:var(--muted);">' + escapeHtml(r.email) + "</a>"
+                            : "") +
+                        "</td>" +
+                        "<td>" +
+                        (beatUrl
+                            ? '<a href="' + escapeHtml(beatUrl) + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;font-weight:600;text-decoration:underline;">Download beat</a>'
+                            : '<span style="color:var(--muted);font-size:13px;">via WhatsApp</span>') +
+                        "</td>" +
+                        "<td><span style=\"font-size:13px;\">" + escapeHtml(parsed.projection && parsed.projection !== "No" ? parsed.projection : (parsed.projection === "No" ? "No" : "—")) + "</span></td>" +
+                        '<td><span style="font-size:13px;color:var(--muted);">' + dateStr + "</span></td>" +
+                        '<td style="white-space:nowrap;">' +
+                        '<button class="action-btn openmic-view-btn" data-openmic="' + r.id + '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);min-width:auto;min-height:auto;padding:4px 10px;font-size:12px;">View</button>' +
+                        "</td>" +
+                        "</tr>";
+                });
+
+                tbody.innerHTML = html;
+            }
+
+            function showOpenMicModal(rowId) {
+                var row = (window.cachedOpenMic || []).find(function (r) {
+                    return String(r.id) === String(rowId);
+                });
+                if (!row) {
+                    alert("Signup not found.");
+                    return;
+                }
+
+                var existing = document.getElementById("openmic-detail-modal");
+                if (existing) existing.remove();
+
+                var parsed = parseOpenMicMessage(row.message);
+                var talent = openMicTalent(row);
+                var phoneClean = (row.phone || "").replace(/[^0-9]/g, "");
+                var beatUrl = openMicBeatUrl(row);
+                var dateStr = "-";
+                try {
+                    dateStr = new Date(row.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+                } catch (_) {}
+
+                var overlay = document.createElement("div");
+                overlay.id = "openmic-detail-modal";
+                overlay.className = "gift-overlay";
+                overlay.style.cssText =
+                    "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;";
+
+                overlay.innerHTML =
+                    '<div class="gift-box" style="text-align:left;max-width:560px;width:90%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-height:85vh;overflow-y:auto;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+                    '<span class="status-badge" style="background:var(--accent-dim);color:var(--accent-text);">Open Mic Signup</span>' +
+                    '<span style="font-size:12px;color:var(--muted);">' + dateStr + "</span>" +
+                    "</div>" +
+                    '<h2 style="font-size:20px;margin-bottom:4px;">' + escapeHtml(row.name || "-") + "</h2>" +
+                    '<p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Talent: <strong style="color:var(--fg);">' + escapeHtml(talent) + "</strong></p>" +
+                    (phoneClean
+                        ? '<p style="margin-bottom:8px;"><a href="https://wa.me/' + phoneClean + '?text=' + encodeURIComponent("Hi " + (row.name || "") + "! Confirming your Open Mic slot for Saturday. ") + '" target="_blank" rel="noopener" style="display:inline-block;background:#075E54;color:#fff;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px;text-decoration:none;">Chat on WhatsApp</a></p>'
+                        : "") +
+                    (row.email
+                        ? '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Email: <a href="mailto:' + escapeHtml(row.email) + '" style="color:var(--accent);">' + escapeHtml(row.email) + "</a></p>"
+                        : "") +
+                    (beatUrl
+                        ? '<p style="margin-bottom:16px;"><a href="' + escapeHtml(beatUrl) + '" target="_blank" rel="noopener" style="display:inline-block;background:var(--accent);color:#fff;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px;text-decoration:none;">Download beat / track</a></p>'
+                        : '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">No beat file or link yet — ask for it on WhatsApp.</p>') +
+                    '<div style="margin-bottom:16px;"><strong style="font-size:13px;color:var(--muted);">Full signup details:</strong><div style="background:var(--accent-dim);padding:12px;border-radius:8px;font-size:14px;white-space:pre-wrap;margin-top:4px;">' +
+                    escapeHtml(row.message || "-") +
+                    "</div></div>" +
+                    '<button id="openmic-modal-close-btn" class="btn btn-secondary" style="width:100%;justify-content:center;">Close</button>' +
+                    "</div>";
+
+                document.body.appendChild(overlay);
+            }
+
+            function openMicCsvCell(v) {
+                return '"' + String(v === undefined || v === null ? "" : v).replace(/"/g, '""') + '"';
+            }
+
+            function exportOpenMicCSV() {
+                var rows = window.cachedOpenMic || [];
+                if (!rows.length) {
+                    alert("No open mic signups available to export.");
+                    return;
+                }
+
+                var headers = ["ID", "Submitted", "Name", "Email", "Phone", "Talent", "Details"];
+                var csvRows = [headers.join(",")];
+
+                rows.forEach(function (r) {
+                    csvRows.push([
+                        openMicCsvCell(r.id),
+                        openMicCsvCell(r.created_at ? new Date(r.created_at).toISOString() : ""),
+                        openMicCsvCell(r.name),
+                        openMicCsvCell(r.email),
+                        openMicCsvCell(r.phone),
+                        openMicCsvCell(openMicTalent(r)),
+                        openMicCsvCell(r.message),
+                    ].join(","));
+                });
+
+                var blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+                var link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", "open_mic_signups.csv");
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
+
+            // ── Event delegation for open mic buttons ──
+            document.addEventListener("click", function (e) {
+                if (e.target.classList && e.target.classList.contains("openmic-view-btn")) {
+                    showOpenMicModal(e.target.getAttribute("data-openmic"));
+                }
+                if (e.target.id === "openmic-modal-close-btn" || e.target.id === "openmic-detail-modal") {
+                    var modal = document.getElementById("openmic-detail-modal");
                     if (modal) modal.remove();
                 }
             });

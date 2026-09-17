@@ -15,6 +15,7 @@ const corsHeaders = {
 
 function resolveContactInbox(inquiry: string): string {
   const s = (inquiry || "").toLowerCase();
+  if (s.includes("open mic"))                          return "theevents.guy@walkingfish.gm";
   if (s.includes("vendor"))                             return "vendor@walkingfish.gm";
   if (s.includes("sponsor") || s.includes("partner"))  return "theevents.guy@walkingfish.gm";
   if (s.includes("media") || s.includes("press") ||
@@ -30,6 +31,11 @@ function row(label: string, value: string) {
 
 function emailShell(body: string) {
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;color:#111;">${body}<hr style="margin:32px 0;border:none;border-top:1px solid #eee;"><p style="font-size:12px;color:#999;margin:0;">Walking-Fish Group · walkingfish.gm</p></div>`;
+}
+
+// Turn bare https:// links (beat links, uploaded file URLs) into clickable anchors.
+function linkifyUrls(text: string): string {
+  return (text || "").replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank">$1</a>');
 }
 
 // ─── Per-table email builders ────────────────────────────────────────────────
@@ -98,20 +104,23 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
   if (table === "contact_messages") {
     const inquiry = data.subject || data.inquiry || "";
     const to = resolveContactInbox(inquiry);
+    const isOpenMic = (inquiry || "").toLowerCase().includes("open mic");
     emails.push({
       to,
-      subject: `[Contact] ${inquiry || "New Message"} — ${data.name || data.email}`,
+      subject: isOpenMic
+        ? `🎤 ${inquiry} — ${data.name || data.email}`
+        : `[Contact] ${inquiry || "New Message"} — ${data.name || data.email}`,
       html: emailShell(`
-        <h2 style="margin:0 0 24px;">New Contact Message</h2>
+        <h2 style="margin:0 0 24px;">${isOpenMic ? "New Open Mic Signup" : "New Contact Message"}</h2>
         <table style="width:100%;border-collapse:collapse;">
           ${row("Name", data.name || "-")}
           ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
           ${data.phone ? row("WhatsApp", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
-          ${row("Inquiry", inquiry || "-")}
+          ${row(isOpenMic ? "Talent / Slot" : "Inquiry", inquiry || "-")}
         </table>
         <div style="margin-top:20px;padding:16px;background:#f9f9f9;border-radius:8px;">
-          <p style="color:#666;font-size:13px;margin:0 0 8px;">Message</p>
-          <p style="margin:0;white-space:pre-wrap;">${data.message || "No message provided."}</p>
+          <p style="color:#666;font-size:13px;margin:0 0 8px;">${isOpenMic ? "Performance details & requests" : "Message"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${isOpenMic ? (linkifyUrls(data.message) || "No message provided.") : (data.message || "No message provided.")}</p>
         </div>
         <p style="margin-top:16px;font-size:12px;color:#bbb;">Routed to: ${to}</p>
       `),
@@ -120,8 +129,19 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
     if (data.email) {
       emails.push({
         to: data.email,
-        subject: `We've received your message — Walking-Fish`,
-        html: emailShell(`
+        subject: isOpenMic
+          ? `You're on the Open Mic list! 🎤 — Walking-Fish`
+          : `We've received your message — Walking-Fish`,
+        html: emailShell(isOpenMic ? `
+          <h2 style="margin:0 0 24px;">You're on the list! 🎤</h2>
+          <p>Hi ${data.name || "there"},</p>
+          <p>Thanks for signing up for the <strong>Open Mic this Saturday</strong> (${inquiry}). We've received your details and performance requests.</p>
+          <p>Our events team will confirm your slot and set time on WhatsApp shortly.</p>
+          <div style="background:#f9f9f9;padding:16px;border-radius:8px;margin:20px 0;font-size:14px;">
+            <p style="margin:0;color:#555;"><strong>Performing music?</strong> Send your beat early via WhatsApp to <strong>+220 786 5201</strong> — include your name so the DJ has it ready.</p>
+          </div>
+          <p>See you on stage,<br><strong>Walkie-Talkie Experiences</strong></p>
+        ` : `
           <h2 style="margin:0 0 24px;">Message Received</h2>
           <p>Hi ${data.name || "there"},</p>
           <p>Thanks for reaching out to us regarding <strong>${inquiry || "your inquiry"}</strong>. We've received your message and a member of our team will be in touch soon.</p>

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Sign up for Walkie-Talkie Experiences Open Mic this Saturday in The Gambia. Music, comedy, poetry and more — grab your slot on stage.">
+<meta property="og:title" content="Open Mic Signup | Walkie-Talkie Experiences — Walking-Fish">
+<meta property="og:description" content="Perform this Saturday at our Open Mic session. Music, comedy, poetry, other talents welcome. Sign up now and send your beat.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.walkingfish.gm/open-mic">
+<meta name="twitter:image" content="https://www.walkingfish.gm/bg-abstract-coral.gif">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Open Mic Signup | Walkie-Talkie Experiences — Walking-Fish">
+<meta name="twitter:description" content="Perform this Saturday at our Open Mic session. Sign up now — music, comedy, poetry & more.">
+<link rel="canonical" href="https://www.walkingfish.gm/open-mic">
+<meta property="og:image" content="https://www.walkingfish.gm/bg-abstract-coral.gif">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
+<title>Open Mic Signup | Walkie-Talkie Experiences — Walking-Fish Group</title>
+<link rel="stylesheet" href="style.css?v=3">
+<script defer src="gift.min.js?v=3"></script>
+<script defer src="nav.min.js?v=3"></script>
+<script defer src="supabase-config.min.js?v=3"></script>
+<script defer src="photos.min.js?v=3"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+.om-callout {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 28px;
+}
+.om-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+/* Talent picker cards */
+.om-talent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:540px){ .om-talent-grid { grid-template-columns: 1fr 1fr; } }
+.om-talent-card { cursor: pointer; position: relative; }
+.om-talent-card input { position: absolute; opacity: 0; pointer-events: none; }
+.om-talent-inner {
+  display: block;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 12px;
+  text-align: center;
+  transition: border-color .2s, box-shadow .2s, transform 160ms ease-out;
+  background: var(--bg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .om-talent-card:hover .om-talent-inner { border-color: var(--accent); }
+  .om-pill:hover .om-pill-inner { border-color: var(--accent); }
+}
+.om-talent-card:active .om-talent-inner, .om-pill:active .om-pill-inner { transform: scale(.97); }
+.om-talent-card input:checked + .om-talent-inner { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.om-talent-card input:focus-visible + .om-talent-inner { outline: 2px solid var(--accent); outline-offset: 2px; }
+.om-talent-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
+.om-talent-name { font-weight: 600; font-size: 14px; letter-spacing: 0.04em; }
+/* 16px inputs: stops iOS auto-zoom and hits the 44px touch target */
+.form-group input, .form-group textarea, .form-group select { font-size: 16px; }
+.form-group input[type="text"], .form-group input[type="tel"],
+.form-group input[type="email"], .form-group input[type="url"] { padding: 12px 14px; }
+/* Press feedback on the submit button */
+#om-submit { transition: transform 160ms ease-out, opacity .2s, background .2s; }
+#om-submit:active { transform: scale(.98); }
+/* Grouped radio questions use fieldset + legend */
+.om-fieldset { border: none; padding: 0; margin: 0 0 20px; min-width: 0; }
+.om-fieldset legend { font-size: 14px; font-weight: 500; margin-bottom: 6px; padding: 0; color: var(--fg); }
+/* Yes/No pills for the projection question */
+.om-pill-grid { display: flex; gap: 12px; margin-top: 8px; }
+.om-pill { flex: 1; cursor: pointer; position: relative; }
+.om-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.om-pill-inner { display: block; border: 2px solid var(--border); border-radius: 12px; padding: 14px 12px; text-align: center; font-weight: 600; font-size: 15px; background: var(--bg); transition: border-color .2s, box-shadow .2s, transform 160ms ease-out; }
+.om-pill input:checked + .om-pill-inner { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.om-pill input:focus-visible + .om-pill-inner { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Success panel entrance */
+#om-success-message { scroll-margin-top: 90px; }
+#om-success-message.show { animation: omIn 260ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes omIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { #om-success-message.show { animation: none; } }
+.om-error { color: #DC2626; font-size: 13px; margin-top: 4px; display: none; }
+.form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea { border-color: #DC2626; }
+.om-talent-group.has-error .om-talent-inner { border-color: #DC2626; }
+.om-beat-card {
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+  text-align: center;
+}
+/* Beat file upload box */
+.om-upload-box {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  background: var(--bg);
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.om-upload-box:hover, .om-upload-box.dragover { border-color: var(--accent); }
+.om-upload-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+</style>
+</head>
+<body data-page="open-mic">
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+<header><nav>
+<div class="w">
+  <a href="/" class="logo" style="display: flex; align-items: center;"><img src="/images/wf-main-logo.jpg" alt="Walking-Fish Group" style="height: 36px;"></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/walkie-talkie">Experiences</a>
+    <a href="/piroake">Piroake</a>
+    <a href="/muster-point">Media</a>
+    <a href="/vendors">Vendors</a>
+    <a href="/volunteers">Volunteers</a>
+    <details class="nav-more">
+      <summary>More</summary>
+      <div class="nav-dropdown">
+        <a href="https://temistec.com/tickets">Tickets</a>
+        <a href="https://temistec.com/view-tickets">View Tickets</a>
+        <a href="https://temistec.com/top-up">Top Up</a>
+        <a href="/about">About</a>
+        <a href="/gallery">Gallery</a>
+        <a href="/blog">Blog</a>
+        <a href="/partners">Partners</a>
+        <a href="/contact">Contact</a>
+        <a href="/report-issue">Report Issue</a>
+      </div>
+    </details>
+    <a href="/login" class="nav-cta" aria-label="Sign in to admin or vendor dashboard">Sign In</a>
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation menu"><span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span></button>
+</div>
+</nav></header>
+
+<main id="main-content">
+
+<section class="page-header">
+<div class="w">
+  <p class="label">Walkie-Talkie Experiences</p>
+  <h1>Open Mic · This Saturday</h1>
+  <p>Saturday, September 19, 2026 &middot; The Gambia</p>
+</div>
+</section>
+
+<section style="padding-top: 0;">
+<div class="w" style="max-width: 800px;">
+
+  <div class="om-callout">
+    <div class="om-badge">🎤 Open Mic Session · This Saturday</div>
+    <h2 style="font-size: 24px; margin-bottom: 16px;">Grab your slot on stage</h2>
+    <p style="font-size: 16px; margin-bottom: 14px; color: var(--fg);">
+      Singers, rappers, comedians, poets, and every other talent. This stage is yours.
+      Sign up below so we can line up the show and get your sound right.
+    </p>
+    <ul style="font-size: 15px; color: var(--muted); margin-bottom: 14px; padding-left: 20px; list-style: none;">
+      <li style="margin-bottom: 6px;">🎵 <strong>Music:</strong> live vocals, rap and instruments. Send your beat after signup.</li>
+      <li style="margin-bottom: 6px;">😂 <strong>Comedy:</strong> stand-up, skits and improv.</li>
+      <li style="margin-bottom: 6px;">📝 <strong>Poetry:</strong> spoken word, poems and storytelling.</li>
+      <li style="margin-bottom: 6px;">✨ <strong>Other talent:</strong> dance, magic, anything the stage can hold.</li>
+    </ul>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 0;">
+      Venue and set times are confirmed on WhatsApp after you sign up. Slots are limited, so first come, first served.
+    </p>
+  </div>
+
+  <!-- Open Mic Signup Form -->
+  <div id="apply-section" style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px;">
+    <p class="label" style="color: var(--accent);">Signup Form</p>
+    <h2 style="margin-bottom: 8px; font-size: 26px;">Sign up to perform</h2>
+    <p style="margin-bottom: 28px; font-size: 15px; color: var(--muted);">Fill this in before Saturday so we can plan your slot. Fields marked <span style="color:#DC2626;">*</span> are required.</p>
+
+    <form id="openmic-form" novalidate>
+      <div class="form-group">
+        <label for="om-name">Your Name <span style="color:#DC2626;">*</span></label>
+        <input type="text" id="om-name" placeholder="Enter your full name" autocomplete="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="om-stage">Stage Name <span style="font-size: 13px; color: var(--muted); font-weight: normal;">(Optional, if different)</span></label>
+        <input type="text" id="om-stage" placeholder="e.g. Lil Gambian, The Funny One">
+      </div>
+
+      <fieldset class="form-group om-fieldset om-talent-group" id="om-talent-group">
+        <legend id="om-talent-label">Your Talent <span style="color:#DC2626;">*</span></legend>
+        <div class="om-talent-grid" style="margin-top: 8px;">
+          <label class="om-talent-card" for="talent-music">
+            <input type="radio" name="talent" id="talent-music" value="MUSIC" required>
+            <span class="om-talent-inner"><span class="om-talent-emoji">🎵</span><span class="om-talent-name">MUSIC</span></span>
+          </label>
+          <label class="om-talent-card" for="talent-comedy">
+            <input type="radio" name="talent" id="talent-comedy" value="COMEDY">
+            <span class="om-talent-inner"><span class="om-talent-emoji">😂</span><span class="om-talent-name">COMEDY</span></span>
+          </label>
+          <label class="om-talent-card" for="talent-poetry">
+            <input type="radio" name="talent" id="talent-poetry" value="POETRY">
+            <span class="om-talent-inner"><span class="om-talent-emoji">📝</span><span class="om-talent-name">POETRY</span></span>
+          </label>
+          <label class="om-talent-card" for="talent-other">
+            <input type="radio" name="talent" id="talent-other" value="OTHER TALENT">
+            <span class="om-talent-inner"><span class="om-talent-emoji">✨</span><span class="om-talent-name">OTHER TALENT</span></span>
+          </label>
+        </div>
+        <p class="om-error" id="om-talent-error" role="alert"></p>
+      </fieldset>
+
+      <div class="form-group" id="om-talent-other-group" style="display: none;">
+        <label for="om-talent-other-text">Describe your talent <span style="color:#DC2626;">*</span></label>
+        <input type="text" id="om-talent-other-text" placeholder="e.g. Dance, magic, beatbox...">
+      </div>
+
+      <div class="grid-2" style="gap: 16px;">
+        <div class="form-group">
+          <label for="om-phone">WhatsApp Number <span style="color:#DC2626;">*</span></label>
+          <input type="tel" id="om-phone" placeholder="+220 7XX XXXX" autocomplete="tel" required>
+        </div>
+        <div class="form-group">
+          <label for="om-email">Email Address <span style="color:#DC2626;">*</span></label>
+          <input type="email" id="om-email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="om-performance">Performance Title <span style="font-size: 13px; color: var(--muted); font-weight: normal;">(Optional)</span></label>
+        <input type="text" id="om-performance" placeholder="e.g. Song name, poem title, set theme">
+      </div>
+
+      <div class="form-group">
+        <label for="om-beat">Beat / Track Link <span style="font-size: 13px; color: var(--muted); font-weight: normal;">(Optional, for musicians)</span></label>
+        <input type="url" id="om-beat" placeholder="Paste your beat link: YouTube, Google Drive, Dropbox..." inputmode="url">
+        <p style="font-size: 13px; color: var(--muted); margin-top: 6px;">Have the file on your phone instead? Upload it below. No file and no link? Sign up now and send your beat on WhatsApp below.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Or upload the audio file <span style="font-size: 13px; color: var(--muted); font-weight: normal;">(Optional, MP3 or similar, max 15MB)</span></label>
+        <div class="om-upload-box" id="om-beat-dropzone">
+          <div id="om-beat-prompt">
+            <span style="font-size: 24px;">🎧</span>
+            <p style="font-size: 14px; font-weight: 500; margin-top: 6px;">Tap to choose your beat file, or drag it here</p>
+            <p style="font-size: 12px; color: var(--muted); margin-top: 4px;">MP3, WAV, M4A, OGG or AAC (Max 15MB)</p>
+          </div>
+          <input type="file" id="om-beat-file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.flac" style="display: none;">
+          <div id="om-beat-fileinfo" class="om-upload-preview" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
+              <span style="font-size: 20px;">📎</span>
+              <div>
+                <strong id="om-beat-filename" style="font-size: 14px; display: block; word-break: break-all;">beat.mp3</strong>
+                <span id="om-beat-filesize" style="font-size: 12px; color: var(--muted);">0 KB</span>
+              </div>
+            </div>
+            <button type="button" id="om-beat-remove" style="background: none; border: none; color: #DC2626; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 8px;">Remove</button>
+          </div>
+        </div>
+        <p class="om-error" id="om-beat-error" role="alert"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="om-requests">Requests for your performance <span style="font-size: 13px; color: var(--muted); font-weight: normal;">(Optional)</span></label>
+        <textarea id="om-requests" placeholder="Tell us what you need to shine. For example: mic setup, a DJ cue like 'start my beat at 0:15', guitar plug-in, a stool or lighting." style="min-height: 110px;"></textarea>
+      </div>
+
+      <fieldset class="form-group om-fieldset om-proj-group" id="om-proj-group">
+        <legend id="om-proj-label">Want anything shown on the big screen while you perform? <span style="color:#DC2626;">*</span></legend>
+        <div class="om-pill-grid" style="margin-top: 8px;">
+          <label class="om-pill" for="proj-yes">
+            <input type="radio" name="projection" id="proj-yes" value="Yes" required>
+            <span class="om-pill-inner">Yes, project it</span>
+          </label>
+          <label class="om-pill" for="proj-no">
+            <input type="radio" name="projection" id="proj-no" value="No">
+            <span class="om-pill-inner">No, just me</span>
+          </label>
+        </div>
+        <p class="om-error" id="om-proj-error" role="alert"></p>
+      </fieldset>
+
+      <div class="form-group" id="om-proj-spec-group" style="display: none;">
+        <label for="om-proj-spec">What should we show? <span style="color:#DC2626;">*</span></label>
+        <textarea id="om-proj-spec" placeholder="Describe it here: your lyrics, your full poem, a photo slideshow, a video link..." style="min-height: 80px;"></textarea>
+      </div>
+
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin: 20px 0;"></div>
+
+      <button type="submit" class="btn btn-primary" id="om-submit" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; margin-top: 10px;">
+        Claim My Slot <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-left:6px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </form>
+
+    <div id="om-success-message" style="display: none; text-align: center; padding: 40px 20px;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px;">✓</div>
+      <h3 style="font-size: 26px; margin-bottom: 12px;">You're on the lineup!</h3>
+      <p style="font-size: 16px; color: var(--muted); max-width: 500px; margin: 0 auto 8px;" id="om-success-text">
+        Thanks for signing up for the Open Mic this Saturday! We'll confirm your slot and set time on WhatsApp.
+      </p>
+      <p style="font-size: 14px; color: var(--muted); max-width: 500px; margin: 0 auto 24px;">
+        Performing music? Send your beat now so the DJ has it ready.
+      </p>
+      <a class="btn btn-primary" id="om-success-whatsapp" href="https://wa.me/2207865201" target="_blank" rel="noopener" style="justify-content: center; margin-bottom: 12px;">Send My Beat on WhatsApp</a>
+      <br>
+      <a href="/walkie-talkie" class="btn" style="justify-content: center;">Back to Experiences</a>
+    </div>
+
+  </div>
+
+  <div class="om-beat-card">
+    <p style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">🎧 Need to send your beat or have a request?</p>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">WhatsApp it straight to the events team. Include your name and talent.</p>
+    <a class="btn" id="om-beat-whatsapp" href="https://wa.me/2207865201?text=Hi%20Walking-Fish!%20I%20signed%20up%20for%20the%20Open%20Mic%20this%20Saturday.%20Here%20is%20my%20beat%20%2F%20request%3A%20" target="_blank" rel="noopener" style="justify-content: center;">Send Beat on WhatsApp</a>
+  </div>
+
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+  <div class="grid-4">
+    <div>
+      <p class="tagline">Walking-<em style="font-style:normal; color:var(--accent);">Fish</em></p>
+      <p style="font-size:14px; color:var(--muted);">Creating Experiences People Remember.</p>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Explore</h2>
+      <a href="/walkie-talkie">Experiences</a>
+      <a href="/piroake">Piroake Fest</a>
+      <a href="/muster-point">Media</a>
+      <a href="/gallery">Gallery</a>
+      <a href="https://temistec.com/tickets">Tickets</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">Connect</h2>
+      <a href="/about">About Us</a>
+      <a href="/partners">Partners</a>
+      <a href="/vendors">Vendors</a>
+      <a href="/volunteers">Volunteers</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <div>
+      <h2 style="font-size:14px; color:var(--fg); font-family:var(--font-body); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;">More</h2>
+      <a href="/blog">Blog</a>
+      <a href="https://temistec.com/top-up">Top Up</a>
+      <a href="#">Media Kit</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/vendor-login">Vendor Login</a>
+      <a href="/admin-login" style="font-size:12px;opacity:0.5;">Admin</a>
+    </div>
+  </div>
+  <div class="copyright">&copy; 2026 Walking-Fish Group. All rights reserved.</div>
+</div>
+</footer>
+
+<script defer src="open-mic-form.js?v=1"></script>
+
+<nav class="bottom-tabs" aria-label="Main navigation">
+<div class="tab-row">
+  <a href="/">
+    <span><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+    Home
+  </a>
+  <a href="/piroake">
+    <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+    Events
+  </a>
+  <a href="/vendors">
+    <span><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+    Vendors
+  </a>
+  <a href="/contact">
+    <span><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+    Contact
+  </a>
+  <a href="#" id="menu-toggle">
+    <span><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+    Menu
+  </a>
+</div>
+</nav>
+<script>(function(){var p=window.location.pathname.replace(/\.html$/,'');document.querySelectorAll('.bottom-tabs a').forEach(function(a){var h=a.getAttribute('href');if(h!=='#'&&h===p)a.classList.add('active');});})();</script>
+
+</body>
+</html>
