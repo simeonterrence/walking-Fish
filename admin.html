@@ -3870,15 +3870,38 @@
       event_date: dateVal ? new Date(dateVal).toISOString() : null
     };
     try {
-      if (id) {
-        await apiPatch('/rest/v1/events?id=eq.' + id, body);
-      } else {
-        await apiPost('/rest/v1/events', body);
+      var savedWithoutPoster = false;
+      try {
+        if (id) {
+          await apiPatch('/rest/v1/events?id=eq.' + id, body);
+        } else {
+          await apiPost('/rest/v1/events', body);
+        }
+      } catch(saveErr) {
+        var errMsg = (saveErr && saveErr.message) ? saveErr.message : String(saveErr);
+        // If poster_url column does not exist in events schema, retry without it
+        if (errMsg.indexOf('poster_url') !== -1) {
+          var fallbackBody = Object.assign({}, body);
+          delete fallbackBody.poster_url;
+          if (id) {
+            await apiPatch('/rest/v1/events?id=eq.' + id, fallbackBody);
+          } else {
+            await apiPost('/rest/v1/events', fallbackBody);
+          }
+          savedWithoutPoster = true;
+        } else {
+          throw saveErr;
+        }
       }
-      okEl.textContent = 'Event saved!';
+
+      if (savedWithoutPoster) {
+        okEl.innerHTML = 'Event saved successfully! <div style="font-size:12px;margin-top:5px;color:#d97706;font-weight:normal;">Notice: The <code>poster_url</code> database column has not been added to Supabase yet. Please execute migration <code>20260810000002_add_poster_url_to_events.sql</code> in the Supabase SQL Editor to enable custom flyer URLs.</div>';
+      } else {
+        okEl.textContent = 'Event saved!';
+      }
       okEl.style.display = 'block';
       await loadEvents();
-      setTimeout(function(){ document.getElementById('event-form-container').style.display = 'none'; }, 1000);
+      setTimeout(function(){ document.getElementById('event-form-container').style.display = 'none'; }, savedWithoutPoster ? 3500 : 1000);
     } catch(err) {
       errEl.textContent = 'Error: ' + err.message;
       errEl.style.display = 'block';
@@ -3890,17 +3913,48 @@
   // Poster image file upload handler
   var posterFileInput = document.getElementById('ef-poster-file');
   if (posterFileInput) {
-    posterFileInput.addEventListener('change', function(e){
+    posterFileInput.addEventListener('change', async function(e){
       if (e.target.files && e.target.files[0]) {
         var file = e.target.files[0];
-        if (file.size > 5 * 1024 * 1024) {
-          alert('File size is too large (max 5MB). Please select a smaller image.');
+        if (file.size > 10 * 1024 * 1024) {
+          alert('File size is too large (max 10MB). Please select a smaller image.');
           return;
         }
+        var posterTextEl = document.getElementById('ef-poster');
+        var uploadBtn = document.querySelector('button[onclick*="ef-poster-file"]');
+        if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading…'; }
+
+        // Attempt direct upload to Supabase Storage 'site-photos' bucket
+        try {
+          var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+          var cleanName = 'events/' + Date.now() + '.' + ext;
+          var uploadUrl = SUPABASE_URL + '/storage/v1/object/site-photos/' + cleanName;
+          var headers = adminHeaders();
+          headers['Content-Type'] = file.type || 'image/jpeg';
+          headers['x-upsert'] = 'true';
+
+          var upRes = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: headers,
+            body: file
+          });
+          if (upRes.ok) {
+            var publicUrl = SUPABASE_URL + '/storage/v1/object/public/site-photos/' + cleanName;
+            if (posterTextEl) posterTextEl.value = publicUrl;
+            if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = 'Uploaded ✓'; }
+            setTimeout(function(){ if (uploadBtn) uploadBtn.textContent = 'Upload Image'; }, 2500);
+            return;
+          }
+        } catch(storageErr) {
+          console.warn('Storage upload failed, falling back to data URL:', storageErr);
+        }
+
+        // Fallback to Data URL
         var reader = new FileReader();
         reader.onload = function(evt) {
           var posterTextEl = document.getElementById('ef-poster');
           if (posterTextEl) posterTextEl.value = evt.target.result;
+          if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = 'Upload Image'; }
         };
         reader.readAsDataURL(file);
       }
