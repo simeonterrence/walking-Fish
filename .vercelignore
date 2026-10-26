@@ -1,3 +1,23 @@
-# Keep backend sources and database schema out of the static deployment.
-# Vercel serves this repo root as-is, so without this the .sql files are public.
+# Vercel serves this repo root as-is, so anything NOT listed here is publicly
+# downloadable from the live domain. Keep backend sources, internal documents
+# and developer notes out of the static deployment.
+
+# Backend sources and database schema
 supabase/
+
+# Internal documents: PRDs, ADRs, ticketing plans, patent application, ToS drafts
+docs/
+
+# Repository guidance and working notes
+CLAUDE.md
+CONTEXT.md
+README.md
+
+# Developer tooling and scratch output
+generatesitemap.py
+test_results.txt
+squirrel.toml
+skills-lock.json
+
+# Stray 166 KB HTML upload (commit e03e360, 2026-05-17); unreferenced by the site
+15ddbf4a0936b3cc4f9b7902cfc87e67715e4f38
