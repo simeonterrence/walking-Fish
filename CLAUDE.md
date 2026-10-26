@@ -21,7 +21,7 @@ Every page loads scripts in this order (deferred where applicable):
 
 ### Supabase Integration
 
-Linked to project `anigcqdquakinlzvyaur` (ID: `anigcqdquakinlzvyaur`). The Supabase CLI config lives in `supabase/config.toml` (local dev at port 54321).
+Linked to project `anigcqdquakinlzvyaur` (ID: `anigcqdquakinlzvyaur`, Central EU / Frankfurt). The CLI authenticates from `SUPABASE_ACCESS_TOKEN` in `.env` (or the stored credential at `~/.supabase/access-token`). There is **no `supabase/config.toml`**, so `supabase start` and the local stack are not set up — work against the hosted project with `supabase link`, `supabase migration list`, and direct SQL (`SUPABASE_DB_PASSWORD` in `.env`).
 
 - **`site_images` table** — photo records (`section`, `position`, `file_path`, `alt_text`). Queried via REST API with `section=eq.<name>` and `order=position.asc`.
 - **`site-photos` bucket** : stores uploaded images organized in `section/` subdirectories.
@@ -53,13 +53,18 @@ Login is unified at `/login` (`login.html`). After Supabase Auth login, the JWT 
 - **`contact_messages`** : `{ id, name, email, phone, subject, message, created_at }` — Contact form submissions
 - **`early_access`** : `{ id, email, phone, ticket_code, created_at }` — Piroake Fest early access signups
 
+The list above covers the original vendor/contact/photo work only. The schema has grown well beyond it — **24 tables and 25 functions** across ticketing (tickets, transfers, referrals, scans, webhook logs), events, volunteer applications, complaints and the vendor/auth tables. `supabase/migrations/` is the source of truth; read it rather than trusting any table inventory in this file.
+
 ### Migrations
-Located in `supabase/migrations/`:
-- `20260516000001_create_vendor_tables.sql` — Vendor tables with RLS
-- `20260516000002_add_delete_rls_policies.sql` — DELETE policies for vendor management
-- `20260518000003_create_early_access_and_contact_tables.sql` — Contact + early access tables
-- `20260518000004_security_hardening.sql` — Security hardening policies
-- `20260522000005_add_phone_columns.sql` — Phone/WhatsApp columns for contact_messages + early_access
+`supabase/migrations/` holds **37 files**, in sync with the remote history — `supabase migration list` reports zero drift in both directions.
+
+- Applied migrations live in `supabase_migrations.schema_migrations`, which also stores each migration's SQL in its `statements` column. That is how the files below were reconstructed (2026-10-26) when the repo held only 5 of the 32 applied migrations.
+- Every live table and function is created by one of these files, so the repo can rebuild the schema.
+- The four migrations that had been applied by hand in the dashboard SQL editor were recorded with `supabase migration repair --status applied`.
+- `20260609000001_fix_admin_list_security.sql` was renamed to `20260611000001_fix_admin_list_security.sql` — its original version number was already taken in the remote history by `create_ticket_transfers`.
+- Because history is in sync, `supabase db push` is a **no-op**. If it ever reports work to do, reconcile the history first (`supabase migration list`) rather than pushing.
+
+Key early migrations: `20260516000001_create_vendor_tables.sql` (vendor tables with RLS), `20260516000002_add_delete_rls_policies.sql`, `20260518000003_create_early_access_and_contact_tables.sql`, `20260518000004_security_hardening.sql`, `20260522000005_add_phone_columns.sql`, `20260524000001_add_details_to_vendor_applications.sql` (adds the `details` jsonb column the vendor form writes to), `20260526000003_create_site_images_table.sql`.
 
 ### localStorage (deprecated)
 - `adminUsers`, `vendorApplications`, `inviteTokens`, `vendorUsers` — legacy localStorage (deprecated; migrated to Supabase)
@@ -75,8 +80,8 @@ PostHog is listed as an analytics provider in the privacy policy. The CSP in `ve
 ## Common Tasks
 
 - **Preview locally**: Open any `.html` file directly or use `python3 -m http.server 8080` for clean URLs.
-- **Deploy**: Push to `main` (Vercel auto-deploys). Verify with `npx vercel --prod`.
-- **Supabase local dev**: `supabase start` (config in `supabase/config.toml`). Apply migrations with `supabase migration up`.
+- **Deploy**: Push to `main` (Vercel auto-deploys). Verify with `npx vercel --prod`. Vercel publishes the repo root as static files, so **every tracked file not matched by `.vercelignore` is publicly downloadable** from the live domain. Keep backend sources, internal docs and developer notes listed there.
+- **Supabase CLI**: linked to the hosted project. `supabase migration list` shows local vs remote, `supabase db push` applies new migrations (a no-op while the history is in sync). No `supabase/config.toml` exists, so `supabase start` / `supabase migration up` (the local stack) are unavailable — use direct SQL via `psql` or the dashboard when a read is needed.
 - **Add a page**: (1) Create `.html` file, (2) add rewrite entry in `vercel.json`, (3) add `<nav>` link + `<footer>` link, (4) add `[data-page="name"]` rule in `style.css` for bottom-tab active state, (5) update `sitemap.xml`.
 - **Photo sections**: Gallery uses `data-photos="gallery"`, partners use `data-photos="partners"`. Adding a new section requires the HTML attribute + matching Supabase `site_images` records.
 - **Environment**: Copy `.env.example` to `.env` and fill in Supabase credentials. Never commit `.env`.
@@ -90,10 +95,12 @@ PostHog is listed as an analytics provider in the privacy policy. The CSP in `ve
 
 ## Edge Functions
 
-**`verify-turnstile`** (`supabase/functions/verify-turnstile/`) — Handles form submissions for three tables:
+**`verify-turnstile`** (`supabase/functions/verify-turnstile/`) — Handles form submissions for the tables in its `ALLOWED_TABLES` allowlist:
 - `vendor_applications` — Vendor applications via `/vendors` form
+- `volunteer_applications` — Volunteer applications via `/volunteers` form
 - `contact_messages` — Contact form via `/contact` form
 - `early_access` — Early access signups (piroake fest ticket codes)
+- `complaints` — Complaints form
 
 The function verifies Cloudflare Turnstile CAPTCHA, inserts into Supabase, and sends email notifications via Resend:
 - Admin emails → `admin@walkingfish.gm`, `vendor@walkingfish.gm`, `theevents.guy@walkingfish.gm`, `musterpoint@walkingfish.gm` (smart routing based on inquiry subject)
