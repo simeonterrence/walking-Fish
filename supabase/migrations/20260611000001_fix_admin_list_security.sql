@@ -1,3 +1,5 @@
+-- NOTE: version corrected from 20260609000001, which was already taken by create_ticket_transfers
+-- (the migration below was applied to the database but could not be recorded).
 -- Fix: Exposed Auth Users via admin_list view
 -- The admin_list view in public schema exposes auth.users data to anon/authenticated roles
 -- Solution: Replace view with SECURITY DEFINER function accessible only via service_role

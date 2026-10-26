@@ -1,0 +1,3 @@
+# Keep backend sources and database schema out of the static deployment.
+# Vercel serves this repo root as-is, so without this the .sql files are public.
+supabase/
