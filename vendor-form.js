@@ -46,6 +46,16 @@
     // Team size change
     if (teamSizeInput) teamSizeInput.addEventListener('change', renderTeamMembers);
 
+    // Event operations acknowledgement
+    var disclaimer = document.getElementById('vf-disclaimer');
+    if (disclaimer) disclaimer.addEventListener('change', function () {
+      if (!this.checked) return;
+      var err = document.getElementById('vf-disclaimer-error');
+      if (err) err.style.display = 'none';
+      var box = document.getElementById('vf-notice');
+      if (box) box.classList.remove('has-error');
+    });
+
     renderTeamMembers();
     updateProgress();
   });
@@ -225,6 +235,18 @@
 
     if (page === 4) {
       valid = validateRequired(pageEl, ['vf-extratags', 'vf-appliances', 'vf-power', 'vf-readiness']);
+    }
+
+    if (page === 5) {
+      var disclaimer = document.getElementById('vf-disclaimer');
+      if (disclaimer && !disclaimer.checked) {
+        var notice = document.getElementById('vf-notice');
+        if (notice) notice.classList.add('has-error');
+        var disclaimerErr = document.getElementById('vf-disclaimer-error');
+        if (disclaimerErr) disclaimerErr.style.display = 'block';
+        disclaimer.focus();
+        valid = false;
+      }
     }
 
     return valid;

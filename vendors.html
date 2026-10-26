@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, games, and sponsorship opportunities available. Apply for a booth at Walking-Fish Group events.">
+<meta name="description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, and sponsorship opportunities available. Apply for a booth at Walking-Fish Group events.">
 <meta property="og:title" content="Walking-Fish Vendors | Apply for Events & Festivals">
-<meta property="og:description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, games, and sponsorship opportunities available.">
+<meta property="og:description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, and sponsorship opportunities available.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.walkingfish.gm/vendors">
 <meta name="twitter:image" content="https://www.walkingfish.gm/bg-abstract-coral.gif">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Walking-Fish Vendors | Apply for Events & Festivals">
-<meta name="twitter:description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, games, and sponsorship opportunities.">
+<meta name="twitter:description" content="Become a vendor at Piroake Fest 2026. Food, merchandise, and sponsorship opportunities.">
 <link rel="canonical" href="https://www.walkingfish.gm/vendors">
 <meta property="og:image" content="https://www.walkingfish.gm/bg-abstract-coral.gif">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 16h18l4-4v8z'/><circle cx='11' cy='16' r='1.5' fill='%23111111'/></svg>">
@@ -49,8 +49,7 @@
 .vf-page { animation: vfSlideIn .3s ease; }
 @keyframes vfSlideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
 .vf-nav-buttons { display:flex; gap:12px; margin-top:28px; padding-top:20px; border-top:1px solid var(--border); max-width:640px; }
-.vf-stall-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-@media(max-width:540px){ .vf-stall-grid { grid-template-columns:1fr; } }
+.vf-stall-grid { display:grid; grid-template-columns:1fr; gap:16px; }
 .vf-stall-card { cursor:pointer; position:relative; }
 .vf-stall-card input { position:absolute; opacity:0; pointer-events:none; }
 .vf-stall-inner { border:2px solid var(--border); border-radius:12px; padding:24px; text-align:center; transition:border-color .2s, box-shadow .2s; }
@@ -75,6 +74,12 @@
 .vf-review-row .vf-rv { color:var(--fg); word-break:break-word; }
 .vf-error { color:#DC2626; font-size:13px; margin-top:4px; display:none; }
 .form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea { border-color:#DC2626; }
+.vf-notice { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:12px; padding:24px; margin-bottom:16px; }
+.vf-notice h4 { font-size:15px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:12px; }
+.vf-notice p { font-size:14px; color:var(--muted); margin-bottom:12px; }
+.vf-notice-check { display:flex; align-items:flex-start; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-size:14px; color:var(--fg); cursor:pointer; }
+.vf-notice-check input { width:20px; height:20px; margin-top:1px; flex-shrink:0; accent-color:var(--accent); cursor:pointer; }
+.vf-notice.has-error { border-color:#DC2626; }
 </style>
 </head>
 <body data-page="vendors">
@@ -116,7 +121,7 @@
 <div class="w">
   <p class="label">Vendors</p>
   <h1>Become a Vendor</h1>
-  <p>Join the Walking-Fish ecosystem. We work with food vendors, merchandise sellers, games operators, and sponsors to create unforgettable festival experiences.</p>
+  <p>Join the Walking-Fish ecosystem. We work with food vendors, merchandise sellers, and sponsors to create unforgettable festival experiences.</p>
 </div>
 </section>
 
@@ -124,7 +129,7 @@
 <div class="w">
   <p class="label">Who We Work With</p>
   <h2 style="margin-bottom: 40px;">Vendor categories.</h2>
-  <div class="grid-4">
+  <div class="grid-3">
     <div class="card" style="text-align:center;">
       <h3 style="font-size: 18px;">Food &amp; Beverage</h3>
       <p style="margin-top:8px; font-size:14px;">Local cuisine, street food, desserts, beverages, and pop-up dining experiences.</p>
@@ -132,10 +137,6 @@
     <div class="card" style="text-align:center;">
       <h3 style="font-size: 18px;">Merchandise</h3>
       <p style="margin-top:8px; font-size:14px;">Apparel, accessories, art, crafts, and branded merchandise for festival-goers.</p>
-    </div>
-    <div class="card" style="text-align:center;">
-      <h3 style="font-size: 18px;">Games &amp; Activities</h3>
-      <p style="margin-top:8px; font-size:14px;">Interactive games, carnival-style booths, activations, and entertainment zones.</p>
     </div>
     <div class="card" style="text-align:center;">
       <h3 style="font-size: 18px;">Sponsors</h3>
@@ -149,7 +150,7 @@
 <div class="w">
   <p class="label">Pricing</p>
   <h2 style="margin-bottom: 40px;">Booth options.</h2>
-  <div class="grid-3">
+  <div class="grid-2">
     <div class="tier-card">
       <p class="label" style="color: var(--accent);">Standard</p>
       <div class="price">D3000</div>
@@ -159,18 +160,6 @@
         <li>Basic listing in event program</li>
         <li>1 vendor pass</li>
         <li>Social media mention</li>
-      </ul>
-    </div>
-    <div class="tier-card" style="border-color: var(--accent); position:relative;">
-      <p class="label" style="color: var(--accent);">Premium</p>
-      <div class="price">D5000</div>
-      <p style="font-size:14px; color:var(--muted);">Prime placement, more space, and enhanced visibility.</p>
-      <ul>
-        <li>10&times;20 booth space</li>
-        <li>Featured listing in event program</li>
-        <li>2 vendor passes</li>
-        <li>Social media feature</li>
-        <li>Prime location placement</li>
       </ul>
     </div>
     <div class="tier-card">
@@ -239,7 +228,7 @@
     <!-- ======== PAGE 2: Stall Selection ======== -->
     <div class="vf-page" data-page="2" style="display:none;">
       <h3 style="margin-bottom:20px;">Stall Selection</h3>
-      <p style="margin-bottom:24px;font-size:15px;color:var(--muted);">Choose the stall that best fits your needs.</p>
+      <p style="margin-bottom:24px;font-size:15px;color:var(--muted);">The standard stall package is the vendor option for this edition of Piroake Fest. Sponsorships are arranged separately — get in touch if you would like a sponsor package.</p>
       <div class="vf-stall-grid">
         <label class="vf-stall-card" for="stall-standard">
           <input type="radio" name="stall" id="stall-standard" value="Standard Stall" required>
@@ -247,14 +236,6 @@
             <strong>Standard Stall</strong>
             <span class="vf-stall-price">D3,000</span>
             <ul><li>10×10 booth space</li><li>Basic event listing</li><li>1 vendor pass</li><li>Social media mention</li></ul>
-          </div>
-        </label>
-        <label class="vf-stall-card" for="stall-premium">
-          <input type="radio" name="stall" id="stall-premium" value="Premium Stall">
-          <div class="vf-stall-inner">
-            <strong>Premium Stall</strong>
-            <span class="vf-stall-price">D5,000</span>
-            <ul><li>10×20 booth space</li><li>Featured listing</li><li>2 vendor passes</li><li>Prime location</li><li>Social media feature</li></ul>
           </div>
         </label>
       </div>
@@ -318,6 +299,19 @@
         <p style="font-size:13px;color:var(--muted);margin-top:12px;">For questions, WhatsApp: <a href="https://wa.me/2207865201" style="color:var(--accent);font-weight:500;">+220 786 5201</a></p>
       </div>
 
+      <div class="vf-notice" id="vf-notice">
+        <h4>Exclusive Event Operations</h4>
+        <p>Please note that drinks, popcorn, and games are excluded from all vendor packages. These are exclusively managed by the event organisers through designated areas, including the central bar, popcorn station, and games zone.</p>
+        <p>Vendors are therefore not permitted to sell drinks or popcorn, or independently operate or charge for games within the event grounds without prior authorisation from the organisers.</p>
+        <p>By completing this registration, vendors acknowledge and agree to these restrictions.</p>
+        <p>Thank you for your cooperation.</p>
+        <label class="vf-notice-check" for="vf-disclaimer">
+          <input type="checkbox" id="vf-disclaimer" required>
+          <span>I have read and agree to these exclusive event operations restrictions. <span style="color:#DC2626;">*</span></span>
+        </label>
+        <p class="vf-error" id="vf-disclaimer-error">Please tick the box to confirm you agree to these restrictions before submitting.</p>
+      </div>
+
       <div class="cf-turnstile" data-sitekey="0x4AAAAAADR0ABsnq8SkzKvd" data-theme="auto" style="margin-bottom:16px;"></div>
     </div>
 
@@ -373,7 +367,7 @@
 </div>
 </footer>
 
-<script defer src="vendor-form.js?v=1"></script>
+<script defer src="vendor-form.js?v=2"></script>
 
 <nav class="bottom-tabs" aria-label="Main navigation">
 <div class="tab-row">
