@@ -400,7 +400,9 @@
         bringing_appliances: v('vf-appliances'),
         appliances_list: v('vf-appliances-list'),
         power_requirements: v('vf-power'),
-        readiness_level: v('vf-readiness')
+        readiness_level: v('vf-readiness'),
+        event_operations_ack: true,
+        event_operations_ack_at: new Date().toISOString()
       }
     }).then(function () {
       if (typeof giftVendorKit === 'function') {

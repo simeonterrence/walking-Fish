@@ -1902,6 +1902,18 @@
                             escapeHtml(details.stall_preference) +
                             "</span></div>";
                     }
+                    detailsHtml +=
+                        "<div><strong>Exclusive event operations policy:</strong> " +
+                        (details.event_operations_ack
+                            ? '<span class="badge" style="background:var(--accent-dim); color:var(--accent); padding: 2px 8px; border-radius:4px; font-size:12px;">Acknowledged</span>' +
+                              (details.event_operations_ack_at
+                                  ? ' <span style="color:var(--muted); font-size:12px;">on ' +
+                                    escapeHtml(String(details.event_operations_ack_at).slice(0, 10)) +
+                                    "</span>"
+                                  : "")
+                            : '<span style="color:var(--muted);">Not recorded (applied before the policy)</span>') +
+                        "</div>";
+
                     if (details.team_size) {
                         detailsHtml +=
                             "<div><strong>Team Size:</strong> " +
