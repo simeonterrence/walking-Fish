@@ -58,7 +58,8 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
           ${data.details ? `
             <tr><td colspan="2" style="padding:16px 0 8px;font-weight:bold;border-bottom:1px solid #eee;">Application Details</td></tr>
             ${row("Intended Items", data.details.sell_intent || "-")}
-            ${row("Stall Selection", data.details.stall_preference || "-")}
+            ${data.details.stall_preference ? row("Stall Selection", data.details.stall_preference) : ""}
+            ${data.details.business_logo ? row("Business Logo", `<img src="${data.details.business_logo}" style="max-width:120px;max-height:120px;border-radius:6px;border:1px solid #ddd;" alt="Business Logo">`) : ""}
             ${row("Team Size", data.details.team_size || "-")}
             ${data.details.team_members && data.details.team_members.length ? `
               <tr><td style="padding:8px 0;color:#666;vertical-align:top;">Team Members</td><td style="padding:8px 0;">
@@ -68,6 +69,7 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
                       <td style="padding:4px 0;">
                         <strong>${m.name || "-"}</strong> (${m.role || "-"})<br>
                         Phone: ${m.phone || "-"}
+                        ${m.photo ? `<br><img src="${m.photo}" style="max-width:200px;max-height:150px;border-radius:4px;margin-top:4px;border:1px solid #ddd;" alt="Personal Photograph">` : ""}
                         ${m.id_photo ? `<br><img src="${m.id_photo}" style="max-width:200px;max-height:150px;border-radius:4px;margin-top:4px;border:1px solid #ddd;" alt="ID Photo">` : ""}
                       </td>
                     </tr>

@@ -1890,6 +1890,13 @@
                             ? JSON.parse(app.details)
                             : app.details;
 
+                    if (details.business_logo) {
+                        detailsHtml +=
+                            '<div><strong>Business Logo:</strong><br><img src="' +
+                            details.business_logo +
+                            '" style="max-width: 120px; max-height: 120px; border-radius: 8px; margin-top: 6px; border: 1px solid var(--border); background: #fff;" alt="Business Logo"></div>';
+                    }
+
                     if (details.sell_intent) {
                         detailsHtml +=
                             '<div><strong>What they intend to sell:</strong><div style="background:var(--accent-dim); padding: 12px; border-radius: 6px; margin-top: 4px; white-space: pre-wrap;">' +
@@ -1939,6 +1946,12 @@
                                 "<div><strong>Phone:</strong> " +
                                 escapeHtml(m.phone) +
                                 "</div>";
+                            if (m.photo) {
+                                detailsHtml +=
+                                    '<div style="margin-top: 8px;"><strong>Personal Photograph (Tag):</strong><br><img src="' +
+                                    m.photo +
+                                    '" style="max-width: 120px; max-height: 120px; border-radius: 50%; margin-top: 4px; border:1px solid var(--border);"></div>';
+                            }
                             if (m.id_photo) {
                                 detailsHtml +=
                                     '<div style="margin-top: 8px;"><strong>Photo ID:</strong><br><img src="' +

@@ -8,7 +8,8 @@
 
   var TOTAL_PAGES = 5;
   var currentPage = 1;
-  var teamPhotoData = {}; // key: "team-photo-N" → base64 data URL
+  var teamPhotoData = {}; // key: "member-photo-N" / "member-id-N" → base64 data URL
+  var logoData = null; // business logo → base64 data URL
 
   // ── DOM refs ──
   var form, prevBtn, nextBtn, submitBtn, teamSizeInput, teamList;
@@ -46,6 +47,10 @@
     // Team size change
     if (teamSizeInput) teamSizeInput.addEventListener('change', renderTeamMembers);
 
+    // Business logo upload
+    var logoInput = document.getElementById('vf-logo');
+    if (logoInput) logoInput.addEventListener('change', handleLogoUpload);
+
     // Event operations acknowledgement
     var disclaimer = document.getElementById('vf-disclaimer');
     if (disclaimer) disclaimer.addEventListener('change', function () {
@@ -78,48 +83,88 @@
         '<input type="text" id="tm-role-' + n + '" placeholder="e.g. Owner, Chef, Assistant" required></div>' +
         '<div class="form-group"><label for="tm-phone-' + n + '">Phone Number <span style="color:#DC2626;">*</span></label>' +
         '<input type="tel" id="tm-phone-' + n + '" placeholder="+220..." required></div>' +
-        '<div class="form-group"><label>Photo ID <span style="color:#DC2626;">*</span></label>' +
+        '<div class="form-group"><label style="font-weight:600;">Personal Photograph for Tag <span style="color:#DC2626;">*</span></label>' +
+        '<p style="font-size:12px;color:var(--muted);margin-bottom:8px;">A clear, passport-style photograph of this person\'s face. Do NOT upload an ID card or document — this photo is printed on their vendor tag.</p>' +
         '<div class="vf-id-upload">' +
-        '<label class="vf-upload-btn" for="tm-photo-' + n + '">📷 Upload ID</label>' +
-        '<input type="file" id="tm-photo-' + n + '" accept="image/*" style="display:none;" data-idx="' + n + '">' +
-        '<img class="vf-id-preview" id="tm-preview-' + n + '" alt="ID preview">' +
-        '<span class="vf-upload-status" id="tm-status-' + n + '" style="font-size:12px;color:var(--muted);"></span>' +
+        '<label class="vf-upload-btn" for="tm-photo-' + n + '">📷 Upload Photograph</label>' +
+        '<input type="file" id="tm-photo-' + n + '" accept="image/*" style="display:none;" data-kind="photo" data-idx="' + n + '">' +
+        '<img class="vf-id-preview" id="tm-photo-preview-' + n + '" alt="Personal photograph preview">' +
+        '<span class="vf-upload-status" id="tm-photo-status-' + n + '" style="font-size:12px;color:var(--muted);"></span>' +
+        '</div></div>' +
+        '<div class="form-group"><label style="font-weight:600;">Photo ID Document (optional)</label>' +
+        '<p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Optional — an image of the ID document (NIN, passport or driver\'s licence) for the organisers\' records.</p>' +
+        '<div class="vf-id-upload">' +
+        '<label class="vf-upload-btn" for="tm-id-' + n + '">📷 Upload ID Document</label>' +
+        '<input type="file" id="tm-id-' + n + '" accept="image/*" style="display:none;" data-kind="id" data-idx="' + n + '">' +
+        '<img class="vf-id-preview" id="tm-id-preview-' + n + '" alt="ID document preview">' +
+        '<span class="vf-upload-status" id="tm-id-status-' + n + '" style="font-size:12px;color:var(--muted);"></span>' +
         '</div></div>';
       teamList.appendChild(div);
 
       // Restore existing photo data
-      var previewEl = document.getElementById('tm-preview-' + n);
-      if (teamPhotoData['team-photo-' + n] && previewEl) {
-        previewEl.src = teamPhotoData['team-photo-' + n];
-        previewEl.style.display = 'block';
-        var statusEl = document.getElementById('tm-status-' + n);
-        if (statusEl) statusEl.textContent = '✓ Uploaded';
-      }
+      restoreMemberImage(n, 'photo');
+      restoreMemberImage(n, 'id');
     }
 
     // Attach file listeners
     teamList.querySelectorAll('input[type="file"]').forEach(function (inp) {
-      inp.addEventListener('change', handlePhotoUpload);
+      inp.addEventListener('change', handleMemberUpload);
     });
   }
 
-  // ── Photo upload + client-side compression ──
-  function handlePhotoUpload(e) {
+  // ── Upload restore / handlers ──
+  function restoreMemberImage(n, kind) {
+    var data = teamPhotoData['member-' + kind + '-' + n];
+    if (!data) return;
+    var previewEl = document.getElementById('tm-' + kind + '-preview-' + n);
+    var statusEl = document.getElementById('tm-' + kind + '-status-' + n);
+    if (previewEl) { previewEl.src = data; previewEl.style.display = 'block'; }
+    if (statusEl) statusEl.textContent = '✓ Uploaded';
+  }
+
+  function handleMemberUpload(e) {
     var file = e.target.files[0];
     if (!file) return;
     var idx = e.target.getAttribute('data-idx');
-    var status = document.getElementById('tm-status-' + idx);
-    var preview = document.getElementById('tm-preview-' + idx);
+    var kind = e.target.getAttribute('data-kind');
+    var status = document.getElementById('tm-' + kind + '-status-' + idx);
+    var preview = document.getElementById('tm-' + kind + '-preview-' + idx);
     if (status) status.textContent = 'Compressing…';
 
     compressImage(file, 600, 0.6, function (dataUrl) {
-      teamPhotoData['team-photo-' + idx] = dataUrl;
+      teamPhotoData['member-' + kind + '-' + idx] = dataUrl;
       if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
       if (status) status.textContent = '✓ Uploaded';
+      clearValidationError(e.target);
     });
   }
 
-  function compressImage(file, maxDim, quality, cb) {
+  function handleLogoUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var status = document.getElementById('vf-logo-status');
+    var preview = document.getElementById('vf-logo-preview');
+    if (status) status.textContent = 'Compressing…';
+
+    // Preserve PNG transparency for logos; JPEG otherwise
+    var mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    compressImage(file, 800, 0.85, function (dataUrl) {
+      logoData = dataUrl;
+      if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+      if (status) status.textContent = '✓ Uploaded';
+      clearValidationError(e.target);
+    }, mime);
+  }
+
+  function clearValidationError(inputEl) {
+    var group = inputEl.closest('.form-group');
+    if (!group) return;
+    group.classList.remove('has-error');
+    var err = group.querySelector('.vf-error');
+    if (err) err.style.display = 'none';
+  }
+
+  function compressImage(file, maxDim, quality, cb, mime) {
     var reader = new FileReader();
     reader.onload = function (e) {
       var img = new Image();
@@ -134,7 +179,8 @@
         canvas.width = w;
         canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        cb(canvas.toDataURL('image/jpeg', quality));
+        var type = mime || 'image/jpeg';
+        cb(canvas.toDataURL(type, type === 'image/png' ? undefined : quality));
       };
       img.src = e.target.result;
     };
@@ -201,6 +247,20 @@
         markError(emailEl, 'Please enter a valid email address.');
         valid = false;
       }
+      // Business logo
+      if (!logoData) {
+        var logoInput = document.getElementById('vf-logo');
+        if (logoInput) {
+          var lg = logoInput.closest('.form-group');
+          if (lg) {
+            lg.classList.add('has-error');
+            var le = getOrCreateError(lg);
+            le.textContent = 'Please upload your business logo.';
+            le.style.display = 'block';
+          }
+        }
+        valid = false;
+      }
     }
 
     if (page === 2) {
@@ -222,11 +282,11 @@
         if (!valField('tm-name-' + i, 'Full name is required.')) valid = false;
         if (!valField('tm-role-' + i, 'Role is required.')) valid = false;
         if (!valField('tm-phone-' + i, 'Phone is required.')) valid = false;
-        if (!teamPhotoData['team-photo-' + i]) {
+        if (!teamPhotoData['member-photo-' + i]) {
           var photoGroup = document.getElementById('tm-photo-' + i);
           if (photoGroup) {
             var fg = photoGroup.closest('.form-group');
-            if (fg) { fg.classList.add('has-error'); var e2 = getOrCreateError(fg); e2.textContent = 'Photo ID is required.'; e2.style.display = 'block'; }
+            if (fg) { fg.classList.add('has-error'); var e2 = getOrCreateError(fg); e2.textContent = 'A personal photograph is required.'; e2.style.display = 'block'; }
           }
           valid = false;
         }
@@ -304,6 +364,7 @@
       row('Email', v('vf-email')),
       row('Full Name', v('vf-fullname')),
       row('Business', v('vf-business')),
+      row('Business Logo', logoData ? '✓ Uploaded' : '—'),
       row('WhatsApp', v('vf-phone')),
       row('Type', v('vf-category')),
       row('About', v('vf-about')),
@@ -314,7 +375,11 @@
 
     var teamRows = [row('Team Size', count)];
     for (var i = 1; i <= count; i++) {
-      teamRows.push(row('Member ' + i, v('tm-name-' + i) + ' — ' + v('tm-role-' + i) + ' — ' + v('tm-phone-' + i)));
+      teamRows.push(
+        row('Member ' + i, v('tm-name-' + i) + ' — ' + v('tm-role-' + i) + ' — ' + v('tm-phone-' + i) +
+          (teamPhotoData['member-photo-' + i] ? ' — Photo ✓' : '') +
+          (teamPhotoData['member-id-' + i] ? ' — ID ✓' : ''))
+      );
     }
     html += sec('Team', teamRows);
 
@@ -359,7 +424,10 @@
         name: v('tm-name-' + i),
         role: v('tm-role-' + i),
         phone: v('tm-phone-' + i),
-        id_photo: teamPhotoData['team-photo-' + i] || null
+        // Personal photograph printed on the vendor tag (required)
+        photo: teamPhotoData['member-photo-' + i] || null,
+        // Optional ID document, kept for admin records
+        id_photo: teamPhotoData['member-id-' + i] || null
       });
     }
 
@@ -391,6 +459,7 @@
       message: v('vf-about'),
       token: turnstileToken,
       details: {
+        business_logo: logoData || null,
         sell_intent: v('vf-sell'),
         stall_preference: stallEl ? stallEl.value : '',
         team_size: String(count),
