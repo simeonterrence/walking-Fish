@@ -108,6 +108,8 @@ The function verifies Cloudflare Turnstile CAPTCHA, inserts into Supabase, and s
 
 **Email configuration**: `noreply@walkingfish.gm` is verified in Resend (DKIM + SPF confirmed May 18).
 
+**Client auth header**: All client-side calls to Edge Functions must send `Authorization: Bearer <SUPABASE_ANON_KEY>` alongside `apikey`. The platform rejects requests with only `apikey` (401 `UNAUTHORIZED_NO_AUTH_HEADER` — a JSON body with no `error` field, which surfaces as the generic "Failed to submit application." fallback). `anonHeaders()` in `vendor-auth.js` and the inline fetch headers in `gift.js` / `volunteer-form.js` / `open-mic-form.js` include it — copy that pattern for any new Edge Function calls. The anon key is public, so sending it as a Bearer token is safe (same as supabase-js).
+
 ## Common Patterns (copy when creating a new page)
 
 - **CSP meta tag**: Every `<head>` includes a `meta http-equiv="Content-Security-Policy"` allowing `script-src 'self' 'unsafe-inline'` and `connect-src https://anigcqdquakinlzvyaur.supabase.co`.

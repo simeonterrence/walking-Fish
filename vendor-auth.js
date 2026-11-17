@@ -64,6 +64,9 @@ function clearStoredSession() {
 function anonHeaders() {
   return {
     apikey: SUPABASE_ANON_KEY,
+    // Edge Functions require an Authorization header (platform JWT check).
+    // The anon key is public — this mirrors what supabase-js sends.
+    Authorization: "Bearer " + SUPABASE_ANON_KEY,
     "Content-Type": "application/json"
   };
 }

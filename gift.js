@@ -172,7 +172,7 @@ function giftPiroakeEarly(form) {
   const doSubmit = (token) => {
     return fetch(SUPA_URL + '/functions/v1/verify-turnstile', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
       body: JSON.stringify({
         token: token || 'bypass',
         table: 'early_access',
@@ -244,7 +244,7 @@ function giftContactSent(form) {
 
   fetch(SUPA_URL + '/functions/v1/verify-turnstile', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
     body: JSON.stringify({
       token: turnstileToken || 'bypass',
       table: 'contact_messages',
@@ -324,7 +324,7 @@ function giftReportIssue(form) {
 
   fetch(SUPA_URL + '/functions/v1/verify-turnstile', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
     body: JSON.stringify({
       token: turnstileToken || 'bypass',
       table: 'complaints',

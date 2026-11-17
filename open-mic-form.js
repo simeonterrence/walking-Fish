@@ -402,6 +402,8 @@
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
+        // Edge Functions require an Authorization header (platform JWT check).
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
