@@ -2002,6 +2002,13 @@
                             escapeHtml(details.readiness_level) +
                             "</div>";
                     }
+
+                    if (details.payment_reference) {
+                        detailsHtml +=
+                            "<div><strong>Wave Payment Reference:</strong> <span style='font-family:var(--font-mono);'>" +
+                            escapeHtml(details.payment_reference) +
+                            "</span></div>";
+                    }
                 }
 
                 detailsHtml += "</div>";

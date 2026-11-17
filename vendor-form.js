@@ -470,6 +470,7 @@
         appliances_list: v('vf-appliances-list'),
         power_requirements: v('vf-power'),
         readiness_level: v('vf-readiness'),
+        payment_reference: v('vf-payment-ref'),
         event_operations_ack: true,
         event_operations_ack_at: new Date().toISOString()
       }
