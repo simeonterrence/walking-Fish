@@ -15,7 +15,7 @@ const corsHeaders = {
 
 function resolveContactInbox(inquiry: string): string {
   const s = (inquiry || "").toLowerCase();
-  if (s.includes("open mic"))                          return "theevents.guy@walkingfish.gm";
+  if (s.includes("open mic") || s.includes("karaoke")) return "theevents.guy@walkingfish.gm";
   if (s.includes("vendor"))                             return "vendor@walkingfish.gm";
   if (s.includes("sponsor") || s.includes("partner"))  return "theevents.guy@walkingfish.gm";
   if (s.includes("media") || s.includes("press") ||
@@ -223,6 +223,51 @@ function buildEmails(table: string, data: Record<string, any>): Array<{ to: stri
     }
   }
 
+  if (table === "karaoke_registrations") {
+    const isGroup = data.registration_type === "Group";
+    emails.push({
+      to: "theevents.guy@walkingfish.gm",
+      subject: `🎤 Karaoke Registration: ${data.name || "Contestant"} — ${data.generation || "Unknown"}`,
+      html: emailShell(`
+        <h2 style="margin:0 0 24px;">🎤 New Karaoke Registration</h2>
+        <p>A new contestant has registered for the <strong>Piroake Fest Gen Z vs Millennials Karaoke Competition</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Registration Type", data.registration_type || "-")}
+          ${row(isGroup ? "Group Name" : "Full Name", data.name || "-")}
+          ${isGroup && data.group_size ? row("Group Size", String(data.group_size)) : ""}
+          ${row("Generation", data.generation || "-")}
+          ${row("Preferred Genre", data.genre || "-")}
+          ${row("Email", `<a href="mailto:${data.email}">${data.email}</a>`)}
+          ${data.phone ? row("WhatsApp", `<a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}" target="_blank">${data.phone}</a>`) : ""}
+        </table>
+        <p style="margin-top:24px;font-size:13px;color:#999;">Review registrations in the <code>karaoke_registrations</code> table in Supabase.</p>
+      `),
+    });
+
+    if (data.email) {
+      emails.push({
+        to: data.email,
+        subject: `You're registered for the Karaoke Competition! 🎤 — Piroake Fest 2026`,
+        html: emailShell(`
+          <h2 style="margin:0 0 24px;">You're registered! 🎤</h2>
+          <p>Hi ${data.name || "there"},</p>
+          <p>Thanks for signing up for the <strong>Piroake Fest Gen Z vs Millennials Karaoke Competition</strong>. We've received your registration${isGroup ? " for your group" : ""}.</p>
+          <div style="background:#f9f9f9;padding:16px;border-radius:8px;margin:20px 0;font-size:14px;">
+            <p style="margin:0 0 8px;color:#555;"><strong>Your entry</strong></p>
+            <p style="margin:0;color:#333;">
+              Team: <strong>${data.generation || "-"}</strong><br>
+              Genre: <strong>${data.genre || "-"}</strong><br>
+              Registration: <strong>${data.registration_type || "-"}</strong>
+            </p>
+          </div>
+          <p>Our events team will confirm your slot and set time on WhatsApp shortly. Keep an eye on <strong>+220 786 5201</strong>.</p>
+          <p>Warm up those vocals — the mic is waiting.</p>
+          <p>See you on stage,<br><strong>Walkie-Talkie Experiences</strong></p>
+        `),
+      });
+    }
+  }
+
   if (table === "volunteer_applications") {
     emails.push({
       to: "theevents.guy@walkingfish.gm",
@@ -402,7 +447,7 @@ Deno.serve(async (req) => {
       console.warn("TURNSTILE_SECRET_KEY not set — dev mode, skipping CAPTCHA");
     }
 
-    const ALLOWED_TABLES = ["vendor_applications", "volunteer_applications", "contact_messages", "early_access", "complaints"];
+    const ALLOWED_TABLES = ["vendor_applications", "volunteer_applications", "contact_messages", "early_access", "complaints", "karaoke_registrations"];
     if (!ALLOWED_TABLES.includes(table)) {
       return new Response(JSON.stringify({ error: "Invalid table specified" }), {
         status: 400,

@@ -101,6 +101,7 @@ PostHog is listed as an analytics provider in the privacy policy. The CSP in `ve
 - `contact_messages` — Contact form via `/contact` form
 - `early_access` — Early access signups (piroake fest ticket codes)
 - `complaints` — Complaints form
+- `karaoke_registrations` — Piroake Fest Karaoke Competition signups via `/karaoke`
 
 The function verifies Cloudflare Turnstile CAPTCHA, inserts into Supabase, and sends email notifications via Resend:
 - Admin emails → `admin@walkingfish.gm`, `vendor@walkingfish.gm`, `theevents.guy@walkingfish.gm`, `musterpoint@walkingfish.gm` (smart routing based on inquiry subject)

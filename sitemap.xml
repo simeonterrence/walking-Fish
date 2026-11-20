@@ -31,6 +31,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.walkingfish.gm/karaoke</loc>
+    <lastmod>2026-11-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.walkingfish.gm/volunteers</loc>
     <lastmod>2026-08-10</lastmod>
     <changefreq>monthly</changefreq>
