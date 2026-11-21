@@ -152,6 +152,15 @@
                 .app-table td:nth-child(3) {
                     display: none;
                 }
+                /* Karaoke keeps its Team column: it is the point of the table */
+                #karaoke-table-wrapper .app-table {
+                    min-width: 820px;
+                }
+                #karaoke-table-wrapper .app-table th:nth-child(3),
+                #karaoke-table-wrapper .app-table td:nth-child(3) {
+                    display: table-cell;
+                    white-space: nowrap;
+                }
             }
             /* Photo management styles loaded from admin-photos.html via iframe */
         </style>
@@ -698,6 +707,64 @@
                                     </tr>
                                 </thead>
                                 <tbody id="openmic-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- KARAOKE COMPETITION (/karaoke → karaoke_registrations) -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <div class="w" style="padding-block: 32px; border-top: 1px solid var(--border); margin-top: 32px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+                        <div>
+                            <p class="label" style="color:var(--accent); margin:0 0 4px;">Piroake Fest · Karaoke</p>
+                            <h2 style="font-size:20px; margin:0;">Karaoke Competition</h2>
+                            <p style="font-size:14px; color:var(--muted); margin:4px 0 0;">Gen Z vs Millennials registrations from the /karaoke page. Confirm a slot, then message the contestant on WhatsApp.</p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <button id="karaoke-export-csv-btn" class="btn btn-secondary" style="padding:7px 14px; font-size:13px;">Export CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid" id="karaoke-stats-grid" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="num" id="karaoke-stat-total">0</div>
+                            <div class="lbl">Total Entries</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="karaoke-stat-genz">0</div>
+                            <div class="lbl">Gen Z</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="karaoke-stat-millennials">0</div>
+                            <div class="lbl">Millennials</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="num" id="karaoke-stat-groups">0</div>
+                            <div class="lbl">Groups</div>
+                        </div>
+                    </div>
+
+                    <div id="karaoke-container">
+                        <div class="empty-state" id="karaoke-empty-state">
+                            <p>Loading karaoke registrations...</p>
+                        </div>
+                        <div id="karaoke-table-wrapper" style="display:none; overflow-x:auto;">
+                            <table class="app-table">
+                                <thead>
+                                    <tr>
+                                        <th>Contestant</th>
+                                        <th>Type</th>
+                                        <th>Team</th>
+                                        <th>Genre</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Received</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="karaoke-tbody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -1614,6 +1681,7 @@
                 initAdminManagement();
                 loadComplaints();
                 loadOpenMicSignups();
+                loadKaraokeRegistrations();
                 loadVolunteerApplications();
 
                 document
@@ -3075,6 +3143,336 @@
                     if (modal) modal.remove();
                 }
             });
+
+            // ═════════════════════════════════════════════════════════════╗
+            // KARAOKE COMPETITION (/karaoke → karaoke_registrations)       ║
+            // ═════════════════════════════════════════════════════════════╝
+
+            window.cachedKaraoke = [];
+
+            // Uses the admin JWT when possible and falls back to the service
+            // role key (same escape hatch as the complaints table).
+            function karaokeRequest(path, options) {
+                options = options || {};
+                return fetchWithAuth(
+                    SUPABASE_URL + "/rest/v1/karaoke_registrations" + path,
+                    options,
+                ).then(function (r) {
+                    if (r.status !== 401 && r.status !== 403) return r;
+                    var svcKey =
+                        localStorage.getItem("wf_service_key") ||
+                        sessionStorage.getItem("wf_service_key");
+                    if (!svcKey && typeof getServiceKey === "function") {
+                        svcKey = getServiceKey(true);
+                    }
+                    if (!svcKey) return r;
+                    options.headers = options.headers || {};
+                    options.headers["apikey"] = svcKey;
+                    options.headers["Authorization"] = "Bearer " + svcKey;
+                    return fetch(
+                        SUPABASE_URL + "/rest/v1/karaoke_registrations" + path,
+                        options,
+                    );
+                });
+            }
+
+            function karaokeStatusClass(status) {
+                if (status === "confirmed") return "status-approved";
+                if (status === "declined") return "status-rejected";
+                return "status-pending";
+            }
+
+            function fetchKaraokeRegistrations() {
+                return karaokeRequest("?order=created_at.desc&select=*").then(
+                    function (r) {
+                        if (!r.ok) throw new Error("Failed to load karaoke registrations.");
+                        return r.json();
+                    },
+                );
+            }
+
+            function loadKaraokeRegistrations() {
+                var emptyState = document.getElementById("karaoke-empty-state");
+                var tableWrapper = document.getElementById("karaoke-table-wrapper");
+                if (emptyState) {
+                    emptyState.innerHTML = "<p>Loading karaoke registrations...</p>";
+                    emptyState.style.display = "block";
+                }
+                if (tableWrapper) tableWrapper.style.display = "none";
+
+                var exportBtn = document.getElementById("karaoke-export-csv-btn");
+                if (exportBtn && !exportBtn.hasAttribute("data-bound")) {
+                    exportBtn.setAttribute("data-bound", "true");
+                    exportBtn.addEventListener("click", exportKaraokeCSV);
+                }
+
+                var tbody = document.getElementById("karaoke-tbody");
+                if (tbody && !tbody.hasAttribute("data-bound")) {
+                    tbody.setAttribute("data-bound", "true");
+                    tbody.addEventListener("click", function (e) {
+                        var btn = e.target.closest
+                            ? e.target.closest("button[data-karaoke]")
+                            : null;
+                        if (!btn) return;
+                        var id = btn.getAttribute("data-karaoke");
+                        var origText = btn.textContent;
+                        btn.disabled = true;
+                        btn.textContent = "...";
+
+                        var done = function () {
+                            loadKaraokeRegistrations();
+                        };
+                        var fail = function (err) {
+                            alert(err.message || "Action failed.");
+                            btn.disabled = false;
+                            btn.textContent = origText;
+                        };
+
+                        if (btn.classList.contains("karaoke-confirm-btn")) {
+                            setKaraokeStatus(id, "confirmed").then(done).catch(fail);
+                        } else if (btn.classList.contains("karaoke-decline-btn")) {
+                            setKaraokeStatus(id, "declined").then(done).catch(fail);
+                        } else if (btn.classList.contains("karaoke-delete-btn")) {
+                            if (!confirm("Delete this karaoke registration? This cannot be undone.")) {
+                                btn.disabled = false;
+                                btn.textContent = origText;
+                                return;
+                            }
+                            deleteKaraokeRegistration(id).then(done).catch(fail);
+                        } else {
+                            btn.disabled = false;
+                            btn.textContent = origText;
+                        }
+                    });
+                }
+
+                fetchKaraokeRegistrations()
+                    .then(function (rows) {
+                        window.cachedKaraoke = rows || [];
+                        renderKaraokeRegistrations();
+                    })
+                    .catch(function (err) {
+                        console.error("[Karaoke Admin]", err);
+                        if (emptyState) {
+                            emptyState.innerHTML =
+                                '<p style="color:#DC2626;font-size:14px;">Could not load karaoke registrations: ' +
+                                escapeHtml(err.message) +
+                                "</p>";
+                            emptyState.style.display = "block";
+                        }
+                    });
+            }
+
+            function renderKaraokeRegistrations() {
+                var rows = window.cachedKaraoke || [];
+                var set = function (id, v) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = v;
+                };
+                set("karaoke-stat-total", rows.length);
+                set(
+                    "karaoke-stat-genz",
+                    rows.filter(function (r) {
+                        return r.generation === "Gen Z";
+                    }).length,
+                );
+                set(
+                    "karaoke-stat-millennials",
+                    rows.filter(function (r) {
+                        return r.generation === "Millennials";
+                    }).length,
+                );
+                set(
+                    "karaoke-stat-groups",
+                    rows.filter(function (r) {
+                        return r.registration_type === "Group";
+                    }).length,
+                );
+
+                var emptyState = document.getElementById("karaoke-empty-state");
+                var tableWrapper = document.getElementById("karaoke-table-wrapper");
+                var tbody = document.getElementById("karaoke-tbody");
+
+                if (!rows.length) {
+                    if (emptyState) {
+                        emptyState.innerHTML =
+                            '<p style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">No karaoke registrations yet. Contestants who sign up through /karaoke will appear here.</p>';
+                        emptyState.style.display = "block";
+                    }
+                    if (tableWrapper) tableWrapper.style.display = "none";
+                    return;
+                }
+
+                if (emptyState) emptyState.style.display = "none";
+                if (tableWrapper) tableWrapper.style.display = "block";
+
+                var teamBg = { "Gen Z": "var(--accent-dim)", Millennials: "#dbeafe" };
+                var teamFg = { "Gen Z": "var(--accent-text)", Millennials: "#1e40af" };
+
+                var html = "";
+                rows.forEach(function (r) {
+                    var phoneClean = (r.phone || "").replace(/[^0-9]/g, "");
+                    var dateStr = "-";
+                    try {
+                        dateStr = new Date(r.created_at).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                        });
+                    } catch (_) {}
+                    var status = r.status || "pending";
+                    var team = r.generation || "-";
+
+                    var actions = "";
+                    if (status !== "confirmed") {
+                        actions +=
+                            '<button class="action-btn karaoke-confirm-btn" data-karaoke="' +
+                            r.id +
+                            '" style="background:#065f46;color:#fff;padding:4px 10px;font-size:12px;">Confirm</button>';
+                    }
+                    if (status !== "declined") {
+                        actions +=
+                            '<button class="action-btn karaoke-decline-btn" data-karaoke="' +
+                            r.id +
+                            '" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);padding:4px 10px;font-size:12px;margin-left:6px;">Decline</button>';
+                    }
+                    actions +=
+                        '<button class="action-btn karaoke-delete-btn" data-karaoke="' +
+                        r.id +
+                        '" style="background:#dc2626;color:#fff;padding:4px 10px;font-size:12px;margin-left:6px;">Delete</button>';
+
+                    html +=
+                        "<tr>" +
+                        "<td><strong>" +
+                        escapeHtml(r.name || "-") +
+                        "</strong>" +
+                        (r.registration_type === "Group" && r.group_size
+                            ? '<br><span style="font-size:12px;color:var(--muted);">' +
+                              escapeHtml(String(r.group_size)) +
+                              " members</span>"
+                            : "") +
+                        "</td>" +
+                        '<td><span style="font-size:13px;">' +
+                        escapeHtml(r.registration_type || "-") +
+                        "</span></td>" +
+                        '<td><span class="status-badge" style="background:' +
+                        (teamBg[team] || "#f3f4f6") +
+                        ";color:" +
+                        (teamFg[team] || "#4b5563") +
+                        ';">' +
+                        escapeHtml(team) +
+                        "</span></td>" +
+                        '<td><span style="font-size:13px;">' +
+                        escapeHtml(r.genre || "-") +
+                        "</span></td>" +
+                        "<td>" +
+                        (phoneClean
+                            ? '<a href="https://wa.me/' +
+                              phoneClean +
+                              '" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;text-decoration:underline;">' +
+                              escapeHtml(r.phone) +
+                              "</a>"
+                            : '<span style="color:var(--muted);font-size:13px;">-</span>') +
+                        (r.email
+                            ? '<br><a href="mailto:' +
+                              escapeHtml(r.email) +
+                              '" style="font-size:12px;color:var(--muted);">' +
+                              escapeHtml(r.email) +
+                              "</a>"
+                            : "") +
+                        "</td>" +
+                        '<td><span class="status-badge ' +
+                        karaokeStatusClass(status) +
+                        '">' +
+                        escapeHtml(status) +
+                        "</span></td>" +
+                        '<td><span style="font-size:13px;color:var(--muted);">' +
+                        dateStr +
+                        "</span></td>" +
+                        '<td style="white-space:nowrap;">' +
+                        actions +
+                        "</td>" +
+                        "</tr>";
+                });
+
+                tbody.innerHTML = html;
+            }
+
+            function setKaraokeStatus(id, status) {
+                return karaokeRequest("?id=eq." + encodeURIComponent(id), {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Prefer: "return=minimal",
+                    },
+                    body: JSON.stringify({ status: status }),
+                }).then(function (r) {
+                    if (r.ok || r.status === 204) return true;
+                    throw new Error("Failed to update registration.");
+                });
+            }
+
+            function deleteKaraokeRegistration(id) {
+                return karaokeRequest("?id=eq." + encodeURIComponent(id), {
+                    method: "DELETE",
+                    headers: { Prefer: "return=minimal" },
+                }).then(function (r) {
+                    if (r.ok || r.status === 204) return true;
+                    throw new Error("Failed to delete registration.");
+                });
+            }
+
+            function karaokeCsvCell(v) {
+                return '"' + String(v === undefined || v === null ? "" : v).replace(/"/g, '""') + '"';
+            }
+
+            function exportKaraokeCSV() {
+                var rows = window.cachedKaraoke || [];
+                if (!rows.length) {
+                    alert("No karaoke registrations available to export.");
+                    return;
+                }
+
+                var headers = [
+                    "ID",
+                    "Submitted",
+                    "Contestant",
+                    "Registration Type",
+                    "Group Size",
+                    "Generation",
+                    "Genre",
+                    "Email",
+                    "Phone",
+                    "Status",
+                    "Notes",
+                ];
+                var csvRows = [headers.join(",")];
+
+                rows.forEach(function (r) {
+                    csvRows.push(
+                        [
+                            karaokeCsvCell(r.id),
+                            karaokeCsvCell(r.created_at ? new Date(r.created_at).toISOString() : ""),
+                            karaokeCsvCell(r.name),
+                            karaokeCsvCell(r.registration_type),
+                            karaokeCsvCell(r.group_size),
+                            karaokeCsvCell(r.generation),
+                            karaokeCsvCell(r.genre),
+                            karaokeCsvCell(r.email),
+                            karaokeCsvCell(r.phone),
+                            karaokeCsvCell(r.status),
+                            karaokeCsvCell(r.notes),
+                        ].join(","),
+                    );
+                });
+
+                var blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+                var link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", "karaoke_registrations.csv");
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
 
             // ═════════════════════════════════════════════════════════════╗
             // VOLUNTEER MANAGEMENT (EVENT-BASED)                          ║
